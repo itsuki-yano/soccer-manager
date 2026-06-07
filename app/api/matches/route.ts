@@ -13,7 +13,7 @@ function rowToMatch(r: string[]): Match {
     address: r[6] ?? "",
     distanceKm: Number(r[7] ?? 0),
     carCount: Number(r[8] ?? 0),
-    needsSettlement: r[9] === "true" || r[9] === "1",
+    needsSettlement: r[9]?.toLowerCase() === "true" || r[9] === "1",
     bandUid: r[10] ?? "",
     equipmentBringIn: r[11] ?? "",
     equipmentBringOut: r[12] ?? "",

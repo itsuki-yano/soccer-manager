@@ -28,7 +28,7 @@ export async function GET() {
       id: r[0], date: r[1], matchType: r[2] ?? "公式戦", matchName: r[3], opponent: r[4],
       venue: r[5], address: r[6], distanceKm: Number(r[7]),
       carCount: Number(r[8]),
-      needsSettlement: r[9] === "true" || r[9] === "1",
+      needsSettlement: r[9]?.toLowerCase() === "true" || r[9] === "1",
       bandUid: r[10] ?? "", equipmentBringIn: r[11] ?? "", equipmentBringOut: r[12] ?? "",
       settlementStatus: r[13] ?? "",
     })).sort((a, b) => a.date.localeCompare(b.date));
