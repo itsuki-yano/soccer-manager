@@ -113,7 +113,7 @@ export default function MatchesPage() {
     }
   }
 
-  if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
+  if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
   const sorted = [...matches].sort((a, b) => a.date.localeCompare(b.date));
   const filtered = sorted.filter((m) => {
@@ -141,7 +141,7 @@ export default function MatchesPage() {
   const selectedMatches = selectedDay ? (matchesByDay[selectedDay] ?? []) : [];
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-6">
+    <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="試合・合宿管理" />
 
       {/* 距離0km警告モーダル */}

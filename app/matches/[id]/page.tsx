@@ -302,8 +302,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
     setInheritDismissed(true);
   }
 
-  if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
-  if (!match) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-red-400">試合が見つかりません</div>;
+  if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
+  if (!match) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-red-400">試合が見つかりません</div>;
 
   const isHomeVenue = form.venue.includes("かりがね") || form.address.includes("かりがね");
 
@@ -313,7 +313,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
     .sort((a, b) => a.date.localeCompare(b.date))[0];
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-6">
+    <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="試合詳細" back="/matches" />
       {showDeleteConfirm && (
         <DeleteConfirmModal

@@ -89,8 +89,8 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
     }
   }
 
-  if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
-  if (!fee) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-red-400">費用が見つかりません</div>;
+  if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
+  if (!fee) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-red-400">費用が見つかりません</div>;
 
   const paidCount = payments.filter((p) => p.paid).length;
   const totalParents = parents.length;
@@ -108,7 +108,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   }).sort((a, b) => (a.group ?? "").localeCompare(b.group ?? "") || a.furigana.localeCompare(b.furigana));
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-6">
+    <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="費用詳細" back="/fees" />
       {showDeleteConfirm && (
         <DeleteConfirmModal

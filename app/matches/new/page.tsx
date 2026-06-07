@@ -65,7 +65,7 @@ export default function NewMatchPage() {
   }
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-6">
+    <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="試合・合宿を追加" back="/matches" />
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 grid gap-4">
 

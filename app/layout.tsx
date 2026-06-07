@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import AppLayout from "@/components/AppLayout";
 
 export const metadata: Metadata = {
   title: "マネジメントApp",
@@ -14,7 +15,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
-      <body className="bg-gray-50 min-h-screen">{children}</body>
+      <body className="bg-gray-50 min-h-screen">
+        <AppLayout>{children}</AppLayout>
+      </body>
     </html>
   );
 }

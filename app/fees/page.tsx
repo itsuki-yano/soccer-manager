@@ -35,13 +35,13 @@ export default function FeesPage() {
     });
   }, []);
 
-  if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
+  if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
   const sorted = [...fees].sort((a, b) => b.date.localeCompare(a.date));
   const totalParents = parents.length;
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-6">
+    <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="費用徴収管理" />
       <Link href="/fees/new"
         className="block w-full bg-blue-500 text-white text-center py-3 rounded-xl font-semibold mb-4 active:bg-blue-600">

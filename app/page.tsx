@@ -69,7 +69,7 @@ export default function Home() {
   }
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-8">
+    <main className="max-w-lg md:max-w-3xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       {deleteConfirm && (
         <DeleteConfirmModal
           message={`「${deleteConfirm.name}」を削除しますか？`}
@@ -77,18 +77,22 @@ export default function Home() {
           onCancel={() => setDeleteConfirm(null)}
         />
       )}
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 md:hidden">
         <div className="text-4xl mb-2">⚽</div>
         <h1 className="text-2xl font-bold text-gray-800">マネジメントApp</h1>
         <p className="text-gray-500 text-sm mt-1">トラヴェッソ 5年生</p>
       </div>
+      <div className="hidden md:block mb-8">
+        <h1 className="text-3xl font-bold text-gray-800">ダッシュボード</h1>
+        <p className="text-gray-500 text-sm mt-1">トラヴェッソ 5年生 マネジメントApp</p>
+      </div>
 
-      <div className="grid gap-3 mb-6">
+      <div className="grid md:grid-cols-2 gap-3 mb-6">
         {menu.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 active:bg-gray-50 transition-colors"
+            className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 hover:bg-blue-50 hover:border-blue-200 active:bg-gray-50 transition-colors"
           >
             <span className="text-3xl">{item.icon}</span>
             <div>

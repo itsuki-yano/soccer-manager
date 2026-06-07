@@ -73,7 +73,7 @@ export default function ParentsPage() {
     setDeleteConfirm(null);
   }
 
-  if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
+  if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
   const filtered = filterGroup === "全員" ? parents : parents.filter((p) => p.group === filterGroup.replace("班", ""));
   const sorted = [...filtered].sort((a, b) => {
@@ -117,7 +117,7 @@ export default function ParentsPage() {
   }
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-6">
+    <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="選手マスタ" />
       {deleteConfirm && (
         <DeleteConfirmModal
