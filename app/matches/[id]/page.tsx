@@ -23,12 +23,14 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [saving, setSaving] = useState(false);
   const [calcLoading, setCalcLoading] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<Omit<Match, "id">>({
-    date: "", matchType: "公式戦", matchName: "", opponent: "", venue: "", address: "",
-    distanceKm: 0, carCount: 0,
+  const [matchType, setMatchType] = useState("公式戦");
+  const [needsSettlement, setNeedsSettlement] = useState(true);
+  const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement">>({
+    date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0, carCount: 0,
   });
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
   const [newDriver, setNewDriver] = useState("");
+  const [filterGroup, setFilterGroup] = useState("全員");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -43,11 +45,9 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
       const m = matchList.find((x: Match) => x.id === id);
       if (m) {
         setMatch(m);
-        setForm({
-          date: m.date, matchType: m.matchType ?? "公式戦", matchName: m.matchName,
-          opponent: m.opponent, venue: m.venue, address: m.address,
-          distanceKm: m.distanceKm, carCount: m.carCount,
-        });
+        setMatchType(m.matchType ?? "公式戦");
+        setNeedsSettlement(m.needsSettlement ?? false);
+        setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm, carCount: m.carCount });
       }
       setDrivers(drvList);
       setSelectedDrivers(drvList.map((d: Driver) => d.parentName));
@@ -62,9 +62,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
     try {
       const res = await fetch(`/api/distance?address=${encodeURIComponent(address)}`);
       const data = await res.json();
-      if (data.roundTripKm) {
-        setForm((f) => ({ ...f, distanceKm: data.roundTripKm }));
-      }
+      if (data.roundTripKm) setForm((f) => ({ ...f, distanceKm: data.roundTripKm }));
     } finally {
       setCalcLoading(false);
     }
@@ -82,9 +80,9 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
     await fetch(`/api/matches/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, matchType, needsSettlement }),
     });
-    setMatch({ id, ...form });
+    setMatch({ id, ...form, matchType, needsSettlement });
     setEditing(false);
     setSaving(false);
   }
@@ -108,21 +106,34 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   function toggleDriver(name: string) {
-    setSelectedDrivers((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
-    );
+    setSelectedDrivers((prev) => prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]);
   }
 
   function addCustomDriver() {
     if (!newDriver.trim()) return;
-    if (!selectedDrivers.includes(newDriver.trim())) {
-      setSelectedDrivers((prev) => [...prev, newDriver.trim()]);
-    }
+    if (!selectedDrivers.includes(newDriver.trim())) setSelectedDrivers((prev) => [...prev, newDriver.trim()]);
     setNewDriver("");
   }
 
   if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
   if (!match) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-red-400">試合が見つかりません</div>;
+
+  // 班でグループ化
+  const groupedParents: Record<string, Parent[]> = {};
+  const noGroup: Parent[] = [];
+  for (const p of parents) {
+    if (p.group) {
+      if (!groupedParents[p.group]) groupedParents[p.group] = [];
+      groupedParents[p.group].push(p);
+    } else {
+      noGroup.push(p);
+    }
+  }
+  const sortedGroups = Object.keys(groupedParents).sort();
+
+  const filteredParents = filterGroup === "全員"
+    ? parents
+    : parents.filter((p) => p.group === filterGroup.replace("班", ""));
 
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
@@ -136,20 +147,21 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               <label className="block text-xs text-gray-500 mb-1">種別</label>
               <div className="grid grid-cols-4 gap-2">
                 {MATCH_TYPES.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, matchType: t }))}
+                  <button key={t} type="button" onClick={() => setMatchType(t)}
                     className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
-                      form.matchType === t
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : "bg-gray-50 text-gray-600 border-gray-200"
-                    }`}
-                  >
-                    {t}
-                  </button>
+                      matchType === t ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-600 border-gray-200"
+                    }`}>{t}</button>
                 ))}
               </div>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">精算</label>
+              <button type="button" onClick={() => setNeedsSettlement((v) => !v)}
+                className={`w-full py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                  needsSettlement ? "bg-orange-500 text-white border-orange-500" : "bg-gray-50 text-gray-500 border-gray-200"
+                }`}>
+                {needsSettlement ? "💴 精算あり（交通費発生）" : "精算なし"}
+              </button>
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-0.5">試合日</label>
@@ -159,7 +171,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               <label className="block text-xs text-gray-500 mb-0.5">試合名</label>
               <input type="text" value={form.matchName} onChange={(e) => setForm((f) => ({ ...f, matchName: e.target.value }))} className="input" />
             </div>
-            {form.matchType !== "合宿" && (
+            {matchType !== "合宿" && (
               <div>
                 <label className="block text-xs text-gray-500 mb-0.5">対戦相手</label>
                 <input type="text" value={form.opponent} onChange={(e) => setForm((f) => ({ ...f, opponent: e.target.value }))} className="input" />
@@ -180,17 +192,13 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                 <input type="number" step="0.01" value={form.distanceKm} onChange={(e) => setForm((f) => ({ ...f, distanceKm: Number(e.target.value) }))} className="input flex-1" />
                 {form.address && (
                   <button type="button" onClick={() => calcDistance(form.address)} disabled={calcLoading}
-                    className="bg-gray-100 text-gray-600 px-3 rounded-lg text-sm whitespace-nowrap disabled:opacity-50">
-                    再計算
-                  </button>
+                    className="bg-gray-100 text-gray-600 px-3 rounded-lg text-sm whitespace-nowrap disabled:opacity-50">再計算</button>
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-0.5">配車台数</label>
-                <input type="number" value={form.carCount} onChange={(e) => setForm((f) => ({ ...f, carCount: Number(e.target.value) }))} className="input" />
-              </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-0.5">配車台数</label>
+              <input type="number" value={form.carCount} onChange={(e) => setForm((f) => ({ ...f, carCount: Number(e.target.value) }))} className="input" />
             </div>
             <div className="flex gap-2 mt-2">
               <button onClick={saveMatch} disabled={saving} className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
@@ -205,10 +213,11 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
           <>
             <div className="flex justify-between items-start mb-3">
               <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{match.matchType}</span>
+                  {match.needsSettlement && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">精算あり</span>}
+                </div>
                 <div className="font-bold text-gray-800 text-lg">{fmtDate(match.date)}</div>
-                {match.matchType && match.matchType !== "公式戦" && (
-                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{match.matchType}</span>
-                )}
                 {match.opponent && <div className="text-blue-600 font-semibold">vs {match.opponent}</div>}
               </div>
               <button onClick={() => setEditing(true)} className="text-sm text-gray-400 border border-gray-200 px-3 py-1 rounded-lg">編集</button>
@@ -217,7 +226,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               {match.matchName && <div>🏆 {match.matchName}</div>}
               <div>📍 {match.venue}</div>
               {match.address && <div className="text-gray-400 text-xs pl-4">{match.address}</div>}
-              <div>🚗 往復 {match.distanceKm}km × {match.carCount}台</div>
+              {match.distanceKm > 0 && <div>🚗 往復 {match.distanceKm}km × {match.carCount}台</div>}
             </div>
             <button onClick={deleteMatch} className="mt-4 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
               この試合を削除
@@ -229,30 +238,68 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
       {/* 配車当番 */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
         <h2 className="font-bold text-gray-700 mb-3">配車当番</h2>
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          {parents.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => toggleDriver(p.playerName)}
-              className={`text-sm py-2 px-3 rounded-lg border text-left transition-colors ${
-                selectedDrivers.includes(p.playerName)
-                  ? "bg-blue-500 text-white border-blue-500"
-                  : "bg-gray-50 text-gray-700 border-gray-200"
-              }`}
-            >
-              {p.playerName}
-            </button>
+
+        {/* 班フィルター */}
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+          {["全員", "1班", "2班", "3班", "4班"].map((g) => (
+            <button key={g} onClick={() => setFilterGroup(g)}
+              className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                filterGroup === g ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-600 border-gray-200"
+              }`}>{g}</button>
           ))}
         </div>
+
+        {/* 班グループ表示 */}
+        {filterGroup === "全員" ? (
+          <>
+            {sortedGroups.map((g) => (
+              <div key={g} className="mb-3">
+                <div className="text-xs text-gray-400 font-medium mb-1.5">{g}班</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {groupedParents[g].map((p) => (
+                    <button key={p.id} onClick={() => toggleDriver(p.playerName)}
+                      className={`text-sm py-2 px-2 rounded-lg border text-center transition-colors ${
+                        selectedDrivers.includes(p.playerName) ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-700 border-gray-200"
+                      }`}>
+                      {p.playerName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {noGroup.length > 0 && (
+              <div className="mb-3">
+                <div className="text-xs text-gray-400 font-medium mb-1.5">未分類</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {noGroup.map((p) => (
+                    <button key={p.id} onClick={() => toggleDriver(p.playerName)}
+                      className={`text-sm py-2 px-2 rounded-lg border text-center transition-colors ${
+                        selectedDrivers.includes(p.playerName) ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-700 border-gray-200"
+                      }`}>
+                      {p.playerName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {filteredParents.map((p) => (
+              <button key={p.id} onClick={() => toggleDriver(p.playerName)}
+                className={`text-sm py-2 px-2 rounded-lg border text-center transition-colors ${
+                  selectedDrivers.includes(p.playerName) ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-700 border-gray-200"
+                }`}>
+                {p.playerName}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex gap-2 mb-3">
-          <input
-            type="text"
-            value={newDriver}
-            onChange={(e) => setNewDriver(e.target.value)}
+          <input type="text" value={newDriver} onChange={(e) => setNewDriver(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addCustomDriver()}
-            placeholder="その他の保護者名"
-            className="input flex-1"
-          />
+            placeholder="その他の名前を追加" className="input flex-1" />
           <button onClick={addCustomDriver} className="bg-gray-200 px-3 rounded-lg text-sm">追加</button>
         </div>
         {selectedDrivers.length > 0 && (
@@ -267,11 +314,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
         )}
-        <button
-          onClick={saveDrivers}
-          disabled={saving}
-          className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
-        >
+        <button onClick={saveDrivers} disabled={saving}
+          className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
           {saving ? "保存中..." : "当番を保存"}
         </button>
       </div>

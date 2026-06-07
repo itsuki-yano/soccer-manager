@@ -39,6 +39,7 @@ export async function GET() {
       id: r[0], date: r[1], matchType: r[2] ?? "公式戦", matchName: r[3], opponent: r[4],
       venue: r[5], address: r[6], distanceKm: Number(r[7]),
       carCount: Number(r[8]),
+      needsSettlement: r[9] === 'true' || r[9] === '1',
     })).sort((a, b) => a.date.localeCompare(b.date));
 
     const drivers: Driver[] = driverRows.slice(1).filter((r) => r[0]).map((r) => ({
@@ -118,8 +119,8 @@ export async function GET() {
       scheduleSheet.addRow([]);
     }
 
-    // ===== 試合別請求書シート =====
-    for (const m of matches) {
+    // ===== 試合別請求書シート（精算あり試合のみ） =====
+    for (const m of matches.filter((x) => x.needsSettlement)) {
       const { mmdd, label } = formatDate(m.date);
       const sheet = wb.addWorksheet(mmdd);
       sheet.getColumn(1).width = 14;

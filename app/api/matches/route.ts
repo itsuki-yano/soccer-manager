@@ -13,12 +13,13 @@ function rowToMatch(r: string[]): Match {
     address: r[6] ?? "",
     distanceKm: Number(r[7] ?? 0),
     carCount: Number(r[8] ?? 0),
+    needsSettlement: r[9] === "true" || r[9] === "1",
   };
 }
 
 export async function GET() {
   try {
-    const rows = await getSheetData("matches!A:I");
+    const rows = await getSheetData("matches!A:J");
     const matches = rows.slice(1).filter((r) => r[0]).map(rowToMatch);
     return NextResponse.json(matches);
   } catch (e) {
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     await appendRow("matches", [
       id, body.date, body.matchType ?? "公式戦", body.matchName, body.opponent,
       body.venue, body.address, body.distanceKm, body.carCount,
+      body.needsSettlement ? "true" : "false",
     ]);
     return NextResponse.json({ id });
   } catch (e) {

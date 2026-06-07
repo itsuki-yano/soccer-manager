@@ -4,9 +4,10 @@ import type { Parent } from "@/lib/types";
 
 export async function GET() {
   try {
-    const rows = await getSheetData("parents!A:B");
+    const rows = await getSheetData("parents!A:E");
     const parents: Parent[] = rows.slice(1).filter((r) => r[0]).map((r) => ({
-      id: r[0], playerName: r[1] ?? "",
+      id: r[0], playerName: r[1] ?? "", furigana: r[2] ?? "",
+      jerseyNumber: r[3] ?? "", group: r[4] ?? "",
     }));
     return NextResponse.json(parents);
   } catch (e) {
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
   try {
     const body: Omit<Parent, "id"> = await req.json();
     const id = Date.now().toString();
-    await appendRow("parents", [id, body.playerName]);
+    await appendRow("parents", [id, body.playerName, body.furigana, body.jerseyNumber, body.group]);
     return NextResponse.json({ id });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

@@ -8,6 +8,7 @@ export interface Match {
   address: string;
   distanceKm: number;
   carCount: number;
+  needsSettlement: boolean;
 }
 
 export interface Driver {
@@ -18,6 +19,9 @@ export interface Driver {
 export interface Parent {
   id: string;
   playerName: string;
+  furigana: string;
+  jerseyNumber: string;
+  group: string;
 }
 
 export interface CoachExpense {
