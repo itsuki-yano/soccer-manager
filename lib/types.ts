@@ -38,3 +38,10 @@ export interface Settings {
   accountant: string;
   leagueName: string;
 }
+
+export interface Memo {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
