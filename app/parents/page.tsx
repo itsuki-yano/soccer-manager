@@ -144,7 +144,7 @@ export default function ParentsPage() {
       </div>
 
       <div className="grid gap-2">
-        {sorted.map((p) => (
+        {sorted.map((p, idx) => (
           <div key={p.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             {editId === p.id ? (
               <div className="grid gap-3">
@@ -169,6 +169,7 @@ export default function ParentsPage() {
                   )}
                   <div>
                     <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 font-mono w-5 text-right">{idx + 1}.</span>
                       <span className="font-medium text-gray-800">{p.playerName}</span>
                       {p.jerseyNumber && <span className="text-xs text-gray-400">#{p.jerseyNumber}</span>}
                       {p.carCapacity > 0 && (

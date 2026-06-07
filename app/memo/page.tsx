@@ -17,26 +17,42 @@ export default function MemoPage() {
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/memos").then((r) => r.json()).then((d) => {
-      setMemos(Array.isArray(d) ? d : []);
-      setLoading(false);
+    fetch("/api/init").finally(() => {
+      fetch("/api/memos").then((r) => r.json()).then((d) => {
+        setMemos(Array.isArray(d) ? d : []);
+        setLoading(false);
+      });
     });
   }, []);
 
   async function addMemo() {
     if (!newText.trim()) return;
     setSaving(true);
-    const res = await fetch("/api/memos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: newText.trim() }),
-    });
-    const data = await res.json();
-    setMemos((prev) => [{ id: data.id, content: newText.trim(), createdAt: data.createdAt, updatedAt: data.updatedAt }, ...prev]);
-    setNewText("");
-    setSaving(false);
+    setError("");
+    try {
+      const res = await fetch("/api/memos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newText.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.id) {
+        setError("保存に失敗しました: " + (data.error ?? ""));
+        return;
+      }
+      setMemos((prev) => [{
+        id: data.id,
+        content: newText.trim(),
+        createdAt: data.createdAt ?? new Date().toISOString(),
+        updatedAt: data.updatedAt ?? new Date().toISOString(),
+      }, ...prev]);
+      setNewText("");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function startEdit(memo: Memo) {
@@ -47,15 +63,19 @@ export default function MemoPage() {
   async function saveEdit(id: string) {
     if (!editText.trim()) return;
     setSaving(true);
-    const res = await fetch(`/api/memos/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: editText.trim() }),
-    });
-    const data = await res.json();
-    setMemos((prev) => prev.map((m) => m.id === id ? { ...m, content: editText.trim(), updatedAt: data.updatedAt } : m));
-    setEditId(null);
-    setSaving(false);
+    try {
+      const res = await fetch(`/api/memos/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editText.trim() }),
+      });
+      const data = await res.json();
+      const updatedAt = data.updatedAt ?? new Date().toISOString();
+      setMemos((prev) => prev.map((m) => m.id === id ? { ...m, content: editText.trim(), updatedAt } : m));
+      setEditId(null);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function deleteMemo(id: string) {
@@ -64,9 +84,11 @@ export default function MemoPage() {
     setMemos((prev) => prev.filter((m) => m.id !== id));
   }
 
-  const sorted = [...memos].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-
   if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
+
+  const sorted = [...memos].sort((a, b) =>
+    (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "")
+  );
 
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
@@ -81,6 +103,7 @@ export default function MemoPage() {
           rows={3}
           className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
         />
+        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
         <button
           onClick={addMemo}
           disabled={saving || !newText.trim()}
@@ -120,7 +143,7 @@ export default function MemoPage() {
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-gray-400 space-y-0.5">
                     <div>作成: {fmtDateTime(memo.createdAt)}</div>
-                    {memo.updatedAt !== memo.createdAt && (
+                    {memo.updatedAt && memo.updatedAt !== memo.createdAt && (
                       <div className="text-blue-400">更新: {fmtDateTime(memo.updatedAt)}</div>
                     )}
                   </div>
