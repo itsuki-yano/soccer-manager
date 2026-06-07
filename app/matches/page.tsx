@@ -239,27 +239,33 @@ export default function MatchesPage() {
                       {m.distanceKm > 0 && (
                         <div className="text-sm text-gray-500">{m.distanceKm}km × {m.carCount}台</div>
                       )}
-                      {(m.equipmentBringIn || m.equipmentBringOut) && (
-                        <div className="text-xs text-gray-400 mt-1">
-                          {m.equipmentBringIn && `持込: ${m.equipmentBringIn}`}
-                          {m.equipmentBringIn && m.equipmentBringOut && " / "}
-                          {m.equipmentBringOut && `持ち帰り当番: ${m.equipmentBringOut}`}
-                        </div>
-                      )}
                     </div>
                     <div className="text-right ml-2">
-                      {!isHome && (
+                      {!isHome && matchDrivers.length > 0 && (
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                          試合当番 {matchDrivers.length}名
+                          配車当番 {matchDrivers.length}名
                         </span>
                       )}
                     </div>
                   </div>
                   {matchDrivers.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {matchDrivers.map((d, i) => (
-                        <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{d.parentName}</span>
-                      ))}
+                    <div className="mt-2">
+                      <div className="text-xs text-gray-400 mb-1">配車当番:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {matchDrivers.map((d, i) => (
+                          <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{d.parentName}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {m.equipmentBringOut && (
+                    <div className="mt-2">
+                      <div className="text-xs text-gray-400 mb-1">持ち帰り当番:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {m.equipmentBringOut.split(",").map((n, i) => (
+                          <span key={i} className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">{n.trim()}</span>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </Link>

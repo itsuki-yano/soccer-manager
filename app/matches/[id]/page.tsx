@@ -401,27 +401,6 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      {/* 備品持帰り */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
-        <div className="flex items-center gap-2 mb-1">
-          <h2 className="font-bold text-gray-700">備品持帰り当番</h2>
-        </div>
-        <p className="text-xs text-gray-400 mb-3">
-          選択した担当者は次の試合の配車当番として自動引継ぎされます
-          {nextMatch && <span className="text-blue-500">（次: {fmtDate(nextMatch.date)} {nextMatch.venue}）</span>}
-        </p>
-        <PlayerSelector
-          parents={parents}
-          selected={selectedEquipOut}
-          onToggle={toggleEquipOut}
-          color="orange"
-        />
-        <button onClick={saveEquipOut} disabled={savingEq}
-          className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold mt-2 disabled:opacity-50">
-          {savingEq ? "保存中..." : "備品持帰り当番を保存"}
-        </button>
-      </div>
-
       {/* 配車当番 */}
       <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 ${isHomeVenue ? "opacity-50 pointer-events-none" : ""}`}>
         <div className="flex items-center gap-2 mb-1">
@@ -469,6 +448,27 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         <button onClick={saveDrivers} disabled={saving}
           className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
           {saving ? "保存中..." : "配車当番を保存"}
+        </button>
+      </div>
+
+      {/* 備品持帰り */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="font-bold text-gray-700">備品持帰り当番</h2>
+        </div>
+        <p className="text-xs text-gray-400 mb-3">
+          選択した担当者は次の試合の配車当番として自動引継ぎされます
+          {nextMatch && <span className="text-blue-500">（次: {fmtDate(nextMatch.date)} {nextMatch.venue}）</span>}
+        </p>
+        <PlayerSelector
+          parents={parents}
+          selected={selectedEquipOut}
+          onToggle={toggleEquipOut}
+          color="orange"
+        />
+        <button onClick={saveEquipOut} disabled={savingEq}
+          className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold mt-2 disabled:opacity-50">
+          {savingEq ? "保存中..." : "備品持帰り当番を保存"}
         </button>
       </div>
     </main>
