@@ -45,6 +45,7 @@ export default function MatchesPage() {
   const [bandLoading, setBandLoading] = useState(false);
   const [importing, setImporting] = useState<Set<string>>(new Set());
   const [importedUids, setImportedUids] = useState<Set<string>>(new Set());
+  const [zeroDistanceAlert, setZeroDistanceAlert] = useState<{ matchId: string; matchName: string } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -96,6 +97,10 @@ export default function MatchesPage() {
       };
       setMatches((prev) => [...prev, newMatch]);
       setImportedUids((prev) => new Set(prev).add(ev.bandUid));
+      // 距離0km（ホームでない）なら警告
+      if (ev.distanceKm === 0 && !ev.isHome) {
+        setZeroDistanceAlert({ matchId: data.id, matchName: ev.matchName });
+      }
     } finally {
       setImporting((prev) => { const s = new Set(prev); s.delete(ev.bandUid); return s; });
     }
@@ -139,6 +144,38 @@ export default function MatchesPage() {
     <main className="max-w-lg mx-auto px-4 py-6">
       <BackHeader title="試合・合宿管理" />
 
+      {/* 距離0km警告モーダル */}
+      {zeroDistanceAlert && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">⚠️</div>
+              <h2 className="text-lg font-bold text-gray-800">距離が0kmです</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                <span className="font-semibold">{zeroDistanceAlert.matchName}</span>
+                の距離を自動計算できませんでした。<br />
+                住所を確認・入力して距離を再計算してください。
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <a
+                href={`/matches/${zeroDistanceAlert.matchId}`}
+                className="block w-full text-center bg-orange-500 text-white py-3 rounded-xl font-semibold"
+                onClick={() => setZeroDistanceAlert(null)}
+              >
+                編集画面を開く
+              </a>
+              <button
+                onClick={() => setZeroDistanceAlert(null)}
+                className="w-full text-gray-500 py-2 text-sm"
+              >
+                後で確認する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 追加 + BANDボタン */}
       <div className="flex gap-2 mb-4">
         <Link href="/matches/new"
@@ -170,7 +207,14 @@ export default function MatchesPage() {
                   <div className="text-xs text-gray-500">{ev.date} · <span className={`px-1.5 py-0.5 rounded text-xs ${TYPE_COLORS[ev.matchType] ?? "bg-gray-100 text-gray-600"}`}>{ev.matchType}</span></div>
                   <div className="text-sm font-medium text-gray-800 truncate">{ev.matchName}</div>
                   {ev.venue && <div className="text-xs text-gray-400 truncate">{ev.venue}</div>}
-                  {ev.distanceKm > 0 && <div className="text-xs text-gray-400">{ev.distanceKm}km</div>}
+                  {ev.distanceKm > 0
+                    ? <div className="text-xs text-gray-400">{ev.distanceKm}km</div>
+                    : !ev.isHome && (
+                      <div className="text-xs text-orange-500 font-medium flex items-center gap-1">
+                        ⚠️ 距離0km・住所要確認
+                      </div>
+                    )
+                  }
                 </div>
                 <button onClick={() => importEvent(ev)} disabled={importing.has(ev.bandUid)}
                   className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg disabled:opacity-50 whitespace-nowrap">
