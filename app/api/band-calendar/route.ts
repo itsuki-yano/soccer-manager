@@ -8,10 +8,8 @@ interface ICalEvent {
   description: string;
 }
 
-const SKIP_KEYWORDS = ["自主練習", "通常練習", "練習会", "自由練習"];
-
 function shouldSkip(summary: string): boolean {
-  return SKIP_KEYWORDS.some((kw) => summary.includes(kw));
+  return summary.includes("練習");
 }
 
 function detectMatchType(summary: string): string {
