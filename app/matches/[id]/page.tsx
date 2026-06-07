@@ -363,10 +363,6 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                 )}
               </div>
             </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-0.5">配車台数（配車当番人数から自動計算）</label>
-              <div className="input bg-gray-50 text-gray-500">{selectedDrivers.length} 台</div>
-            </div>
             <div className="flex gap-2 mt-2">
               <button onClick={saveMatch} disabled={saving} className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
                 {saving ? "保存中..." : "保存"}
@@ -415,10 +411,27 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
           const next = !needsSettlement;
           setNeedsSettlement(next);
           setMatch((prev) => prev ? { ...prev, needsSettlement: next } : prev);
-          fetch(`/api/matches/${id}/needs-settlement`, {
-            method: "PATCH",
+          const equipmentBringOut = match?.equipmentBringOut ?? "";
+          fetch(`/api/matches/${id}`, {
+            method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ needsSettlement: next }),
+            body: JSON.stringify({
+              ...form,
+              carCount: selectedDrivers.length,
+              matchType,
+              needsSettlement: next,
+              bandUid: match?.bandUid ?? "",
+              equipmentBringIn: match?.equipmentBringIn ?? "",
+              equipmentBringOut,
+              settlementStatus: match?.settlementStatus ?? "",
+            }),
+          }).then(async (r) => {
+            if (!r.ok) {
+              const err = await r.json().catch(() => ({}));
+              alert("精算フラグの保存に失敗しました: " + (err.error ?? r.status));
+              setNeedsSettlement(!next);
+              setMatch((prev) => prev ? { ...prev, needsSettlement: !next } : prev);
+            }
           });
         }}
           className={`w-full py-2.5 rounded-lg text-sm font-medium border transition-colors mb-3 ${

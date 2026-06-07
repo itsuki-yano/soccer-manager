@@ -1,35 +1,22 @@
 import { NextResponse } from "next/server";
-import { getSheetData, getSheetsClient } from "@/lib/sheets";
+import { getSheetData, updateRow } from "@/lib/sheets";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const { needsSettlement, carCount } = await req.json();
-    const rows = await getSheetData("matches!A:A");
+    const { needsSettlement } = await req.json();
+
+    // 行全体を読み込んで needsSettlement だけ差し替えて書き直す
+    const rows = await getSheetData("matches!A:N");
     const idx = rows.findIndex((r) => r[0] === id);
-    if (idx < 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+    if (idx < 0) return NextResponse.json({ error: "not found", id, rowCount: rows.length }, { status: 404 });
 
-    const sheets = await getSheetsClient();
-    const rowNum = idx + 1;
+    const row = [...(rows[idx] ?? [])];
+    // 列数が足りない場合は空文字で埋める (A〜N = 14列)
+    while (row.length < 14) row.push("");
+    row[9] = needsSettlement ? "true" : "false"; // J列 = needsSettlement
 
-    // needsSettlement は J列 (列9, 1-indexed=10)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID!,
-      range: `matches!J${rowNum}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: { values: [[needsSettlement ? "true" : "false"]] },
-    });
-
-    // carCount も同時更新する場合 (I列 = 列8, 1-indexed=9)
-    if (carCount !== undefined) {
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID!,
-        range: `matches!I${rowNum}`,
-        valueInputOption: "USER_ENTERED",
-        requestBody: { values: [[carCount]] },
-      });
-    }
-
+    await updateRow("matches", idx + 1, row);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
