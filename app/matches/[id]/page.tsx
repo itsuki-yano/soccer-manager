@@ -13,14 +13,142 @@ function fmtDate(d: string) {
   return `${dt.getFullYear()}/${dt.getMonth() + 1}/${dt.getDate()}（${weekdays[dt.getDay()]}）`;
 }
 
+// 選手選択グリッド（配車当番・備品持帰り共通）
+function PlayerSelector({
+  parents,
+  selected,
+  onToggle,
+  color = "blue",
+}: {
+  parents: Parent[];
+  selected: string[];
+  onToggle: (name: string) => void;
+  color?: "blue" | "orange";
+}) {
+  const [filterGroup, setFilterGroup] = useState("全員");
+  const [customName, setCustomName] = useState("");
+
+  const groups: Record<string, Parent[]> = {};
+  const noGroup: Parent[] = [];
+  for (const p of parents) {
+    if (p.group) {
+      if (!groups[p.group]) groups[p.group] = [];
+      groups[p.group].push(p);
+    } else {
+      noGroup.push(p);
+    }
+  }
+  const sortedGroups = Object.keys(groups).sort();
+  const filteredParents = filterGroup === "全員"
+    ? parents
+    : parents.filter((p) => p.group === filterGroup.replace("班", ""));
+
+  const selBg = color === "orange" ? "bg-orange-500 text-white border-orange-500" : "bg-blue-500 text-white border-blue-500";
+  const tagBg = color === "orange" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700";
+  const summarybg = color === "orange" ? "bg-orange-50 border-orange-100" : "bg-blue-50 border-blue-100";
+  const summaryText = color === "orange" ? "text-orange-800" : "text-blue-800";
+
+  function addCustom() {
+    if (!customName.trim()) return;
+    if (!selected.includes(customName.trim())) onToggle(customName.trim());
+    setCustomName("");
+  }
+
+  return (
+    <div>
+      {/* 班フィルター */}
+      <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+        {["全員", "1班", "2班", "3班", "4班"].map((g) => (
+          <button key={g} onClick={() => setFilterGroup(g)}
+            className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+              filterGroup === g ? "bg-gray-700 text-white border-gray-700" : "bg-gray-50 text-gray-600 border-gray-200"
+            }`}>{g}</button>
+        ))}
+      </div>
+
+      {/* 選手グリッド */}
+      {filterGroup === "全員" ? (
+        <>
+          {sortedGroups.map((g) => (
+            <div key={g} className="mb-3">
+              <div className="text-xs text-gray-400 font-medium mb-1.5">{g}班</div>
+              <div className="grid grid-cols-3 gap-2">
+                {groups[g].map((p) => (
+                  <button key={p.id} onClick={() => onToggle(p.playerName)}
+                    className={`text-sm py-2 px-2 rounded-lg border text-center transition-colors ${
+                      selected.includes(p.playerName) ? selBg : "bg-gray-50 text-gray-700 border-gray-200"
+                    }`}>
+                    {p.playerName}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          {noGroup.length > 0 && (
+            <div className="mb-3">
+              <div className="text-xs text-gray-400 font-medium mb-1.5">未分類</div>
+              <div className="grid grid-cols-3 gap-2">
+                {noGroup.map((p) => (
+                  <button key={p.id} onClick={() => onToggle(p.playerName)}
+                    className={`text-sm py-2 px-2 rounded-lg border text-center transition-colors ${
+                      selected.includes(p.playerName) ? selBg : "bg-gray-50 text-gray-700 border-gray-200"
+                    }`}>
+                    {p.playerName}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {filteredParents.map((p) => (
+            <button key={p.id} onClick={() => onToggle(p.playerName)}
+              className={`text-sm py-2 px-2 rounded-lg border text-center transition-colors ${
+                selected.includes(p.playerName) ? selBg : "bg-gray-50 text-gray-700 border-gray-200"
+              }`}>
+              {p.playerName}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 手動追加 */}
+      <div className="flex gap-2 mb-3">
+        <input type="text" value={customName} onChange={(e) => setCustomName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addCustom()}
+          placeholder="その他の名前を追加" className="input flex-1" />
+        <button onClick={addCustom} className="bg-gray-200 px-3 rounded-lg text-sm">追加</button>
+      </div>
+
+      {/* 選択中サマリー */}
+      {selected.length > 0 && (
+        <div className={`p-3 rounded-lg border ${summarybg} mb-2`}>
+          <div className={`text-sm font-medium ${summaryText} mb-1.5`}>{selected.length}名 選択中</div>
+          <div className="flex flex-wrap gap-1">
+            {selected.map((n) => (
+              <span key={n} onClick={() => onToggle(n)}
+                className={`text-xs px-2 py-1 rounded-full cursor-pointer ${tagBg}`}>
+                {n} ✕
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [match, setMatch] = useState<Match | null>(null);
+  const [allMatches, setAllMatches] = useState<Match[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingEq, setSavingEq] = useState(false);
   const [calcLoading, setCalcLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [matchType, setMatchType] = useState("公式戦");
@@ -29,10 +157,10 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
     date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0, carCount: 0,
   });
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
-  const [newDriver, setNewDriver] = useState("");
-  const [filterGroup, setFilterGroup] = useState("全員");
-  const [equipmentBringIn, setEquipmentBringIn] = useState("");
-  const [equipmentBringOut, setEquipmentBringOut] = useState("");
+  const [selectedEquipOut, setSelectedEquipOut] = useState<string[]>([]);
+  // 前回持帰り引継ぎバナー用
+  const [inheritSource, setInheritSource] = useState<{ date: string; names: string[] } | null>(null);
+  const [inheritDismissed, setInheritDismissed] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -41,20 +169,35 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
       fetch(`/api/drivers?matchId=${id}`).then((r) => r.json()),
       fetch("/api/parents").then((r) => r.json()),
     ]).then(([matches, drvs, prts]) => {
-      const matchList = Array.isArray(matches) ? matches : [];
-      const drvList = Array.isArray(drvs) ? drvs : [];
-      const prtList = Array.isArray(prts) ? prts : [];
-      const m = matchList.find((x: Match) => x.id === id);
+      const matchList: Match[] = Array.isArray(matches) ? matches : [];
+      const drvList: Driver[] = Array.isArray(drvs) ? drvs : [];
+      const prtList: Parent[] = Array.isArray(prts) ? prts : [];
+      const m = matchList.find((x) => x.id === id);
       if (m) {
         setMatch(m);
         setMatchType(m.matchType ?? "公式戦");
         setNeedsSettlement(m.needsSettlement ?? false);
         setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm, carCount: m.carCount });
-        setEquipmentBringIn(m.equipmentBringIn ?? "");
-        setEquipmentBringOut(m.equipmentBringOut ?? "");
+        // 備品持帰りを配列に復元
+        const outNames = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
+        setSelectedEquipOut(outNames);
       }
+      setAllMatches(matchList);
       setDrivers(drvList);
-      setSelectedDrivers(drvList.map((d: Driver) => d.parentName));
+      const driverNames = drvList.map((d) => d.parentName);
+      setSelectedDrivers(driverNames);
+
+      // 配車当番が未設定の場合、直前の試合の備品持帰りから引継ぎ候補を表示
+      if (m && drvList.length === 0) {
+        const prev = matchList
+          .filter((x) => x.id !== id && x.date <= m.date && x.equipmentBringOut)
+          .sort((a, b) => b.date.localeCompare(a.date))[0];
+        if (prev?.equipmentBringOut) {
+          const names = prev.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean);
+          if (names.length > 0) setInheritSource({ date: prev.date, names });
+        }
+      }
+
       setParents(prtList);
       setLoading(false);
     });
@@ -81,18 +224,38 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
 
   async function saveMatch() {
     setSaving(true);
+    const equipmentBringOut = selectedEquipOut.join(", ");
     await fetch(`/api/matches/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form, matchType, needsSettlement,
         bandUid: match?.bandUid ?? "",
-        equipmentBringIn, equipmentBringOut,
+        equipmentBringIn: match?.equipmentBringIn ?? "",
+        equipmentBringOut,
       }),
     });
-    setMatch({ id, ...form, matchType, needsSettlement, bandUid: match?.bandUid ?? "", equipmentBringIn, equipmentBringOut });
+    setMatch((prev) => prev ? { ...prev, ...form, matchType, needsSettlement, equipmentBringOut } : prev);
     setEditing(false);
     setSaving(false);
+  }
+
+  async function saveEquipOut() {
+    setSavingEq(true);
+    const equipmentBringOut = selectedEquipOut.join(", ");
+    await fetch(`/api/matches/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...form, matchType, needsSettlement,
+        bandUid: match?.bandUid ?? "",
+        equipmentBringIn: match?.equipmentBringIn ?? "",
+        equipmentBringOut,
+      }),
+    });
+    setMatch((prev) => prev ? { ...prev, equipmentBringOut } : prev);
+    setSavingEq(false);
+    alert("備品持帰り担当を保存しました");
   }
 
   async function saveDrivers() {
@@ -117,10 +280,14 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
     setSelectedDrivers((prev) => prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]);
   }
 
-  function addCustomDriver() {
-    if (!newDriver.trim()) return;
-    if (!selectedDrivers.includes(newDriver.trim())) setSelectedDrivers((prev) => [...prev, newDriver.trim()]);
-    setNewDriver("");
+  function toggleEquipOut(name: string) {
+    setSelectedEquipOut((prev) => prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]);
+  }
+
+  function applyInherit() {
+    if (!inheritSource) return;
+    setSelectedDrivers(inheritSource.names);
+    setInheritDismissed(true);
   }
 
   if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
@@ -128,22 +295,10 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
 
   const isHomeVenue = form.venue.includes("かりがね") || form.address.includes("かりがね");
 
-  // 班でグループ化
-  const groupedParents: Record<string, Parent[]> = {};
-  const noGroup: Parent[] = [];
-  for (const p of parents) {
-    if (p.group) {
-      if (!groupedParents[p.group]) groupedParents[p.group] = [];
-      groupedParents[p.group].push(p);
-    } else {
-      noGroup.push(p);
-    }
-  }
-  const sortedGroups = Object.keys(groupedParents).sort();
-
-  const filteredParents = filterGroup === "全員"
-    ? parents
-    : parents.filter((p) => p.group === filterGroup.replace("班", ""));
+  // 次の試合を探す（備品持帰り保存後の引継ぎ先案内用）
+  const nextMatch = allMatches
+    .filter((x) => x.id !== id && x.date >= form.date)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
 
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
@@ -226,6 +381,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{match.matchType}</span>
                   {match.needsSettlement && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">精算あり</span>}
+                  {isHomeVenue && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム</span>}
                 </div>
                 <div className="font-bold text-gray-800 text-lg">{fmtDate(match.date)}</div>
                 {match.opponent && <div className="text-blue-600 font-semibold">vs {match.opponent}</div>}
@@ -245,135 +401,74 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      {/* 備品当番 */}
+      {/* 備品持帰り */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm font-bold text-gray-700">備品当番</span>
-          {isHomeVenue && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム開催</span>}
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="font-bold text-gray-700">備品持帰り当番</h2>
         </div>
-        <div className="grid gap-3">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">持込 班 / 担当者</label>
-            <input type="text" value={equipmentBringIn}
-              onChange={(e) => setEquipmentBringIn(e.target.value)}
-              placeholder="例: 2班 または 田中さん"
-              className="input" />
-            {equipmentBringIn && (
-              <p className="text-xs text-blue-500 mt-1">前回の持ち帰り担当から自動セット済み</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">持帰り 班 / 担当者</label>
-            <input type="text" value={equipmentBringOut}
-              onChange={(e) => setEquipmentBringOut(e.target.value)}
-              placeholder="例: 3班 または 鈴木さん"
-              className="input" />
-            <p className="text-xs text-gray-400 mt-1">次回イベントの「持込」に自動引継ぎされます</p>
-          </div>
-          <button onClick={saveMatch} disabled={saving}
-            className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
-            {saving ? "保存中..." : "備品当番を保存"}
-          </button>
-        </div>
+        <p className="text-xs text-gray-400 mb-3">
+          選択した担当者は次の試合の配車当番として自動引継ぎされます
+          {nextMatch && <span className="text-blue-500">（次: {fmtDate(nextMatch.date)} {nextMatch.venue}）</span>}
+        </p>
+        <PlayerSelector
+          parents={parents}
+          selected={selectedEquipOut}
+          onToggle={toggleEquipOut}
+          color="orange"
+        />
+        <button onClick={saveEquipOut} disabled={savingEq}
+          className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold mt-2 disabled:opacity-50">
+          {savingEq ? "保存中..." : "備品持帰り当番を保存"}
+        </button>
       </div>
 
       {/* 配車当番 */}
       <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 ${isHomeVenue ? "opacity-50 pointer-events-none" : ""}`}>
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-1">
           <h2 className="font-bold text-gray-700">配車当番</h2>
           {isHomeVenue && <span className="text-xs text-gray-400">（ホーム開催のため不要）</span>}
         </div>
 
-        {/* 班フィルター */}
-        <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-          {["全員", "1班", "2班", "3班", "4班"].map((g) => (
-            <button key={g} onClick={() => setFilterGroup(g)}
-              className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                filterGroup === g ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-600 border-gray-200"
-              }`}>{g}</button>
-          ))}
-        </div>
-
-        {/* 班グループ表示 */}
-        {filterGroup === "全員" ? (
-          <>
-            {sortedGroups.map((g) => (
-              <div key={g} className="mb-3">
-                <div className="text-xs text-gray-400 font-medium mb-1.5">{g}班</div>
-                <div className="grid grid-cols-3 gap-2">
-                  {groupedParents[g].map((p) => (
-                    <button key={p.id} onClick={() => toggleDriver(p.playerName)}
-                      className={`text-sm py-2 px-2 rounded-lg border text-center transition-colors ${
-                        selectedDrivers.includes(p.playerName) ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-700 border-gray-200"
-                      }`}>
-                      {p.playerName}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {noGroup.length > 0 && (
-              <div className="mb-3">
-                <div className="text-xs text-gray-400 font-medium mb-1.5">未分類</div>
-                <div className="grid grid-cols-3 gap-2">
-                  {noGroup.map((p) => (
-                    <button key={p.id} onClick={() => toggleDriver(p.playerName)}
-                      className={`text-sm py-2 px-2 rounded-lg border text-center transition-colors ${
-                        selectedDrivers.includes(p.playerName) ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-700 border-gray-200"
-                      }`}>
-                      {p.playerName}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            {filteredParents.map((p) => (
-              <button key={p.id} onClick={() => toggleDriver(p.playerName)}
-                className={`text-sm py-2 px-2 rounded-lg border text-center transition-colors ${
-                  selectedDrivers.includes(p.playerName) ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-700 border-gray-200"
-                }`}>
-                {p.playerName}
+        {/* 前回備品持帰りからの引継ぎバナー */}
+        {inheritSource && !inheritDismissed && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-3">
+            <p className="text-sm text-orange-800 mb-2">
+              前回（{fmtDate(inheritSource.date)}）の備品持帰り担当を引継ぎますか？
+            </p>
+            <div className="flex flex-wrap gap-1 mb-2">
+              {inheritSource.names.map((n) => (
+                <span key={n} className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">{n}</span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={applyInherit}
+                className="flex-1 bg-orange-500 text-white py-2 rounded-lg text-sm font-semibold">
+                この担当者を配車当番にセット
               </button>
-            ))}
+              <button onClick={() => setInheritDismissed(true)}
+                className="text-sm text-gray-400 px-3 py-2">スキップ</button>
+            </div>
           </div>
         )}
 
-        <div className="flex gap-2 mb-3">
-          <input type="text" value={newDriver} onChange={(e) => setNewDriver(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addCustomDriver()}
-            placeholder="その他の名前を追加" className="input flex-1" />
-          <button onClick={addCustomDriver} className="bg-gray-200 px-3 rounded-lg text-sm">追加</button>
-        </div>
+        <PlayerSelector
+          parents={parents}
+          selected={selectedDrivers}
+          onToggle={toggleDriver}
+          color="blue"
+        />
         {selectedDrivers.length > 0 && (() => {
           const totalCap = selectedDrivers.reduce((sum, name) => {
             const p = parents.find((x) => x.playerName === name);
             return sum + (p?.carCapacity ?? 0);
           }, 0);
-          return (
-            <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-blue-800">配車 {selectedDrivers.length}名</span>
-                {totalCap > 0 && (
-                  <span className="text-sm font-bold text-blue-700">最大 {totalCap}人 乗車可</span>
-                )}
-              </div>
-              <div className="text-xs text-gray-500 mb-1">選択中:</div>
-            <div className="flex flex-wrap gap-1">
-              {selectedDrivers.map((n) => (
-                <span key={n} onClick={() => toggleDriver(n)} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full cursor-pointer">
-                  {n} ✕
-                </span>
-              ))}
-            </div>
-            </div>
-          );
+          return totalCap > 0 ? (
+            <div className="text-sm text-blue-700 font-medium mb-2">最大 {totalCap}人 乗車可</div>
+          ) : null;
         })()}
         <button onClick={saveDrivers} disabled={saving}
           className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
-          {saving ? "保存中..." : "当番を保存"}
+          {saving ? "保存中..." : "配車当番を保存"}
         </button>
       </div>
     </main>
