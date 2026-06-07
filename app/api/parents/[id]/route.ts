@@ -4,7 +4,7 @@ import { getSheetData, deleteRow } from "@/lib/sheets";
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const rows = await getSheetData("parents!A:C");
+    const rows = await getSheetData("parents!A:B");
     const idx = rows.findIndex((r) => r[0] === id);
     if (idx < 0) return NextResponse.json({ error: "not found" }, { status: 404 });
     await deleteRow("parents", idx + 1);

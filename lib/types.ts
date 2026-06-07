@@ -8,7 +8,6 @@ export interface Match {
   address: string;
   distanceKm: number;
   carCount: number;
-  accountant: string;
 }
 
 export interface Driver {
@@ -18,7 +17,6 @@ export interface Driver {
 
 export interface Parent {
   id: string;
-  parentName: string;
   playerName: string;
 }
 

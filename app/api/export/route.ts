@@ -36,9 +36,9 @@ export async function GET() {
     };
 
     const matches: Match[] = matchRows.slice(1).filter((r) => r[0]).map((r) => ({
-      id: r[0], date: r[1], matchName: r[2], opponent: r[3],
-      venue: r[4], address: r[5], distanceKm: Number(r[6]),
-      carCount: Number(r[7]), accountant: r[8],
+      id: r[0], date: r[1], matchType: r[2] ?? "公式戦", matchName: r[3], opponent: r[4],
+      venue: r[5], address: r[6], distanceKm: Number(r[7]),
+      carCount: Number(r[8]),
     })).sort((a, b) => a.date.localeCompare(b.date));
 
     const drivers: Driver[] = driverRows.slice(1).filter((r) => r[0]).map((r) => ({
@@ -72,21 +72,19 @@ export async function GET() {
     const headerRow = scheduleSheet.addRow(["No.", "日付", "曜", "対戦相手", "会場", "距離×台数", "当番1", "当番2", "当番3", "当番4", "当番5"]);
     headerRow.font = { bold: true };
     headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFBDD7EE" } };
-    headerRow.border = {
-      bottom: { style: "thin" },
-    };
+    headerRow.border = { bottom: { style: "thin" } };
 
     matches.forEach((m, i) => {
       const matchDrivers = drivers.filter((d) => d.matchId === m.id);
       const fee = calcFee(m.distanceKm, settings.gasPricePerKm);
-      const { label, } = formatDate(m.date);
+      const { label } = formatDate(m.date);
       const weekday = label.match(/（(.+?)）/)?.[1] ?? "";
       const feeLabel = `${fee}×${m.carCount}`;
       const row = scheduleSheet.addRow([
         i + 1,
         label.replace(/（.+?）/, ""),
         weekday,
-        `vs${m.opponent}`,
+        m.opponent ? `vs${m.opponent}` : m.matchName,
         m.venue,
         feeLabel,
         ...matchDrivers.slice(0, 5).map((d) => d.parentName),
@@ -99,7 +97,7 @@ export async function GET() {
     scheduleSheet.addRow([]);
     scheduleSheet.addRow([]);
 
-    // 保護者別支払い明細
+    // 選手別支払い明細
     const parentMap = new Map<string, { matchId: string; date: string; opponent: string; venue: string; fee: number }[]>();
     for (const d of drivers) {
       const m = matches.find((x) => x.id === d.matchId);
@@ -109,13 +107,13 @@ export async function GET() {
       parentMap.get(d.parentName)!.push({ matchId: m.id, date: m.date, opponent: m.opponent, venue: m.venue, fee });
     }
 
-    for (const [parentName, items] of parentMap) {
+    for (const [driverName, items] of parentMap) {
       const total = items.reduce((s, x) => s + x.fee, 0);
-      const nameRow = scheduleSheet.addRow([null, `${parentName}様`, `計${total}円`]);
+      const nameRow = scheduleSheet.addRow([null, `${driverName}様`, `計${total}円`]);
       nameRow.font = { bold: true };
       for (const item of items) {
         const { label } = formatDate(item.date);
-        scheduleSheet.addRow([null, null, `${item.fee}円`, `${label} vs${item.opponent} ${item.venue} 配車代です。ありがとうございました。`]);
+        scheduleSheet.addRow([null, null, `${item.fee}円`, `${label} ${item.opponent ? `vs${item.opponent}` : ""} ${item.venue} 配車代です。ありがとうございました。`]);
       }
       scheduleSheet.addRow([]);
     }
@@ -130,17 +128,18 @@ export async function GET() {
       const fee = calcFee(m.distanceKm, settings.gasPricePerKm);
       const matchDrivers = drivers.filter((d) => d.matchId === m.id);
 
-      const t1 = sheet.addRow(["公式戦交通費請求"]);
+      const t1 = sheet.addRow(["交通費請求"]);
       t1.font = { bold: true, size: 14 };
       sheet.addRow([]);
       sheet.addRow(["日時", label]);
-      sheet.addRow(["試合名", m.matchName]);
-      sheet.addRow(["対戦相手", `vs${m.opponent}`]);
+      sheet.addRow(["種別", m.matchType]);
+      if (m.matchName) sheet.addRow(["試合名", m.matchName]);
+      if (m.opponent) sheet.addRow(["対戦相手", `vs${m.opponent}`]);
       sheet.addRow(["往復", `${m.distanceKm}km`]);
       sheet.addRow(["場所", m.venue]);
-      sheet.addRow([null, m.address]);
+      if (m.address) sheet.addRow([null, m.address]);
       sheet.addRow(["担当台数", `${m.carCount}台`]);
-      sheet.addRow(["会計担当者", `${settings.teamName}担当　${m.accountant || settings.accountant}`]);
+      sheet.addRow(["会計担当者", `${settings.teamName}担当　${settings.accountant}`]);
       sheet.addRow([]);
       sheet.addRow(["配車当番", "支払い金額"]);
       for (const d of matchDrivers) {
@@ -149,10 +148,8 @@ export async function GET() {
       sheet.addRow([]);
       sheet.addRow(["合計", `${fee * matchDrivers.length}円`]);
 
-      // スタイル
       [1, 12].forEach((r) => {
-        const row = sheet.getRow(r);
-        row.font = { bold: true };
+        sheet.getRow(r).font = { bold: true };
       });
     }
 

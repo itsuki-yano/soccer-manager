@@ -18,7 +18,6 @@ export default function NewMatchPage() {
     address: "",
     distanceKm: "",
     carCount: "",
-    accountant: "",
   });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -142,11 +141,6 @@ export default function NewMatchPage() {
         <Field label="配車台数">
           <input type="number" value={form.carCount} onChange={set("carCount")}
             placeholder="例: 4" className="input" />
-        </Field>
-
-        <Field label="会計担当者">
-          <input type="text" value={form.accountant} onChange={set("accountant")}
-            placeholder="例: 矢野諒" className="input" />
         </Field>
 
         <button

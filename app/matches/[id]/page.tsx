@@ -25,7 +25,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Omit<Match, "id">>({
     date: "", matchType: "公式戦", matchName: "", opponent: "", venue: "", address: "",
-    distanceKm: 0, carCount: 0, accountant: "",
+    distanceKm: 0, carCount: 0,
   });
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
   const [newDriver, setNewDriver] = useState("");
@@ -46,7 +46,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         setForm({
           date: m.date, matchType: m.matchType ?? "公式戦", matchName: m.matchName,
           opponent: m.opponent, venue: m.venue, address: m.address,
-          distanceKm: m.distanceKm, carCount: m.carCount, accountant: m.accountant,
+          distanceKm: m.distanceKm, carCount: m.carCount,
         });
       }
       setDrivers(drvList);
@@ -191,10 +191,6 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                 <label className="block text-xs text-gray-500 mb-0.5">配車台数</label>
                 <input type="number" value={form.carCount} onChange={(e) => setForm((f) => ({ ...f, carCount: Number(e.target.value) }))} className="input" />
               </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-0.5">会計担当</label>
-                <input type="text" value={form.accountant} onChange={(e) => setForm((f) => ({ ...f, accountant: e.target.value }))} className="input" />
-              </div>
             </div>
             <div className="flex gap-2 mt-2">
               <button onClick={saveMatch} disabled={saving} className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
@@ -237,15 +233,14 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
           {parents.map((p) => (
             <button
               key={p.id}
-              onClick={() => toggleDriver(p.parentName)}
+              onClick={() => toggleDriver(p.playerName)}
               className={`text-sm py-2 px-3 rounded-lg border text-left transition-colors ${
-                selectedDrivers.includes(p.parentName)
+                selectedDrivers.includes(p.playerName)
                   ? "bg-blue-500 text-white border-blue-500"
                   : "bg-gray-50 text-gray-700 border-gray-200"
               }`}
             >
-              {p.parentName}
-              <span className="block text-xs opacity-70">{p.playerName}</span>
+              {p.playerName}
             </button>
           ))}
         </div>

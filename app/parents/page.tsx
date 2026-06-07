@@ -8,7 +8,7 @@ export default function ParentsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ parentName: "", playerName: "" });
+  const [playerName, setPlayerName] = useState("");
 
   useEffect(() => {
     fetch("/api/parents").then((r) => r.json()).then((d) => {
@@ -18,16 +18,16 @@ export default function ParentsPage() {
   }, []);
 
   async function save() {
-    if (!form.parentName) { alert("保護者名は必須です"); return; }
+    if (!playerName.trim()) { alert("選手名は必須です"); return; }
     setSaving(true);
     const res = await fetch("/api/parents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ playerName: playerName.trim() }),
     });
     const { id } = await res.json();
-    setParents((prev) => [...prev, { id, ...form }]);
-    setForm({ parentName: "", playerName: "" });
+    setParents((prev) => [...prev, { id, playerName: playerName.trim() }]);
+    setPlayerName("");
     setShowForm(false);
     setSaving(false);
   }
@@ -42,32 +42,23 @@ export default function ParentsPage() {
 
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
-      <BackHeader title="保護者マスタ" />
+      <BackHeader title="選手マスタ" />
       <button
         onClick={() => setShowForm((v) => !v)}
         className="block w-full bg-blue-500 text-white text-center py-3 rounded-xl font-semibold mb-4"
       >
-        {showForm ? "✕ キャンセル" : "＋ 保護者を追加"}
+        {showForm ? "✕ キャンセル" : "＋ 選手を追加"}
       </button>
 
       {showForm && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 grid gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-0.5">保護者名 *</label>
+            <label className="block text-xs text-gray-500 mb-0.5">選手名 *</label>
             <input
               type="text"
-              value={form.parentName}
-              onChange={(e) => setForm((f) => ({ ...f, parentName: e.target.value }))}
-              placeholder="例: 矢野諒"
-              className="input"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-0.5">選手名</label>
-            <input
-              type="text"
-              value={form.playerName}
-              onChange={(e) => setForm((f) => ({ ...f, playerName: e.target.value }))}
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && save()}
               placeholder="例: けいた"
               className="input"
             />
@@ -81,16 +72,13 @@ export default function ParentsPage() {
       <div className="grid gap-2">
         {parents.map((p) => (
           <div key={p.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex justify-between items-center">
-            <div>
-              <div className="font-medium text-gray-800">{p.parentName}</div>
-              {p.playerName && <div className="text-sm text-gray-500">選手: {p.playerName}</div>}
-            </div>
-            <button onClick={() => del(p.id, p.parentName)} className="text-xs text-red-400 border border-red-100 px-3 py-1.5 rounded-lg">
+            <div className="font-medium text-gray-800">{p.playerName}</div>
+            <button onClick={() => del(p.id, p.playerName)} className="text-xs text-red-400 border border-red-100 px-3 py-1.5 rounded-lg">
               削除
             </button>
           </div>
         ))}
-        {parents.length === 0 && <p className="text-center text-gray-400 py-8">保護者が登録されていません</p>}
+        {parents.length === 0 && <p className="text-center text-gray-400 py-8">選手が登録されていません</p>}
       </div>
     </main>
   );
