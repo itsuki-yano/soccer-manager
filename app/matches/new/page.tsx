@@ -11,8 +11,6 @@ export default function NewMatchPage() {
   const [calcLoading, setCalcLoading] = useState(false);
   const [matchType, setMatchType] = useState("公式戦");
   const [needsSettlement, setNeedsSettlement] = useState(true);
-  const [equipmentBringIn, setEquipmentBringIn] = useState("");
-  const [equipmentBringOut, setEquipmentBringOut] = useState("");
   const [form, setForm] = useState({
     date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: "", carCount: "",
   });
@@ -54,8 +52,8 @@ export default function NewMatchPage() {
         distanceKm: Number(form.distanceKm),
         carCount: Number(form.carCount),
         bandUid: "",
-        equipmentBringIn,
-        equipmentBringOut,
+        equipmentBringIn: "",
+        equipmentBringOut: "",
       }),
     });
     if (res.ok) {
@@ -137,19 +135,6 @@ export default function NewMatchPage() {
         <Field label="配車台数">
           <input type="number" value={form.carCount} onChange={set("carCount")} placeholder="例: 4" className="input" />
         </Field>
-
-        {(form.venue.includes("かりがね") || form.address.includes("かりがね")) && (
-          <>
-            <Field label="備品当番 - 持ってくる班/担当者">
-              <input type="text" value={equipmentBringIn} onChange={(e) => setEquipmentBringIn(e.target.value)}
-                placeholder="例: 2班 または 田中さん" className="input" />
-            </Field>
-            <Field label="備品当番 - 持ち帰る班/担当者">
-              <input type="text" value={equipmentBringOut} onChange={(e) => setEquipmentBringOut(e.target.value)}
-                placeholder="例: 3班 または 鈴木さん" className="input" />
-            </Field>
-          </>
-        )}
 
         <button onClick={save} disabled={saving}
           className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold mt-2 disabled:opacity-50">
