@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import BackHeader from "@/components/BackHeader";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { CoachExpense } from "@/lib/types";
 
 export default function CoachExpensesPage() {
@@ -10,6 +11,7 @@ export default function CoachExpensesPage() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ date: "", description: "", amount: "", claimed: "" });
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   function resetForm() {
     setForm({ date: "", description: "", amount: "", claimed: "" });
@@ -52,9 +54,9 @@ export default function CoachExpensesPage() {
   }
 
   async function del(id: string) {
-    if (!confirm("削除しますか？")) return;
     await fetch(`/api/coach-expenses/${id}`, { method: "DELETE" });
     setExpenses((prev) => prev.filter((e) => e.id !== id));
+    setDeleteConfirm(null);
   }
 
   function startEdit(e: CoachExpense) {
@@ -71,6 +73,13 @@ export default function CoachExpensesPage() {
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
       <BackHeader title="コーチ飲食費" />
+      {deleteConfirm && (
+        <DeleteConfirmModal
+          message="この飲食費を削除しますか？"
+          onConfirm={() => del(deleteConfirm)}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
 
       <div className="bg-blue-50 rounded-xl p-4 mb-4 flex justify-between items-center">
         <span className="text-gray-600 font-medium">合計</span>
@@ -119,7 +128,7 @@ export default function CoachExpensesPage() {
             <div className="font-bold text-gray-800 whitespace-nowrap">{e.amount.toLocaleString()}円</div>
             <div className="flex gap-1">
               <button onClick={() => startEdit(e)} className="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded">編集</button>
-              <button onClick={() => del(e.id)} className="text-xs text-red-400 border border-red-100 px-2 py-1 rounded">削除</button>
+              <button onClick={() => setDeleteConfirm(e.id)} className="text-xs text-red-400 border border-red-100 px-2 py-1 rounded">削除</button>
             </div>
           </div>
         ))}

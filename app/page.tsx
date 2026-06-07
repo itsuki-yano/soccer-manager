@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 const menu = [
   { href: "/matches", label: "試合・合宿管理", icon: "⚽", desc: "試合登録・配車当番の設定" },
@@ -21,6 +22,7 @@ export default function Home() {
   const [editLinkId, setEditLinkId] = useState<string | null>(null);
   const [linkForm, setLinkForm] = useState({ name: "", url: "" });
   const [savingLink, setSavingLink] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/links").then((r) => r.json()).then((d) => setLinks(Array.isArray(d) ? d : []));
@@ -60,14 +62,21 @@ export default function Home() {
     setSavingLink(false);
   }
 
-  async function deleteLink(id: string, name: string) {
-    if (!confirm(`「${name}」を削除しますか？`)) return;
+  async function deleteLink(id: string) {
     await fetch(`/api/links/${id}`, { method: "DELETE" });
     setLinks((prev) => prev.filter((l) => l.id !== id));
+    setDeleteConfirm(null);
   }
 
   return (
     <main className="max-w-lg mx-auto px-4 py-8">
+      {deleteConfirm && (
+        <DeleteConfirmModal
+          message={`「${deleteConfirm.name}」を削除しますか？`}
+          onConfirm={() => deleteLink(deleteConfirm.id)}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
       <div className="text-center mb-8">
         <div className="text-4xl mb-2">⚽</div>
         <h1 className="text-2xl font-bold text-gray-800">マネジメントApp</h1>
@@ -168,7 +177,7 @@ export default function Home() {
                   <button onClick={() => startEditLink(l)} className="text-xs text-gray-400 border border-gray-200 px-2 py-2 rounded-lg">
                     編集
                   </button>
-                  <button onClick={() => deleteLink(l.id, l.name)} className="text-xs text-red-400 border border-red-100 px-2 py-2 rounded-lg">
+                  <button onClick={() => setDeleteConfirm({ id: l.id, name: l.name })} className="text-xs text-red-400 border border-red-100 px-2 py-2 rounded-lg">
                     削除
                   </button>
                 </div>

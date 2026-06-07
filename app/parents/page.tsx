@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import BackHeader from "@/components/BackHeader";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Parent } from "@/lib/types";
 
 type EditForm = { playerName: string; furigana: string; jerseyNumber: string; group: string; carCapacity: string };
@@ -15,6 +16,7 @@ export default function ParentsPage() {
   const [form, setForm] = useState<EditForm>(EMPTY_FORM);
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm>(EMPTY_FORM);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/parents").then((r) => r.json()).then((d) => {
@@ -65,10 +67,10 @@ export default function ParentsPage() {
     setSaving(false);
   }
 
-  async function del(id: string, name: string) {
-    if (!confirm(`「${name}」を削除しますか？`)) return;
+  async function del(id: string) {
     await fetch(`/api/parents/${id}`, { method: "DELETE" });
     setParents((prev) => prev.filter((p) => p.id !== id));
+    setDeleteConfirm(null);
   }
 
   if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
@@ -117,6 +119,13 @@ export default function ParentsPage() {
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
       <BackHeader title="選手マスタ" />
+      {deleteConfirm && (
+        <DeleteConfirmModal
+          message={`「${deleteConfirm.name}」を削除しますか？`}
+          onConfirm={() => del(deleteConfirm.id)}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
       <button
         onClick={() => { setShowForm((v) => !v); setEditId(null); }}
         className="block w-full bg-blue-500 text-white text-center py-3 rounded-xl font-semibold mb-4"
@@ -181,7 +190,7 @@ export default function ParentsPage() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => startEdit(p)} className="text-xs text-blue-500 border border-blue-200 px-3 py-1.5 rounded-lg">修正</button>
-                  <button onClick={() => del(p.id, p.playerName)} className="text-xs text-red-400 border border-red-100 px-3 py-1.5 rounded-lg">削除</button>
+                  <button onClick={() => setDeleteConfirm({ id: p.id, name: p.playerName })} className="text-xs text-red-400 border border-red-100 px-3 py-1.5 rounded-lg">削除</button>
                 </div>
               </div>
             )}

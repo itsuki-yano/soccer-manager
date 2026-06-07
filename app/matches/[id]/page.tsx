@@ -2,6 +2,7 @@
 import { useEffect, useState, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BackHeader from "@/components/BackHeader";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Match, Driver, Parent } from "@/lib/types";
 
 const MATCH_TYPES = ["公式戦", "合宿", "TM", "その他"];
@@ -161,6 +162,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   // 前回持帰り引継ぎバナー用
   const [inheritSource, setInheritSource] = useState<{ date: string; names: string[] } | null>(null);
   const [inheritDismissed, setInheritDismissed] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -282,7 +284,6 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function deleteMatch() {
-    if (!confirm("この試合を削除しますか？")) return;
     await fetch(`/api/matches/${id}`, { method: "DELETE" });
     router.push("/matches");
   }
@@ -314,6 +315,13 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
       <BackHeader title="試合詳細" back="/matches" />
+      {showDeleteConfirm && (
+        <DeleteConfirmModal
+          message={`この試合を削除しますか？\n${match ? `${match.date} ${match.opponent ? `vs ${match.opponent}` : match.matchName}` : ""}`}
+          onConfirm={deleteMatch}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
 
       {/* 試合情報 */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
@@ -392,7 +400,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               {match.address && <div className="text-gray-400 text-xs pl-4">{match.address}</div>}
               {match.distanceKm > 0 && <div>🚗 往復 {match.distanceKm}km × {selectedDrivers.length}台</div>}
             </div>
-            <button onClick={deleteMatch} className="mt-4 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
+            <button onClick={() => setShowDeleteConfirm(true)} className="mt-4 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
               この試合を削除
             </button>
           </>

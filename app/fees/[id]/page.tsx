@@ -2,6 +2,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import BackHeader from "@/components/BackHeader";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Fee, FeePayment, Parent } from "@/lib/types";
 
 const CATEGORIES = ["合宿費用", "クラブ費", "イベント費用", "その他"];
@@ -25,6 +26,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   const [filterGroup, setFilterGroup] = useState("全員");
   const [filterPaid, setFilterPaid] = useState<"all" | "paid" | "unpaid">("all");
   const [form, setForm] = useState({ name: "", category: "クラブ費", amount: "", date: "", description: "" });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -57,7 +59,6 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   }
 
   async function deleteFee() {
-    if (!confirm("この費用を削除しますか？")) return;
     await fetch(`/api/fees/${id}`, { method: "DELETE" });
     router.push("/fees");
   }
@@ -109,6 +110,13 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
       <BackHeader title="費用詳細" back="/fees" />
+      {showDeleteConfirm && (
+        <DeleteConfirmModal
+          message={`「${fee?.name ?? "この費用"}」を削除しますか？`}
+          onConfirm={deleteFee}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
 
       {/* 費用情報 */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
@@ -185,7 +193,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                 <button onClick={markAllPaid} className="flex-1 text-sm bg-green-500 text-white py-2 rounded-lg font-medium">全員徴収済みにする</button>
               )}
             </div>
-            <button onClick={deleteFee} className="mt-2 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
+            <button onClick={() => setShowDeleteConfirm(true)} className="mt-2 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
               この費用を削除
             </button>
           </>

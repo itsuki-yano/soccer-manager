@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import BackHeader from "@/components/BackHeader";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Equipment } from "@/lib/types";
 
 export default function EquipmentPage() {
@@ -18,6 +19,7 @@ export default function EquipmentPage() {
 
   const [addingParentId, setAddingParentId] = useState<string | null>(null);
   const [showAddTop, setShowAddTop] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; message: string } | null>(null);
   const [newItemName, setNewItemName] = useState("");
 
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -88,13 +90,17 @@ export default function EquipmentPage() {
     setShowAddTop(false);
   }
 
-  async function deleteItem(id: string) {
+  function confirmDeleteItem(id: string) {
     const item = items.find((it) => it.id === id);
     const childCount = items.filter((it) => it.parentId === id).length;
-    const msg = childCount > 0 ? `「${item?.name}」と中身${childCount}件を削除しますか？` : `「${item?.name}」を削除しますか？`;
-    if (!confirm(msg)) return;
+    const message = childCount > 0 ? `「${item?.name}」と中身${childCount}件を削除しますか？` : `「${item?.name}」を削除しますか？`;
+    setDeleteConfirm({ id, message });
+  }
+
+  async function deleteItem(id: string) {
     await fetch(`/api/equipment/${id}`, { method: "DELETE" });
     setItems((prev) => prev.filter((it) => it.id !== id && it.parentId !== id));
+    setDeleteConfirm(null);
   }
 
   function triggerUpload(id: string) {
@@ -149,6 +155,13 @@ export default function EquipmentPage() {
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+      {deleteConfirm && (
+        <DeleteConfirmModal
+          message={deleteConfirm.message}
+          onConfirm={() => deleteItem(deleteConfirm.id)}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
 
       <div className="flex items-center justify-between mb-4">
         <BackHeader title="備品管理" />
@@ -280,7 +293,7 @@ export default function EquipmentPage() {
                       <span className="text-lg font-bold text-gray-700 min-w-[2rem] text-right">{item.quantity}</span>
                     )}
                     {editMode && (
-                      <button onClick={() => deleteItem(item.id)} className="text-gray-300 text-xl active:text-red-400">✕</button>
+                      <button onClick={() => confirmDeleteItem(item.id)} className="text-gray-300 text-xl active:text-red-400">✕</button>
                     )}
                   </div>
                 </div>
@@ -373,7 +386,7 @@ export default function EquipmentPage() {
                             <span className="text-sm font-bold text-gray-700 min-w-[1.5rem] text-right">{child.quantity}</span>
                           )}
                           {editMode && (
-                            <button onClick={() => deleteItem(child.id)} className="text-gray-300 active:text-red-400">✕</button>
+                            <button onClick={() => confirmDeleteItem(child.id)} className="text-gray-300 active:text-red-400">✕</button>
                           )}
                         </div>
                       </div>

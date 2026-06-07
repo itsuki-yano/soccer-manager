@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import BackHeader from "@/components/BackHeader";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Memo } from "@/lib/types";
 
 function fmtDateTime(iso: string) {
@@ -18,6 +19,7 @@ export default function MemoPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [error, setError] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/init").finally(() => {
@@ -79,9 +81,9 @@ export default function MemoPage() {
   }
 
   async function deleteMemo(id: string) {
-    if (!confirm("このメモを削除しますか？")) return;
     await fetch(`/api/memos/${id}`, { method: "DELETE" });
     setMemos((prev) => prev.filter((m) => m.id !== id));
+    setDeleteConfirm(null);
   }
 
   if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
@@ -93,6 +95,13 @@ export default function MemoPage() {
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
       <BackHeader title="備忘録" />
+      {deleteConfirm && (
+        <DeleteConfirmModal
+          message="このメモを削除しますか？"
+          onConfirm={() => deleteMemo(deleteConfirm)}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
 
       {/* 新規入力 */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
@@ -152,7 +161,7 @@ export default function MemoPage() {
                       className="text-xs text-blue-500 border border-blue-200 px-3 py-1.5 rounded-lg">
                       修正
                     </button>
-                    <button onClick={() => deleteMemo(memo.id)}
+                    <button onClick={() => setDeleteConfirm(memo.id)}
                       className="text-xs text-red-400 border border-red-100 px-3 py-1.5 rounded-lg">
                       削除
                     </button>
