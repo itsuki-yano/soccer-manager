@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "配車精算アプリ",
+  title: "マネジメントApp",
   description: "サッカークラブ公式戦費用管理",
 };
 
