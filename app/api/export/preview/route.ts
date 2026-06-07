@@ -9,7 +9,7 @@ function calcFee(distanceKm: number, gasPricePerKm: number): number {
 export async function GET() {
   try {
     const [matchRows, driverRows, expenseRows, settingsRows] = await Promise.all([
-      getSheetData("matches!A:M"),
+      getSheetData("matches!A:N"),
       getSheetData("drivers!A:B"),
       getSheetData("coach_expenses!A:E"),
       getSheetData("settings!A:B"),
@@ -30,6 +30,7 @@ export async function GET() {
       carCount: Number(r[8]),
       needsSettlement: r[9] === "true" || r[9] === "1",
       bandUid: r[10] ?? "", equipmentBringIn: r[11] ?? "", equipmentBringOut: r[12] ?? "",
+      settlementStatus: r[13] ?? "",
     })).sort((a, b) => a.date.localeCompare(b.date));
 
     const drivers: Driver[] = driverRows.slice(1).filter((r) => r[0]).map((r) => ({
@@ -54,9 +55,11 @@ export async function GET() {
         venue: m.venue,
         distanceKm: m.distanceKm,
         carCount: m.carCount,
+        gasPricePerKm: settings.gasPricePerKm,
         feePerCar,
         totalFee,
         drivers: matchDrivers.map((d) => d.parentName),
+        settlementStatus: m.settlementStatus,
       };
     });
 

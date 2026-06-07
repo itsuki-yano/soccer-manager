@@ -153,7 +153,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [editing, setEditing] = useState(false);
   const [matchType, setMatchType] = useState("公式戦");
   const [needsSettlement, setNeedsSettlement] = useState(true);
-  const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement" | "bandUid" | "equipmentBringIn" | "equipmentBringOut">>({
+  const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement" | "bandUid" | "equipmentBringIn" | "equipmentBringOut" | "settlementStatus">>({
     date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0, carCount: 0,
   });
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
@@ -233,6 +233,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         bandUid: match?.bandUid ?? "",
         equipmentBringIn: match?.equipmentBringIn ?? "",
         equipmentBringOut,
+        settlementStatus: match?.settlementStatus ?? "",
       }),
     });
     setMatch((prev) => prev ? { ...prev, ...form, matchType, needsSettlement, equipmentBringOut } : prev);
@@ -251,6 +252,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         bandUid: match?.bandUid ?? "",
         equipmentBringIn: match?.equipmentBringIn ?? "",
         equipmentBringOut,
+        settlementStatus: match?.settlementStatus ?? "",
       }),
     });
     setMatch((prev) => prev ? { ...prev, equipmentBringOut } : prev);
@@ -406,7 +408,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
           fetch(`/api/matches/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...form, matchType, needsSettlement: next, bandUid: match?.bandUid ?? "", equipmentBringIn: match?.equipmentBringIn ?? "", equipmentBringOut: match?.equipmentBringOut ?? "" }),
+            body: JSON.stringify({ ...form, matchType, needsSettlement: next, bandUid: match?.bandUid ?? "", equipmentBringIn: match?.equipmentBringIn ?? "", equipmentBringOut: match?.equipmentBringOut ?? "", settlementStatus: match?.settlementStatus ?? "" }),
           });
         }}
           className={`w-full py-2.5 rounded-lg text-sm font-medium border transition-colors mb-3 ${

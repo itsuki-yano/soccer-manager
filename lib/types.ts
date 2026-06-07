@@ -12,6 +12,7 @@ export interface Match {
   bandUid: string;
   equipmentBringIn: string;
   equipmentBringOut: string;
+  settlementStatus: string; // "" | "請求中" | "精算済み"
 }
 
 export interface Driver {

@@ -92,6 +92,7 @@ export default function MatchesPage() {
         needsSettlement: ev.needsSettlement,
         equipmentBringIn: data.equipmentBringIn ?? "",
         equipmentBringOut: "",
+        settlementStatus: "",
       };
       setMatches((prev) => [...prev, newMatch]);
       setImportedUids((prev) => new Set(prev).add(ev.bandUid));

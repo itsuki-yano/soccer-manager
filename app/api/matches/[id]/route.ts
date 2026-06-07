@@ -6,7 +6,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const body: Omit<Match, "id"> = await req.json();
-    const rows = await getSheetData("matches!A:M");
+    const rows = await getSheetData("matches!A:N");
     const idx = rows.findIndex((r) => r[0] === id);
     if (idx < 0) return NextResponse.json({ error: "not found" }, { status: 404 });
     await updateRow("matches", idx + 1, [
@@ -14,6 +14,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       body.venue, body.address, body.distanceKm, body.carCount,
       body.needsSettlement ? "true" : "false",
       body.bandUid ?? "", body.equipmentBringIn ?? "", body.equipmentBringOut ?? "",
+      body.settlementStatus ?? "",
     ]);
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -24,7 +25,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const rows = await getSheetData("matches!A:M");
+    const rows = await getSheetData("matches!A:N");
     const idx = rows.findIndex((r) => r[0] === id);
     if (idx < 0) return NextResponse.json({ error: "not found" }, { status: 404 });
     await deleteRow("matches", idx + 1);
