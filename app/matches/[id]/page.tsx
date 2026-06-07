@@ -31,6 +31,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
   const [newDriver, setNewDriver] = useState("");
   const [filterGroup, setFilterGroup] = useState("全員");
+  const [equipmentBringIn, setEquipmentBringIn] = useState("");
+  const [equipmentBringOut, setEquipmentBringOut] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -48,6 +50,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         setMatchType(m.matchType ?? "公式戦");
         setNeedsSettlement(m.needsSettlement ?? false);
         setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm, carCount: m.carCount });
+        setEquipmentBringIn(m.equipmentBringIn ?? "");
+        setEquipmentBringOut(m.equipmentBringOut ?? "");
       }
       setDrivers(drvList);
       setSelectedDrivers(drvList.map((d: Driver) => d.parentName));
@@ -80,9 +84,13 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
     await fetch(`/api/matches/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, matchType, needsSettlement }),
+      body: JSON.stringify({
+        ...form, matchType, needsSettlement,
+        bandUid: match?.bandUid ?? "",
+        equipmentBringIn, equipmentBringOut,
+      }),
     });
-    setMatch({ id, ...form, matchType, needsSettlement });
+    setMatch({ id, ...form, matchType, needsSettlement, bandUid: match?.bandUid ?? "", equipmentBringIn, equipmentBringOut });
     setEditing(false);
     setSaving(false);
   }
@@ -117,6 +125,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
 
   if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
   if (!match) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-red-400">試合が見つかりません</div>;
+
+  const isHomeVenue = form.venue.includes("かりがね") || form.address.includes("かりがね");
 
   // 班でグループ化
   const groupedParents: Record<string, Parent[]> = {};
@@ -235,9 +245,46 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
+      {/* 備品当番（ホーム開催のみ） */}
+      {isHomeVenue && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-bold text-gray-700">備品当番</span>
+            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム開催</span>
+          </div>
+          <div className="grid gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">持ってくる班 / 担当者</label>
+              <input type="text" value={equipmentBringIn}
+                onChange={(e) => setEquipmentBringIn(e.target.value)}
+                placeholder="例: 2班 または 田中さん"
+                className="input" />
+              {equipmentBringIn && (
+                <p className="text-xs text-blue-500 mt-1">前回の持ち帰り担当から自動セット済み</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">持ち帰る班 / 担当者</label>
+              <input type="text" value={equipmentBringOut}
+                onChange={(e) => setEquipmentBringOut(e.target.value)}
+                placeholder="例: 3班 または 鈴木さん"
+                className="input" />
+              <p className="text-xs text-gray-400 mt-1">次回イベントの「持ってくる」に自動引継ぎされます</p>
+            </div>
+            <button onClick={saveMatch} disabled={saving}
+              className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
+              {saving ? "保存中..." : "備品当番を保存"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 配車当番 */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
-        <h2 className="font-bold text-gray-700 mb-3">配車当番</h2>
+      <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 ${isHomeVenue ? "opacity-50 pointer-events-none" : ""}`}>
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="font-bold text-gray-700">配車当番</h2>
+          {isHomeVenue && <span className="text-xs text-gray-400">（ホーム開催のため不要）</span>}
+        </div>
 
         {/* 班フィルター */}
         <div className="flex gap-2 mb-3 overflow-x-auto pb-1">

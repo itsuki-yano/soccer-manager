@@ -9,6 +9,9 @@ export interface Match {
   distanceKm: number;
   carCount: number;
   needsSettlement: boolean;
+  bandUid: string;
+  equipmentBringIn: string;
+  equipmentBringOut: string;
 }
 
 export interface Driver {
