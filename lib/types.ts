@@ -50,6 +50,22 @@ export interface Memo {
   updatedAt: string;
 }
 
+export interface Fee {
+  id: string;
+  name: string;
+  category: string;
+  amount: number;
+  date: string;
+  description: string;
+}
+
+export interface FeePayment {
+  feeId: string;
+  parentId: string;
+  paid: boolean;
+  paidAt: string;
+}
+
 export interface Equipment {
   id: string;
   name: string;

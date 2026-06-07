@@ -8,6 +8,7 @@ const menu = [
   { href: "/parents", label: "選手マスタ", icon: "👟", desc: "選手・班・背番号の登録" },
   { href: "/export", label: "Excel出力", icon: "📊", desc: "精算書をダウンロード" },
   { href: "/equipment", label: "備品管理", icon: "🎒", desc: "備品・救急セットの在庫管理" },
+  { href: "/fees", label: "費用徴収管理", icon: "💰", desc: "合宿費・クラブ費の徴収状況" },
   { href: "/memo", label: "備忘録", icon: "📝", desc: "連絡事項・メモの記録" },
   { href: "/settings", label: "設定", icon: "⚙️", desc: "チーム名・ガソリン単価" },
 ];

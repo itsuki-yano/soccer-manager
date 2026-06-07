@@ -88,6 +88,8 @@ export async function ensureSheets(): Promise<void> {
     { title: "memos", headers: ["id", "content", "createdAt", "updatedAt"] },
     { title: "links", headers: ["id", "name", "url"] },
     { title: "equipment", headers: ["id", "name", "quantity", "memo", "parentId", "order", "imageUrl"] },
+    { title: "fees", headers: ["id", "name", "category", "amount", "date", "description"] },
+    { title: "fee_payments", headers: ["feeId", "parentId", "paid", "paidAt"] },
   ];
 
   const toCreate = required.filter((r) => !existing.includes(r.title));
