@@ -148,7 +148,16 @@ export default function MemoPage() {
               </>
             ) : (
               <>
-                <p className="text-gray-800 text-sm whitespace-pre-wrap mb-3">{memo.content}</p>
+                <p className="text-gray-800 text-sm whitespace-pre-wrap mb-3">
+                  {memo.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
+                    /^https?:\/\//.test(part) ? (
+                      <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+                        className="text-blue-500 underline break-all">
+                        {part}
+                      </a>
+                    ) : part
+                  )}
+                </p>
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-gray-400 space-y-0.5">
                     <div>作成: {fmtDateTime(memo.createdAt)}</div>
