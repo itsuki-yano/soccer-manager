@@ -1,6 +1,7 @@
 export interface Match {
   id: string;
   date: string;
+  matchType: string;
   matchName: string;
   opponent: string;
   venue: string;

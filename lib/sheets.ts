@@ -82,7 +82,7 @@ export async function ensureSheets(): Promise<void> {
   const required = [
     { title: "settings", headers: ["key", "value"] },
     { title: "parents", headers: ["id", "parentName", "playerName"] },
-    { title: "matches", headers: ["id", "date", "matchName", "opponent", "venue", "address", "distanceKm", "carCount", "accountant"] },
+    { title: "matches", headers: ["id", "date", "matchType", "matchName", "opponent", "venue", "address", "distanceKm", "carCount", "accountant"] },
     { title: "drivers", headers: ["matchId", "parentName"] },
     { title: "coach_expenses", headers: ["id", "date", "description", "amount", "claimed"] },
   ];

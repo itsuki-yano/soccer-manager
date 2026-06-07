@@ -6,19 +6,20 @@ function rowToMatch(r: string[]): Match {
   return {
     id: r[0] ?? "",
     date: r[1] ?? "",
-    matchName: r[2] ?? "",
-    opponent: r[3] ?? "",
-    venue: r[4] ?? "",
-    address: r[5] ?? "",
-    distanceKm: Number(r[6] ?? 0),
-    carCount: Number(r[7] ?? 0),
-    accountant: r[8] ?? "",
+    matchType: r[2] ?? "公式戦",
+    matchName: r[3] ?? "",
+    opponent: r[4] ?? "",
+    venue: r[5] ?? "",
+    address: r[6] ?? "",
+    distanceKm: Number(r[7] ?? 0),
+    carCount: Number(r[8] ?? 0),
+    accountant: r[9] ?? "",
   };
 }
 
 export async function GET() {
   try {
-    const rows = await getSheetData("matches!A:I");
+    const rows = await getSheetData("matches!A:J");
     const matches = rows.slice(1).filter((r) => r[0]).map(rowToMatch);
     return NextResponse.json(matches);
   } catch (e) {
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     const body: Omit<Match, "id"> = await req.json();
     const id = Date.now().toString();
     await appendRow("matches", [
-      id, body.date, body.matchName, body.opponent,
+      id, body.date, body.matchType ?? "公式戦", body.matchName, body.opponent,
       body.venue, body.address, body.distanceKm, body.carCount, body.accountant,
     ]);
     return NextResponse.json({ id });

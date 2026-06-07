@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BackHeader from "@/components/BackHeader";
 import type { Match, Driver, Parent } from "@/lib/types";
+
+const MATCH_TYPES = ["公式戦", "合宿", "TM", "その他"];
 
 function fmtDate(d: string) {
   if (!d) return "";
@@ -19,13 +21,15 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [calcLoading, setCalcLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Omit<Match, "id">>({
-    date: "", matchName: "", opponent: "", venue: "", address: "",
+    date: "", matchType: "公式戦", matchName: "", opponent: "", venue: "", address: "",
     distanceKm: 0, carCount: 0, accountant: "",
   });
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
   const [newDriver, setNewDriver] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -39,7 +43,11 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
       const m = matchList.find((x: Match) => x.id === id);
       if (m) {
         setMatch(m);
-        setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm, carCount: m.carCount, accountant: m.accountant });
+        setForm({
+          date: m.date, matchType: m.matchType ?? "公式戦", matchName: m.matchName,
+          opponent: m.opponent, venue: m.venue, address: m.address,
+          distanceKm: m.distanceKm, carCount: m.carCount, accountant: m.accountant,
+        });
       }
       setDrivers(drvList);
       setSelectedDrivers(drvList.map((d: Driver) => d.parentName));
@@ -47,6 +55,27 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
       setLoading(false);
     });
   }, [id]);
+
+  async function calcDistance(address: string) {
+    if (!address.trim()) return;
+    setCalcLoading(true);
+    try {
+      const res = await fetch(`/api/distance?address=${encodeURIComponent(address)}`);
+      const data = await res.json();
+      if (data.roundTripKm) {
+        setForm((f) => ({ ...f, distanceKm: data.roundTripKm }));
+      }
+    } finally {
+      setCalcLoading(false);
+    }
+  }
+
+  function onAddressChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setForm((f) => ({ ...f, address: val }));
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => calcDistance(val), 800);
+  }
 
   async function saveMatch() {
     setSaving(true);
@@ -103,27 +132,68 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
         {editing ? (
           <div className="grid gap-3">
-            {(["date", "matchName", "opponent", "venue", "address"] as const).map((k) => (
-              <div key={k}>
-                <label className="block text-xs text-gray-500 mb-0.5">
-                  {{ date: "試合日", matchName: "試合名", opponent: "対戦相手", venue: "会場名", address: "住所" }[k]}
-                </label>
-                <input
-                  type={k === "date" ? "date" : "text"}
-                  value={form[k]}
-                  onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))}
-                  className="input"
-                />
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">種別</label>
+              <div className="grid grid-cols-4 gap-2">
+                {MATCH_TYPES.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, matchType: t }))}
+                    className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      form.matchType === t
+                        ? "bg-blue-500 text-white border-blue-500"
+                        : "bg-gray-50 text-gray-600 border-gray-200"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
               </div>
-            ))}
-            <div className="grid grid-cols-2 gap-3">
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-0.5">試合日</label>
+              <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="input" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-0.5">試合名</label>
+              <input type="text" value={form.matchName} onChange={(e) => setForm((f) => ({ ...f, matchName: e.target.value }))} className="input" />
+            </div>
+            {form.matchType !== "合宿" && (
               <div>
-                <label className="block text-xs text-gray-500 mb-0.5">往復距離(km)</label>
-                <input type="number" step="0.01" value={form.distanceKm} onChange={(e) => setForm((f) => ({ ...f, distanceKm: Number(e.target.value) }))} className="input" />
+                <label className="block text-xs text-gray-500 mb-0.5">対戦相手</label>
+                <input type="text" value={form.opponent} onChange={(e) => setForm((f) => ({ ...f, opponent: e.target.value }))} className="input" />
               </div>
+            )}
+            <div>
+              <label className="block text-xs text-gray-500 mb-0.5">会場名</label>
+              <input type="text" value={form.venue} onChange={(e) => setForm((f) => ({ ...f, venue: e.target.value }))} className="input" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-0.5">会場住所（入力で距離を自動計算）</label>
+              <input type="text" value={form.address} onChange={onAddressChange} placeholder="例: 愛知県豊田市若林東町広間64" className="input" />
+              <p className="text-xs text-gray-400 mt-1">出発地: かりがね小学校（刈谷市）</p>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-0.5">{`往復距離(km)${calcLoading ? " ⏳ 計算中..." : ""}`}</label>
+              <div className="flex gap-2">
+                <input type="number" step="0.01" value={form.distanceKm} onChange={(e) => setForm((f) => ({ ...f, distanceKm: Number(e.target.value) }))} className="input flex-1" />
+                {form.address && (
+                  <button type="button" onClick={() => calcDistance(form.address)} disabled={calcLoading}
+                    className="bg-gray-100 text-gray-600 px-3 rounded-lg text-sm whitespace-nowrap disabled:opacity-50">
+                    再計算
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-gray-500 mb-0.5">配車台数</label>
                 <input type="number" value={form.carCount} onChange={(e) => setForm((f) => ({ ...f, carCount: Number(e.target.value) }))} className="input" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">会計担当</label>
+                <input type="text" value={form.accountant} onChange={(e) => setForm((f) => ({ ...f, accountant: e.target.value }))} className="input" />
               </div>
             </div>
             <div className="flex gap-2 mt-2">
@@ -140,7 +210,10 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
             <div className="flex justify-between items-start mb-3">
               <div>
                 <div className="font-bold text-gray-800 text-lg">{fmtDate(match.date)}</div>
-                <div className="text-blue-600 font-semibold">vs {match.opponent}</div>
+                {match.matchType && match.matchType !== "公式戦" && (
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{match.matchType}</span>
+                )}
+                {match.opponent && <div className="text-blue-600 font-semibold">vs {match.opponent}</div>}
               </div>
               <button onClick={() => setEditing(true)} className="text-sm text-gray-400 border border-gray-200 px-3 py-1 rounded-lg">編集</button>
             </div>
