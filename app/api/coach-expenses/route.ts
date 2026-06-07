@@ -18,7 +18,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body: Omit<CoachExpense, "id"> = await req.json();
-    const id = Date.now().toString();
+    const id = crypto.randomUUID();
     await appendRow("coach_expenses", [id, body.date, body.description, body.amount, body.claimed ?? ""]);
     return NextResponse.json({ id });
   } catch (e) {

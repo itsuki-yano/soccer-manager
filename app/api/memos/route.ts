@@ -26,7 +26,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { content } = await req.json();
-    const id = Date.now().toString();
+    const id = crypto.randomUUID();
     const now = new Date().toISOString();
     try {
       await appendRow("memos", [id, content, now, now]);

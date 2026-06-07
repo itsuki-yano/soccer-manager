@@ -6,15 +6,16 @@ function rowToEquipment(r: string[]): Equipment {
   return {
     id: r[0] ?? "", name: r[1] ?? "", quantity: Number(r[2] ?? 1),
     memo: r[3] ?? "", parentId: r[4] ?? "", order: Number(r[5] ?? 0),
+    imageUrl: r[6] ?? "",
   };
 }
 
 async function getRows() {
   try {
-    return await getSheetData("equipment!A:F");
+    return await getSheetData("equipment!A:G");
   } catch {
     await ensureSheets();
-    return await getSheetData("equipment!A:F");
+    return await getSheetData("equipment!A:G");
   }
 }
 
@@ -31,12 +32,12 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body: Omit<Equipment, "id"> = await req.json();
-    const id = Date.now().toString();
+    const id = crypto.randomUUID();
     try {
-      await appendRow("equipment", [id, body.name, body.quantity, body.memo, body.parentId, body.order]);
+      await appendRow("equipment", [id, body.name, body.quantity, body.memo, body.parentId, body.order, body.imageUrl ?? ""]);
     } catch {
       await ensureSheets();
-      await appendRow("equipment", [id, body.name, body.quantity, body.memo, body.parentId, body.order]);
+      await appendRow("equipment", [id, body.name, body.quantity, body.memo, body.parentId, body.order, body.imageUrl ?? ""]);
     }
     return NextResponse.json({ id });
   } catch (e) {

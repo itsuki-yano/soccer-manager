@@ -30,7 +30,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body: Omit<Match, "id"> = await req.json();
-    const id = Date.now().toString();
+    const id = crypto.randomUUID();
     await appendRow("matches", [
       id, body.date, body.matchType ?? "公式戦", body.matchName, body.opponent,
       body.venue, body.address, body.distanceKm, body.carCount,

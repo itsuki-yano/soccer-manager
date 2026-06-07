@@ -54,4 +54,5 @@ export interface Equipment {
   memo: string;
   parentId: string;
   order: number;
+  imageUrl: string;
 }

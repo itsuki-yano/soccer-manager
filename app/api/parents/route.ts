@@ -18,7 +18,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body: Omit<Parent, "id"> = await req.json();
-    const id = Date.now().toString();
+    const id = crypto.randomUUID();
     await appendRow("parents", [id, body.playerName, body.furigana, body.jerseyNumber, body.group, body.carCapacity]);
     return NextResponse.json({ id });
   } catch (e) {
