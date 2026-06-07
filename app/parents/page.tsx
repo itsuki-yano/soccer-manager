@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import BackHeader from "@/components/BackHeader";
 import type { Parent } from "@/lib/types";
 
-type EditForm = { playerName: string; furigana: string; jerseyNumber: string; group: string };
+type EditForm = { playerName: string; furigana: string; jerseyNumber: string; group: string; carCapacity: string };
+const EMPTY_FORM: EditForm = { playerName: "", furigana: "", jerseyNumber: "", group: "", carCapacity: "" };
 
 export default function ParentsPage() {
   const [parents, setParents] = useState<Parent[]>([]);
@@ -11,9 +12,9 @@ export default function ParentsPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [filterGroup, setFilterGroup] = useState("全員");
-  const [form, setForm] = useState<EditForm>({ playerName: "", furigana: "", jerseyNumber: "", group: "" });
+  const [form, setForm] = useState<EditForm>(EMPTY_FORM);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ playerName: "", furigana: "", jerseyNumber: "", group: "" });
+  const [editForm, setEditForm] = useState<EditForm>(EMPTY_FORM);
 
   useEffect(() => {
     fetch("/api/parents").then((r) => r.json()).then((d) => {
@@ -26,35 +27,40 @@ export default function ParentsPage() {
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setter({ ...target, [k]: e.target.value });
 
+  function toParentBody(f: EditForm) {
+    return { playerName: f.playerName, furigana: f.furigana, jerseyNumber: f.jerseyNumber, group: f.group, carCapacity: Number(f.carCapacity) || 0 };
+  }
+
   async function save() {
     if (!form.playerName.trim()) { alert("選手名は必須です"); return; }
     setSaving(true);
     const res = await fetch("/api/parents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(toParentBody(form)),
     });
     const { id } = await res.json();
-    setParents((prev) => [...prev, { id, ...form }]);
-    setForm({ playerName: "", furigana: "", jerseyNumber: "", group: "" });
+    setParents((prev) => [...prev, { id, ...toParentBody(form) }]);
+    setForm(EMPTY_FORM);
     setShowForm(false);
     setSaving(false);
   }
 
   function startEdit(p: Parent) {
     setEditId(p.id);
-    setEditForm({ playerName: p.playerName, furigana: p.furigana, jerseyNumber: p.jerseyNumber, group: p.group });
+    setEditForm({ playerName: p.playerName, furigana: p.furigana, jerseyNumber: p.jerseyNumber, group: p.group, carCapacity: p.carCapacity ? String(p.carCapacity) : "" });
   }
 
   async function saveEdit(id: string) {
     if (!editForm.playerName.trim()) { alert("選手名は必須です"); return; }
     setSaving(true);
+    const body = toParentBody(editForm);
     await fetch(`/api/parents/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editForm),
+      body: JSON.stringify(body),
     });
-    setParents((prev) => prev.map((p) => p.id === id ? { id, ...editForm } : p));
+    setParents((prev) => prev.map((p) => p.id === id ? { id, ...body } : p));
     setEditId(null);
     setSaving(false);
   }
@@ -67,15 +73,46 @@ export default function ParentsPage() {
 
   if (loading) return <div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
-  const filtered = filterGroup === "全員" ? parents : parents.filter((p) => {
-    const g = filterGroup.replace("班", "");
-    return p.group === g;
-  });
+  const filtered = filterGroup === "全員" ? parents : parents.filter((p) => p.group === filterGroup.replace("班", ""));
   const sorted = [...filtered].sort((a, b) => {
     const ga = a.group || "9", gb = b.group || "9";
     if (ga !== gb) return ga.localeCompare(gb);
     return (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName);
   });
+
+  function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void }) {
+    return (
+      <>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">選手名（漢字）*</label>
+            <input type="text" value={f.playerName} onChange={setF("playerName", f, setter)} placeholder="例: 矢野慶太" className="input" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">ふりがな</label>
+            <input type="text" value={f.furigana} onChange={setF("furigana", f, setter)} placeholder="例: やのけいた" className="input" />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">背番号</label>
+            <input type="text" value={f.jerseyNumber} onChange={setF("jerseyNumber", f, setter)} placeholder="例: 10" className="input" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">班</label>
+            <select value={f.group} onChange={setF("group", f, setter)} className="input">
+              <option value="">未設定</option>
+              {["1","2","3","4"].map((g) => <option key={g} value={g}>{g}班</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">乗車人数</label>
+            <input type="number" min="0" max="9" value={f.carCapacity} onChange={setF("carCapacity", f, setter)} placeholder="例: 5" className="input" />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
@@ -89,29 +126,7 @@ export default function ParentsPage() {
 
       {showForm && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 grid gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-0.5">選手名（漢字）*</label>
-              <input type="text" value={form.playerName} onChange={setF("playerName", form, setForm)} placeholder="例: 矢野慶太" className="input" />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-0.5">ふりがな</label>
-              <input type="text" value={form.furigana} onChange={setF("furigana", form, setForm)} placeholder="例: やのけいた" className="input" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-0.5">背番号</label>
-              <input type="text" value={form.jerseyNumber} onChange={setF("jerseyNumber", form, setForm)} placeholder="例: 10" className="input" />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-0.5">班</label>
-              <select value={form.group} onChange={setF("group", form, setForm)} className="input">
-                <option value="">未設定</option>
-                {["1","2","3","4"].map((g) => <option key={g} value={g}>{g}班</option>)}
-              </select>
-            </div>
-          </div>
+          <FormFields f={form} setter={setForm} />
           <button onClick={save} disabled={saving} className="w-full bg-blue-500 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50">
             {saving ? "保存中..." : "保存"}
           </button>
@@ -133,29 +148,7 @@ export default function ParentsPage() {
           <div key={p.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             {editId === p.id ? (
               <div className="grid gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-0.5">選手名（漢字）*</label>
-                    <input type="text" value={editForm.playerName} onChange={setF("playerName", editForm, setEditForm)} className="input" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-0.5">ふりがな</label>
-                    <input type="text" value={editForm.furigana} onChange={setF("furigana", editForm, setEditForm)} className="input" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-0.5">背番号</label>
-                    <input type="text" value={editForm.jerseyNumber} onChange={setF("jerseyNumber", editForm, setEditForm)} className="input" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-0.5">班</label>
-                    <select value={editForm.group} onChange={setF("group", editForm, setEditForm)} className="input">
-                      <option value="">未設定</option>
-                      {["1","2","3","4"].map((g) => <option key={g} value={g}>{g}班</option>)}
-                    </select>
-                  </div>
-                </div>
+                <FormFields f={editForm} setter={setEditForm} />
                 <div className="flex gap-2">
                   <button onClick={() => saveEdit(p.id)} disabled={saving}
                     className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
@@ -178,17 +171,16 @@ export default function ParentsPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-800">{p.playerName}</span>
                       {p.jerseyNumber && <span className="text-xs text-gray-400">#{p.jerseyNumber}</span>}
+                      {p.carCapacity > 0 && (
+                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">🚗{p.carCapacity}人</span>
+                      )}
                     </div>
                     {p.furigana && <div className="text-xs text-gray-400">{p.furigana}</div>}
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => startEdit(p)} className="text-xs text-blue-500 border border-blue-200 px-3 py-1.5 rounded-lg">
-                    修正
-                  </button>
-                  <button onClick={() => del(p.id, p.playerName)} className="text-xs text-red-400 border border-red-100 px-3 py-1.5 rounded-lg">
-                    削除
-                  </button>
+                  <button onClick={() => startEdit(p)} className="text-xs text-blue-500 border border-blue-200 px-3 py-1.5 rounded-lg">修正</button>
+                  <button onClick={() => del(p.id, p.playerName)} className="text-xs text-red-400 border border-red-100 px-3 py-1.5 rounded-lg">削除</button>
                 </div>
               </div>
             )}

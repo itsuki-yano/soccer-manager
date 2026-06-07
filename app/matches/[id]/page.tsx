@@ -302,9 +302,20 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
             placeholder="その他の名前を追加" className="input flex-1" />
           <button onClick={addCustomDriver} className="bg-gray-200 px-3 rounded-lg text-sm">追加</button>
         </div>
-        {selectedDrivers.length > 0 && (
-          <div className="mb-3">
-            <div className="text-xs text-gray-500 mb-1">選択中:</div>
+        {selectedDrivers.length > 0 && (() => {
+          const totalCap = selectedDrivers.reduce((sum, name) => {
+            const p = parents.find((x) => x.playerName === name);
+            return sum + (p?.carCapacity ?? 0);
+          }, 0);
+          return (
+            <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-blue-800">配車 {selectedDrivers.length}名</span>
+                {totalCap > 0 && (
+                  <span className="text-sm font-bold text-blue-700">最大 {totalCap}人 乗車可</span>
+                )}
+              </div>
+              <div className="text-xs text-gray-500 mb-1">選択中:</div>
             <div className="flex flex-wrap gap-1">
               {selectedDrivers.map((n) => (
                 <span key={n} onClick={() => toggleDriver(n)} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full cursor-pointer">
@@ -312,8 +323,9 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                 </span>
               ))}
             </div>
-          </div>
-        )}
+            </div>
+          );
+        })()}
         <button onClick={saveDrivers} disabled={saving}
           className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
           {saving ? "保存中..." : "当番を保存"}

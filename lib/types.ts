@@ -21,6 +21,7 @@ export interface Parent {
   playerName: string;
   furigana: string;
   jerseyNumber: string;
+  carCapacity: number;
   group: string;
 }
 
