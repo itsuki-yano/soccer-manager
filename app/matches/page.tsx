@@ -216,14 +216,19 @@ export default function MatchesPage() {
           {filtered.length === 0 && (
             <p className="text-center text-gray-400 py-8">該当する試合がありません</p>
           )}
-          <div className="grid gap-3">
-            {filtered.map((m) => {
+          {(() => {
+            const today = new Date().toISOString().slice(0, 10);
+            const upcoming = filtered.filter((m) => m.date >= today);
+            const past = filtered.filter((m) => m.date < today).reverse();
+
+            function MatchCard({ m }: { m: Match }) {
               const matchDrivers = drivers.filter((d) => d.matchId === m.id);
               const typeColor = TYPE_COLORS[m.matchType] ?? "bg-gray-100 text-gray-600";
               const isHome = m.venue.includes("かりがね") || m.address.includes("かりがね");
+              const isPast = m.date < today;
               return (
-                <Link key={m.id} href={`/matches/${m.id}`}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 block">
+                <Link href={`/matches/${m.id}`}
+                  className={`rounded-xl p-4 shadow-sm border block ${isPast ? "bg-gray-50 border-gray-100 opacity-75" : "bg-white border-gray-100"}`}>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -232,7 +237,7 @@ export default function MatchesPage() {
                         {isHome && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム</span>}
                         {m.bandUid && <span className="text-xs text-green-500">BAND</span>}
                       </div>
-                      <div className="font-bold text-gray-800">
+                      <div className={`font-bold ${isPast ? "text-gray-500" : "text-gray-800"}`}>
                         {fmtDate(m.date)}{m.opponent ? ` vs ${m.opponent}` : ` ${m.matchName}`}
                       </div>
                       <div className="text-sm text-gray-500 mt-1">{m.venue}</div>
@@ -240,7 +245,7 @@ export default function MatchesPage() {
                         <div className="text-sm text-gray-500">{m.distanceKm}km × {m.carCount}台</div>
                       )}
                     </div>
-                    <div className="text-right ml-2">
+                    <div className="text-right ml-2 flex-shrink-0">
                       {!isHome && matchDrivers.length > 0 && (
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                           配車当番 {matchDrivers.length}名
@@ -270,8 +275,35 @@ export default function MatchesPage() {
                   )}
                 </Link>
               );
-            })}
-          </div>
+            }
+
+            return (
+              <div className="grid gap-4">
+                {upcoming.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-bold text-blue-600">今後の予定</span>
+                      <span className="text-xs text-gray-400">{upcoming.length}件</span>
+                    </div>
+                    <div className="grid gap-3">
+                      {upcoming.map((m) => <MatchCard key={m.id} m={m} />)}
+                    </div>
+                  </div>
+                )}
+                {past.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-bold text-gray-400">過去の試合</span>
+                      <span className="text-xs text-gray-400">{past.length}件</span>
+                    </div>
+                    <div className="grid gap-3">
+                      {past.map((m) => <MatchCard key={m.id} m={m} />)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </>
       ) : (
         // カレンダービュー
@@ -326,32 +358,64 @@ export default function MatchesPage() {
             ))}
           </div>
 
-          {/* 選択日の試合 */}
-          {selectedDay && (
-            <div>
-              <div className="text-sm font-medium text-gray-600 mb-2">{fmtDate(selectedDay)}</div>
-              {selectedMatches.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">この日の予定はありません</p>
-              ) : (
+          {/* その月の予定一覧 */}
+          {(() => {
+            const monthMatches = Object.values(matchesByDay).flat().sort((a, b) => a.date.localeCompare(b.date));
+            if (monthMatches.length === 0) {
+              return <p className="text-center text-gray-400 py-6 text-sm">{calYear}年{calMonth + 1}月の予定はありません</p>;
+            }
+            return (
+              <div>
+                <div className="text-sm font-bold text-gray-600 mb-2">{calYear}年{calMonth + 1}月の予定 ({monthMatches.length}件)</div>
                 <div className="grid gap-2">
-                  {selectedMatches.map((m) => {
+                  {monthMatches.map((m) => {
                     const typeColor = TYPE_COLORS[m.matchType] ?? "bg-gray-100 text-gray-600";
+                    const matchDrivers = drivers.filter((d) => d.matchId === m.id);
+                    const today = new Date().toISOString().slice(0, 10);
+                    const isPast = m.date < today;
                     return (
                       <Link key={m.id} href={`/matches/${m.id}`}
-                        className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 block">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeColor}`}>{m.matchType}</span>
-                          {m.needsSettlement && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">精算あり</span>}
+                        className={`rounded-xl p-3 shadow-sm border block ${isPast ? "bg-gray-50 border-gray-100 opacity-75" : "bg-white border-gray-100"}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeColor}`}>{m.matchType}</span>
+                              {m.needsSettlement && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">精算あり</span>}
+                              {isPast && <span className="text-xs text-gray-400">終了</span>}
+                            </div>
+                            <div className={`font-bold text-sm ${isPast ? "text-gray-500" : "text-gray-800"}`}>
+                              {fmtDate(m.date)}{m.opponent ? ` vs ${m.opponent}` : ` ${m.matchName}`}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">{m.venue}</div>
+                          </div>
+                          {matchDrivers.length > 0 && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                              配車 {matchDrivers.length}名
+                            </span>
+                          )}
                         </div>
-                        <div className="font-bold text-gray-800 text-sm">{m.opponent ? `vs ${m.opponent}` : m.matchName}</div>
-                        <div className="text-xs text-gray-500 mt-1">{m.venue}</div>
+                        {matchDrivers.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {matchDrivers.map((d, i) => (
+                              <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{d.parentName}</span>
+                            ))}
+                          </div>
+                        )}
+                        {m.equipmentBringOut && (
+                          <div className="mt-1.5">
+                            <span className="text-xs text-gray-400">持ち帰り: </span>
+                            {m.equipmentBringOut.split(",").map((n, i) => (
+                              <span key={i} className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full mr-1">{n.trim()}</span>
+                            ))}
+                          </div>
+                        )}
                       </Link>
                     );
                   })}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            );
+          })()}
         </div>
       )}
     </main>
