@@ -17,6 +17,114 @@ function calcFee(distanceKm: number, gasPricePerKm: number): number {
   return Math.round(distanceKm * gasPricePerKm / 10) * 10;
 }
 
+type MatchWithDrivers = Match & { matchDrivers: Driver[] };
+
+function buildStatusSheet(
+  wb: ExcelJS.Workbook,
+  sheetName: string,
+  matchList: MatchWithDrivers[],
+  settings: Settings,
+  headerColor: string,
+) {
+  const sheet = wb.addWorksheet(sheetName);
+  sheet.getColumn(1).width = 5;   // No.
+  sheet.getColumn(2).width = 12;  // 日付
+  sheet.getColumn(3).width = 4;   // 曜
+  sheet.getColumn(4).width = 20;  // 対戦相手/試合名
+  sheet.getColumn(5).width = 18;  // 会場
+  sheet.getColumn(6).width = 8;   // 距離(km)
+  sheet.getColumn(7).width = 8;   // 1台費用
+  sheet.getColumn(8).width = 6;   // 台数
+  sheet.getColumn(9).width = 8;   // 合計費用
+  sheet.getColumn(10).width = 10; // 当番1
+  sheet.getColumn(11).width = 10;
+  sheet.getColumn(12).width = 10;
+  sheet.getColumn(13).width = 10;
+  sheet.getColumn(14).width = 10;
+
+  // タイトル行
+  const titleRow = sheet.addRow([sheetName]);
+  titleRow.font = { bold: true, size: 14 };
+  sheet.addRow([]);
+
+  if (matchList.length === 0) {
+    sheet.addRow(["該当する試合がありません"]);
+    return;
+  }
+
+  // ヘッダー行
+  const hdr = sheet.addRow(["No.", "日付", "曜", "対戦相手/試合名", "会場", "距離(km)", "1台費用", "台数", "合計費用", "当番1", "当番2", "当番3", "当番4", "当番5"]);
+  hdr.font = { bold: true };
+  hdr.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
+  hdr.border = { bottom: { style: "thin" } };
+
+  const totalFee = matchList.reduce((s, m) => {
+    const fee = calcFee(m.distanceKm, settings.gasPricePerKm);
+    return s + fee * m.matchDrivers.length;
+  }, 0);
+
+  matchList.forEach((m, i) => {
+    const fee = calcFee(m.distanceKm, settings.gasPricePerKm);
+    const carCount = m.matchDrivers.length;
+    const { label } = formatDate(m.date);
+    const weekday = label.match(/（(.+?)）/)?.[1] ?? "";
+    const row = sheet.addRow([
+      i + 1,
+      label.replace(/（.+?）/, ""),
+      weekday,
+      m.opponent ? `vs${m.opponent}` : m.matchName,
+      m.venue,
+      m.distanceKm,
+      fee,
+      carCount,
+      fee * carCount,
+      ...m.matchDrivers.slice(0, 5).map((d) => d.parentName),
+    ]);
+    if (i % 2 === 0) {
+      row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF7FF" } };
+    }
+    // 合計費用列を太字
+    row.getCell(9).font = { bold: true };
+  });
+
+  // 合計行
+  const sumRow = sheet.addRow([null, null, null, null, null, null, null, "合計", totalFee]);
+  sumRow.font = { bold: true };
+  sumRow.getCell(9).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFD966" } };
+
+  sheet.addRow([]);
+  sheet.addRow([]);
+
+  // 当番別支払い明細
+  const personMap = new Map<string, { date: string; label: string; opponent: string; matchName: string; venue: string; distanceKm: number; fee: number }[]>();
+  for (const m of matchList) {
+    const fee = calcFee(m.distanceKm, settings.gasPricePerKm);
+    const { label } = formatDate(m.date);
+    for (const d of m.matchDrivers) {
+      if (!personMap.has(d.parentName)) personMap.set(d.parentName, []);
+      personMap.get(d.parentName)!.push({
+        date: m.date, label,
+        opponent: m.opponent, matchName: m.matchName,
+        venue: m.venue, distanceKm: m.distanceKm, fee,
+      });
+    }
+  }
+
+  for (const [name, items] of personMap) {
+    const total = items.reduce((s, x) => s + x.fee, 0);
+    const nameRow = sheet.addRow([null, name, `計 ${total}円`]);
+    nameRow.font = { bold: true };
+    for (const item of items) {
+      sheet.addRow([
+        null, null,
+        `${item.fee}円`,
+        `${item.label} ${item.opponent ? `vs${item.opponent}` : item.matchName} ${item.venue} ${item.distanceKm}km`,
+      ]);
+    }
+    sheet.addRow([]);
+  }
+}
+
 export async function GET() {
   try {
     const [matchRows, driverRows, expenseRows, settingsRows] = await Promise.all([
@@ -39,7 +147,7 @@ export async function GET() {
       id: r[0], date: r[1], matchType: r[2] ?? "公式戦", matchName: r[3], opponent: r[4],
       venue: r[5], address: r[6], distanceKm: Number(r[7]),
       carCount: Number(r[8]),
-      needsSettlement: r[9]?.toLowerCase() === 'true' || r[9] === '1',
+      needsSettlement: r[9]?.toLowerCase() === "true" || r[9] === "1",
       bandUid: r[10] ?? "", equipmentBringIn: r[11] ?? "", equipmentBringOut: r[12] ?? "",
       settlementStatus: r[13] ?? "",
     })).sort((a, b) => a.date.localeCompare(b.date));
@@ -52,109 +160,17 @@ export async function GET() {
       id: r[0], date: r[1], description: r[2], amount: Number(r[3]), claimed: r[4] ?? "",
     })).sort((a, b) => a.date.localeCompare(b.date));
 
+    // 精算あり試合のみ対象、当番情報を付加
+    const settlementMatches: MatchWithDrivers[] = matches
+      .filter((m) => m.needsSettlement)
+      .map((m) => ({ ...m, matchDrivers: drivers.filter((d) => d.matchId === m.id) }));
+
     const wb = new ExcelJS.Workbook();
 
-    // ===== 公式戦試合日程シート =====
-    const scheduleSheet = wb.addWorksheet("公式戦試合日程");
-    scheduleSheet.getColumn(1).width = 4;
-    scheduleSheet.getColumn(2).width = 12;
-    scheduleSheet.getColumn(3).width = 4;
-    scheduleSheet.getColumn(4).width = 20;
-    scheduleSheet.getColumn(5).width = 18;
-    scheduleSheet.getColumn(6).width = 10;
-    scheduleSheet.getColumn(7).width = 8;
-    scheduleSheet.getColumn(8).width = 8;
-    scheduleSheet.getColumn(9).width = 8;
-    scheduleSheet.getColumn(10).width = 8;
-    scheduleSheet.getColumn(11).width = 8;
-
-    const titleRow = scheduleSheet.addRow([null, `${settings.leagueName}`, null, null, null]);
-    titleRow.font = { bold: true, size: 14 };
-    scheduleSheet.addRow([]);
-
-    const headerRow = scheduleSheet.addRow(["No.", "日付", "曜", "対戦相手", "会場", "距離×台数", "当番1", "当番2", "当番3", "当番4", "当番5"]);
-    headerRow.font = { bold: true };
-    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFBDD7EE" } };
-    headerRow.border = { bottom: { style: "thin" } };
-
-    matches.forEach((m, i) => {
-      const matchDrivers = drivers.filter((d) => d.matchId === m.id);
-      const fee = calcFee(m.distanceKm, settings.gasPricePerKm);
-      const { label } = formatDate(m.date);
-      const weekday = label.match(/（(.+?)）/)?.[1] ?? "";
-      const feeLabel = `${fee}×${m.carCount}`;
-      const row = scheduleSheet.addRow([
-        i + 1,
-        label.replace(/（.+?）/, ""),
-        weekday,
-        m.opponent ? `vs${m.opponent}` : m.matchName,
-        m.venue,
-        feeLabel,
-        ...matchDrivers.slice(0, 5).map((d) => d.parentName),
-      ]);
-      if (i % 2 === 0) {
-        row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF7FF" } };
-      }
-    });
-
-    scheduleSheet.addRow([]);
-    scheduleSheet.addRow([]);
-
-    // 選手別支払い明細
-    const parentMap = new Map<string, { matchId: string; date: string; opponent: string; venue: string; fee: number }[]>();
-    for (const d of drivers) {
-      const m = matches.find((x) => x.id === d.matchId);
-      if (!m) continue;
-      const fee = calcFee(m.distanceKm, settings.gasPricePerKm);
-      if (!parentMap.has(d.parentName)) parentMap.set(d.parentName, []);
-      parentMap.get(d.parentName)!.push({ matchId: m.id, date: m.date, opponent: m.opponent, venue: m.venue, fee });
-    }
-
-    for (const [driverName, items] of parentMap) {
-      const total = items.reduce((s, x) => s + x.fee, 0);
-      const nameRow = scheduleSheet.addRow([null, `${driverName}様`, `計${total}円`]);
-      nameRow.font = { bold: true };
-      for (const item of items) {
-        const { label } = formatDate(item.date);
-        scheduleSheet.addRow([null, null, `${item.fee}円`, `${label} ${item.opponent ? `vs${item.opponent}` : ""} ${item.venue} 配車代です。ありがとうございました。`]);
-      }
-      scheduleSheet.addRow([]);
-    }
-
-    // ===== 試合別請求書シート（精算あり試合のみ） =====
-    for (const m of matches.filter((x) => x.needsSettlement)) {
-      const { mmdd, label } = formatDate(m.date);
-      const sheet = wb.addWorksheet(mmdd);
-      sheet.getColumn(1).width = 14;
-      sheet.getColumn(2).width = 30;
-
-      const fee = calcFee(m.distanceKm, settings.gasPricePerKm);
-      const matchDrivers = drivers.filter((d) => d.matchId === m.id);
-
-      const t1 = sheet.addRow(["交通費請求"]);
-      t1.font = { bold: true, size: 14 };
-      sheet.addRow([]);
-      sheet.addRow(["日時", label]);
-      sheet.addRow(["種別", m.matchType]);
-      if (m.matchName) sheet.addRow(["試合名", m.matchName]);
-      if (m.opponent) sheet.addRow(["対戦相手", `vs${m.opponent}`]);
-      sheet.addRow(["往復", `${m.distanceKm}km`]);
-      sheet.addRow(["場所", m.venue]);
-      if (m.address) sheet.addRow([null, m.address]);
-      sheet.addRow(["担当台数", `${m.carCount}台`]);
-      sheet.addRow(["会計担当者", `${settings.teamName}担当　${settings.accountant}`]);
-      sheet.addRow([]);
-      sheet.addRow(["配車当番", "支払い金額"]);
-      for (const d of matchDrivers) {
-        sheet.addRow([d.parentName, `${fee}円`]);
-      }
-      sheet.addRow([]);
-      sheet.addRow(["合計", `${fee * matchDrivers.length}円`]);
-
-      [1, 12].forEach((r) => {
-        sheet.getRow(r).font = { bold: true };
-      });
-    }
+    // ===== ステータス別シート（3枚） =====
+    buildStatusSheet(wb, "未請求", settlementMatches.filter((m) => !m.settlementStatus), settings, "FFD9D9D9");
+    buildStatusSheet(wb, "請求中", settlementMatches.filter((m) => m.settlementStatus === "請求中"), settings, "FFFFF2CC");
+    buildStatusSheet(wb, "精算済み", settlementMatches.filter((m) => m.settlementStatus === "精算済み"), settings, "FFD9EAD3");
 
     // ===== 飲み物代請求シート =====
     const drinkSheet = wb.addWorksheet("飲み物代請求");
@@ -169,11 +185,8 @@ export async function GET() {
 
     let drinkTotal = 0;
     for (const e of expenses) {
-      const row = drinkSheet.addRow([e.date, e.description, e.amount, e.claimed]);
+      drinkSheet.addRow([e.date, e.description, e.amount, e.claimed]);
       drinkTotal += e.amount;
-      if (e.claimed) {
-        row.getCell(4).font = { color: { argb: "FF0070C0" } };
-      }
     }
     drinkSheet.addRow([]);
     const totalRow = drinkSheet.addRow(["合計", null, drinkTotal]);
