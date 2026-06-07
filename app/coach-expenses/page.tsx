@@ -98,10 +98,6 @@ export default function CoachExpensesPage() {
             <label className="block text-xs text-gray-500 mb-0.5">金額(円) *</label>
             <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} placeholder="例: 672" className="input" />
           </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-0.5">請求状況</label>
-            <input type="text" value={form.claimed} onChange={(e) => setForm((f) => ({ ...f, claimed: e.target.value }))} placeholder="例: 代表より返金済" className="input" />
-          </div>
           <div className="flex gap-2">
             <button onClick={save} disabled={saving} className="flex-1 bg-blue-500 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50">
               {saving ? "保存中..." : editingId ? "更新" : "保存"}
@@ -119,7 +115,6 @@ export default function CoachExpensesPage() {
             <div className="flex-1 min-w-0">
               <div className="text-xs text-gray-400">{e.date}</div>
               <div className="text-sm font-medium text-gray-800 truncate">{e.description}</div>
-              {e.claimed && <div className="text-xs text-blue-500">{e.claimed}</div>}
             </div>
             <div className="font-bold text-gray-800 whitespace-nowrap">{e.amount.toLocaleString()}円</div>
             <div className="flex gap-1">
