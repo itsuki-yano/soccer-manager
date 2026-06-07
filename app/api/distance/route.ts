@@ -64,8 +64,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "距離計算に失敗しました" }, { status: 500 });
     }
 
-    const roundTripKm = Math.round(oneWayKm * 2 * 100) / 100;
-    return NextResponse.json({ roundTripKm, oneWayKm: Math.round(oneWayKm * 100) / 100 });
+    const oneWayKmRounded = Math.round(oneWayKm * 100) / 100;
+    // 片道のみ精算のため roundTripKm も片道値を返す（後方互換のためフィールドは残す）
+    return NextResponse.json({ roundTripKm: oneWayKmRounded, oneWayKm: oneWayKmRounded });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

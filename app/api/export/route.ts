@@ -51,7 +51,7 @@ function buildStatusSheet(
     return;
   }
 
-  const hdr = sheet.addRow(["No.", "日付", "曜", "対戦相手/試合名", "会場", "距離(km)", "1台費用", "台数", "合計費用", "当番1", "当番2", "当番3", "当番4", "当番5"]);
+  const hdr = sheet.addRow(["No.", "日付", "曜", "対戦相手/試合名", "会場", "片道(km)", "1台費用", "台数", "合計費用", "当番1", "当番2", "当番3", "当番4", "当番5"]);
   hdr.font = { bold: true };
   hdr.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
   hdr.border = { bottom: { style: "thin" } };
@@ -106,7 +106,7 @@ function buildStatusSheet(
     const nameRow = sheet.addRow([null, name, `計 ${total}円`]);
     nameRow.font = { bold: true };
     for (const item of items) {
-      sheet.addRow([null, null, `${item.fee}円`, `${item.label} ${item.opponent ? `vs${item.opponent}` : item.matchName} ${item.venue} ${item.distanceKm}km`]);
+      sheet.addRow([null, null, `${item.fee}円`, `${item.label} ${item.opponent ? `vs${item.opponent}` : item.matchName} ${item.venue} 片道${item.distanceKm}km`]);
     }
     sheet.addRow([]);
   }
