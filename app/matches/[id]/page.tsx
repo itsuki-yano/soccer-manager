@@ -153,8 +153,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [editing, setEditing] = useState(false);
   const [matchType, setMatchType] = useState("公式戦");
   const [needsSettlement, setNeedsSettlement] = useState(true);
-  const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement" | "bandUid" | "equipmentBringIn" | "equipmentBringOut" | "settlementStatus">>({
-    date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0, carCount: 0,
+  const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement" | "bandUid" | "equipmentBringIn" | "equipmentBringOut" | "settlementStatus" | "carCount">>({
+    date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0,
   });
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
   const [selectedEquipOut, setSelectedEquipOut] = useState<string[]>([]);
@@ -177,7 +177,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         setMatch(m);
         setMatchType(m.matchType ?? "公式戦");
         setNeedsSettlement(m.needsSettlement ?? false);
-        setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm, carCount: m.carCount });
+        setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm });
         // 備品持帰りを配列に復元
         const outNames = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
         setSelectedEquipOut(outNames);
@@ -222,21 +222,27 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
     debounceRef.current = setTimeout(() => calcDistance(val), 800);
   }
 
+  function matchBody(equipmentBringOut: string) {
+    return {
+      ...form,
+      carCount: selectedDrivers.length,
+      matchType, needsSettlement,
+      bandUid: match?.bandUid ?? "",
+      equipmentBringIn: match?.equipmentBringIn ?? "",
+      equipmentBringOut,
+      settlementStatus: match?.settlementStatus ?? "",
+    };
+  }
+
   async function saveMatch() {
     setSaving(true);
     const equipmentBringOut = selectedEquipOut.join(", ");
     await fetch(`/api/matches/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form, matchType, needsSettlement,
-        bandUid: match?.bandUid ?? "",
-        equipmentBringIn: match?.equipmentBringIn ?? "",
-        equipmentBringOut,
-        settlementStatus: match?.settlementStatus ?? "",
-      }),
+      body: JSON.stringify(matchBody(equipmentBringOut)),
     });
-    setMatch((prev) => prev ? { ...prev, ...form, matchType, needsSettlement, equipmentBringOut } : prev);
+    setMatch((prev) => prev ? { ...prev, ...form, carCount: selectedDrivers.length, matchType, needsSettlement, equipmentBringOut } : prev);
     setEditing(false);
     setSaving(false);
   }
@@ -247,13 +253,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
     await fetch(`/api/matches/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form, matchType, needsSettlement,
-        bandUid: match?.bandUid ?? "",
-        equipmentBringIn: match?.equipmentBringIn ?? "",
-        equipmentBringOut,
-        settlementStatus: match?.settlementStatus ?? "",
-      }),
+      body: JSON.stringify(matchBody(equipmentBringOut)),
     });
     setMatch((prev) => prev ? { ...prev, equipmentBringOut } : prev);
     setSavingEq(false);
@@ -262,12 +262,21 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
 
   async function saveDrivers() {
     setSaving(true);
-    await fetch("/api/drivers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matchId: id, parentNames: selectedDrivers }),
-    });
+    const carCount = selectedDrivers.length;
+    await Promise.all([
+      fetch("/api/drivers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId: id, parentNames: selectedDrivers }),
+      }),
+      fetch(`/api/matches/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(matchBody(match?.equipmentBringOut ?? "")),
+      }),
+    ]);
     setDrivers(selectedDrivers.map((n) => ({ matchId: id, parentName: n })));
+    setMatch((prev) => prev ? { ...prev, carCount } : prev);
     setSaving(false);
     alert("配車当番を保存しました");
   }
@@ -355,8 +364,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-0.5">配車台数</label>
-              <input type="number" value={form.carCount} onChange={(e) => setForm((f) => ({ ...f, carCount: Number(e.target.value) }))} className="input" />
+              <label className="block text-xs text-gray-500 mb-0.5">配車台数（配車当番人数から自動計算）</label>
+              <div className="input bg-gray-50 text-gray-500">{selectedDrivers.length} 台</div>
             </div>
             <div className="flex gap-2 mt-2">
               <button onClick={saveMatch} disabled={saving} className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
@@ -385,7 +394,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               {match.matchName && <div>🏆 {match.matchName}</div>}
               <div>📍 {match.venue}</div>
               {match.address && <div className="text-gray-400 text-xs pl-4">{match.address}</div>}
-              {match.distanceKm > 0 && <div>🚗 往復 {match.distanceKm}km × {match.carCount}台</div>}
+              {match.distanceKm > 0 && <div>🚗 往復 {match.distanceKm}km × {selectedDrivers.length}台</div>}
             </div>
             <button onClick={deleteMatch} className="mt-4 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
               この試合を削除
@@ -405,10 +414,11 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         <button type="button" onClick={() => {
           const next = !needsSettlement;
           setNeedsSettlement(next);
-          fetch(`/api/matches/${id}`, {
-            method: "PUT",
+          setMatch((prev) => prev ? { ...prev, needsSettlement: next } : prev);
+          fetch(`/api/matches/${id}/needs-settlement`, {
+            method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...form, matchType, needsSettlement: next, bandUid: match?.bandUid ?? "", equipmentBringIn: match?.equipmentBringIn ?? "", equipmentBringOut: match?.equipmentBringOut ?? "", settlementStatus: match?.settlementStatus ?? "" }),
+            body: JSON.stringify({ needsSettlement: next }),
           });
         }}
           className={`w-full py-2.5 rounded-lg text-sm font-medium border transition-colors mb-3 ${
