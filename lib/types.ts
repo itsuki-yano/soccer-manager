@@ -45,3 +45,12 @@ export interface Memo {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Equipment {
+  id: string;
+  name: string;
+  quantity: number;
+  memo: string;
+  parentId: string;
+  order: number;
+}
