@@ -25,7 +25,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [editing, setEditing] = useState(false);
   const [matchType, setMatchType] = useState("公式戦");
   const [needsSettlement, setNeedsSettlement] = useState(true);
-  const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement">>({
+  const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement" | "bandUid" | "equipmentBringIn" | "equipmentBringOut">>({
     date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0, carCount: 0,
   });
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);

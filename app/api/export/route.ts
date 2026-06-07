@@ -40,6 +40,7 @@ export async function GET() {
       venue: r[5], address: r[6], distanceKm: Number(r[7]),
       carCount: Number(r[8]),
       needsSettlement: r[9] === 'true' || r[9] === '1',
+      bandUid: r[10] ?? "", equipmentBringIn: r[11] ?? "", equipmentBringOut: r[12] ?? "",
     })).sort((a, b) => a.date.localeCompare(b.date));
 
     const drivers: Driver[] = driverRows.slice(1).filter((r) => r[0]).map((r) => ({
