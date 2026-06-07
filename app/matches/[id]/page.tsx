@@ -245,39 +245,37 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      {/* 備品当番（ホーム開催のみ） */}
-      {isHomeVenue && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm font-bold text-gray-700">備品当番</span>
-            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム開催</span>
-          </div>
-          <div className="grid gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">持ってくる班 / 担当者</label>
-              <input type="text" value={equipmentBringIn}
-                onChange={(e) => setEquipmentBringIn(e.target.value)}
-                placeholder="例: 2班 または 田中さん"
-                className="input" />
-              {equipmentBringIn && (
-                <p className="text-xs text-blue-500 mt-1">前回の持ち帰り担当から自動セット済み</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">持ち帰る班 / 担当者</label>
-              <input type="text" value={equipmentBringOut}
-                onChange={(e) => setEquipmentBringOut(e.target.value)}
-                placeholder="例: 3班 または 鈴木さん"
-                className="input" />
-              <p className="text-xs text-gray-400 mt-1">次回イベントの「持ってくる」に自動引継ぎされます</p>
-            </div>
-            <button onClick={saveMatch} disabled={saving}
-              className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
-              {saving ? "保存中..." : "備品当番を保存"}
-            </button>
-          </div>
+      {/* 備品当番 */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-sm font-bold text-gray-700">備品当番</span>
+          {isHomeVenue && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム開催</span>}
         </div>
-      )}
+        <div className="grid gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">持込 班 / 担当者</label>
+            <input type="text" value={equipmentBringIn}
+              onChange={(e) => setEquipmentBringIn(e.target.value)}
+              placeholder="例: 2班 または 田中さん"
+              className="input" />
+            {equipmentBringIn && (
+              <p className="text-xs text-blue-500 mt-1">前回の持ち帰り担当から自動セット済み</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">持帰り 班 / 担当者</label>
+            <input type="text" value={equipmentBringOut}
+              onChange={(e) => setEquipmentBringOut(e.target.value)}
+              placeholder="例: 3班 または 鈴木さん"
+              className="input" />
+            <p className="text-xs text-gray-400 mt-1">次回イベントの「持込」に自動引継ぎされます</p>
+          </div>
+          <button onClick={saveMatch} disabled={saving}
+            className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
+            {saving ? "保存中..." : "備品当番を保存"}
+          </button>
+        </div>
+      </div>
 
       {/* 配車当番 */}
       <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 ${isHomeVenue ? "opacity-50 pointer-events-none" : ""}`}>
