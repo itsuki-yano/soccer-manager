@@ -243,14 +243,14 @@ export default function MatchesPage() {
                         <div className="text-xs text-gray-400 mt-1">
                           {m.equipmentBringIn && `持込: ${m.equipmentBringIn}`}
                           {m.equipmentBringIn && m.equipmentBringOut && " / "}
-                          {m.equipmentBringOut && `返却: ${m.equipmentBringOut}`}
+                          {m.equipmentBringOut && `持ち帰り当番: ${m.equipmentBringOut}`}
                         </div>
                       )}
                     </div>
                     <div className="text-right ml-2">
                       {!isHome && (
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                          当番 {matchDrivers.length}名
+                          試合当番 {matchDrivers.length}名
                         </span>
                       )}
                     </div>
