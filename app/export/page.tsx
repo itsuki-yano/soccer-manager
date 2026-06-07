@@ -108,6 +108,9 @@ export default function ExportPage() {
   }
 
   const transportTotal = preview?.matches.reduce((s, m) => s + m.totalFee, 0) ?? 0;
+  const billingTotal = preview?.matches.filter((m) => m.settlementStatus === "請求中").reduce((s, m) => s + m.totalFee, 0) ?? 0;
+  const settledTotal = preview?.matches.filter((m) => m.settlementStatus === "精算済み").reduce((s, m) => s + m.totalFee, 0) ?? 0;
+  const unbilledTotal = preview?.matches.filter((m) => !m.settlementStatus).reduce((s, m) => s + m.totalFee, 0) ?? 0;
 
   return (
     <main className="max-w-lg mx-auto px-4 py-6">
@@ -125,18 +128,40 @@ export default function ExportPage() {
         <div className="grid gap-4 mb-4">
 
           {/* 合計サマリー */}
-          <div className="bg-blue-50 rounded-xl p-4 grid grid-cols-3 gap-3 text-center">
-            <div>
-              <div className="text-xs text-gray-500 mb-0.5">交通費合計</div>
-              <div className="text-lg font-bold text-blue-600">{transportTotal.toLocaleString()}円</div>
+          <div className="grid gap-2">
+            {/* 交通費ステータス別 */}
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="bg-gray-50 px-4 py-2 border-b border-gray-100">
+                <span className="text-xs font-semibold text-gray-600">🚗 交通費（精算あり試合）</span>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-gray-100">
+                <div className="p-3 text-center">
+                  <div className="text-xs text-gray-400 mb-0.5">未請求</div>
+                  <div className="text-base font-bold text-gray-500">{unbilledTotal.toLocaleString()}円</div>
+                  <div className="text-xs text-gray-300">{preview.matches.filter((m) => !m.settlementStatus).length}件</div>
+                </div>
+                <div className="p-3 text-center">
+                  <div className="text-xs text-yellow-600 mb-0.5">請求中</div>
+                  <div className="text-base font-bold text-yellow-600">{billingTotal.toLocaleString()}円</div>
+                  <div className="text-xs text-gray-300">{preview.matches.filter((m) => m.settlementStatus === "請求中").length}件</div>
+                </div>
+                <div className="p-3 text-center">
+                  <div className="text-xs text-green-600 mb-0.5">精算済み</div>
+                  <div className="text-base font-bold text-green-600">{settledTotal.toLocaleString()}円</div>
+                  <div className="text-xs text-gray-300">{preview.matches.filter((m) => m.settlementStatus === "精算済み").length}件</div>
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="text-xs text-gray-500 mb-0.5">コーチ飲食費</div>
-              <div className="text-lg font-bold text-orange-500">{preview.coachExpenseTotal.toLocaleString()}円</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 mb-0.5">合計</div>
-              <div className="text-lg font-bold text-gray-800">{(transportTotal + preview.coachExpenseTotal).toLocaleString()}円</div>
+            {/* コーチ飲食費＋総合計 */}
+            <div className="bg-blue-50 rounded-xl p-3 grid grid-cols-2 gap-3 text-center">
+              <div>
+                <div className="text-xs text-gray-500 mb-0.5">コーチ飲食費</div>
+                <div className="text-base font-bold text-orange-500">{preview.coachExpenseTotal.toLocaleString()}円</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-0.5">総合計</div>
+                <div className="text-base font-bold text-blue-600">{(transportTotal + preview.coachExpenseTotal).toLocaleString()}円</div>
+              </div>
             </div>
           </div>
 
