@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 // 出発地点：かりがね小学校（愛知県刈谷市築地町2-15-1）
-const ORIGIN_LAT = 34.9747;
-const ORIGIN_LON = 137.0028;
+const ORIGIN_LAT = 35.013439;
+const ORIGIN_LON = 137.018478;
 
 async function geocode(address: string): Promise<{ lat: number; lon: number } | null> {
   // 国土地理院ジオコーダー（日本国内専用、無料・制限なし）
