@@ -5,28 +5,47 @@ const ORIGIN_LAT = 34.9747;
 const ORIGIN_LON = 137.0028;
 
 async function geocode(address: string): Promise<{ lat: number; lon: number } | null> {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=jp`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": "soccer-manager-app/1.0" },
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (!data || data.length === 0) return null;
-  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+  // 国土地理院ジオコーダー（日本国内専用、無料・制限なし）
+  const url = `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(address)}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("gsi failed");
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+    const [lon, lat] = data[0].geometry.coordinates;
+    return { lat, lon };
+  } catch {
+    // フォールバック: Nominatim
+    const url2 = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=jp`;
+    const res2 = await fetch(url2, { headers: { "User-Agent": "soccer-manager-app/1.0" } });
+    if (!res2.ok) return null;
+    const data2 = await res2.json();
+    if (!data2 || data2.length === 0) return null;
+    return { lat: parseFloat(data2[0].lat), lon: parseFloat(data2[0].lon) };
+  }
 }
 
 async function getDrivingDistance(
   originLat: number, originLon: number,
   destLat: number, destLon: number
 ): Promise<number | null> {
-  const url = `http://router.project-osrm.org/route/v1/driving/${originLon},${originLat};${destLon},${destLat}?overview=false`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": "soccer-manager-app/1.0" },
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (data.code !== "Ok" || !data.routes?.length) return null;
-  return data.routes[0].distance / 1000; // km
+  // OSRM デモサーバー (HTTPS)
+  const url = `https://router.project-osrm.org/route/v1/driving/${originLon},${originLat};${destLon},${destLat}?overview=false`;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "soccer-manager-app/1.0" } });
+    if (!res.ok) throw new Error("osrm failed");
+    const data = await res.json();
+    if (data.code !== "Ok" || !data.routes?.length) throw new Error("no route");
+    return data.routes[0].distance / 1000;
+  } catch {
+    // フォールバック: 直線距離 × 1.4 係数で概算
+    const R = 6371;
+    const dLat = (destLat - originLat) * Math.PI / 180;
+    const dLon = (destLon - originLon) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(originLat * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    const straight = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return straight * 1.4; // 道路距離の概算係数
+  }
 }
 
 export async function GET(req: Request) {
