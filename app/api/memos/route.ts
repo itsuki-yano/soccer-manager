@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
-import { getSheetData, appendRow } from "@/lib/sheets";
+import { getSheetData, appendRow, ensureSheets } from "@/lib/sheets";
 import type { Memo } from "@/lib/types";
+
+async function getMemoRows() {
+  try {
+    return await getSheetData("memos!A:D");
+  } catch {
+    await ensureSheets();
+    return await getSheetData("memos!A:D");
+  }
+}
 
 export async function GET() {
   try {
-    const rows = await getSheetData("memos!A:D");
+    const rows = await getMemoRows();
     const memos: Memo[] = rows.slice(1).filter((r) => r[0]).map((r) => ({
       id: r[0], content: r[1] ?? "", createdAt: r[2] ?? "", updatedAt: r[3] ?? "",
     }));
@@ -19,7 +28,12 @@ export async function POST(req: Request) {
     const { content } = await req.json();
     const id = Date.now().toString();
     const now = new Date().toISOString();
-    await appendRow("memos", [id, content, now, now]);
+    try {
+      await appendRow("memos", [id, content, now, now]);
+    } catch {
+      await ensureSheets();
+      await appendRow("memos", [id, content, now, now]);
+    }
     return NextResponse.json({ id, createdAt: now, updatedAt: now });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
