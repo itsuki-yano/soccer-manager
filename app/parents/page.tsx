@@ -7,6 +7,42 @@ import type { Parent } from "@/lib/types";
 type EditForm = { playerName: string; furigana: string; jerseyNumber: string; group: string; carCapacity: string };
 const EMPTY_FORM: EditForm = { playerName: "", furigana: "", jerseyNumber: "", group: "", carCapacity: "" };
 
+function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void }) {
+  const setF = (k: keyof EditForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setter({ ...f, [k]: e.target.value });
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">選手名（漢字）*</label>
+          <input type="text" value={f.playerName} onChange={setF("playerName")} placeholder="例: 矢野慶太" className="input" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">ふりがな</label>
+          <input type="text" value={f.furigana} onChange={setF("furigana")} placeholder="例: やのけいた" className="input" />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">背番号</label>
+          <input type="text" value={f.jerseyNumber} onChange={setF("jerseyNumber")} placeholder="例: 10" className="input" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">班</label>
+          <select value={f.group} onChange={setF("group")} className="input">
+            <option value="">未設定</option>
+            {["1","2","3","4"].map((g) => <option key={g} value={g}>{g}班</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">乗車人数</label>
+          <input type="number" min="0" max="9" value={f.carCapacity} onChange={setF("carCapacity")} placeholder="例: 5" className="input" />
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function ParentsPage() {
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,10 +60,6 @@ export default function ParentsPage() {
       setLoading(false);
     });
   }, []);
-
-  const setF = (k: keyof EditForm, target: EditForm, setter: (f: EditForm) => void) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setter({ ...target, [k]: e.target.value });
 
   function toParentBody(f: EditForm) {
     return { playerName: f.playerName, furigana: f.furigana, jerseyNumber: f.jerseyNumber, group: f.group, carCapacity: Number(f.carCapacity) || 0 };
@@ -81,40 +113,6 @@ export default function ParentsPage() {
     if (ga !== gb) return ga.localeCompare(gb);
     return (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName);
   });
-
-  function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void }) {
-    return (
-      <>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-gray-500 mb-0.5">選手名（漢字）*</label>
-            <input type="text" value={f.playerName} onChange={setF("playerName", f, setter)} placeholder="例: 矢野慶太" className="input" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-0.5">ふりがな</label>
-            <input type="text" value={f.furigana} onChange={setF("furigana", f, setter)} placeholder="例: やのけいた" className="input" />
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs text-gray-500 mb-0.5">背番号</label>
-            <input type="text" value={f.jerseyNumber} onChange={setF("jerseyNumber", f, setter)} placeholder="例: 10" className="input" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-0.5">班</label>
-            <select value={f.group} onChange={setF("group", f, setter)} className="input">
-              <option value="">未設定</option>
-              {["1","2","3","4"].map((g) => <option key={g} value={g}>{g}班</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-0.5">乗車人数</label>
-            <input type="number" min="0" max="9" value={f.carCapacity} onChange={setF("carCapacity", f, setter)} placeholder="例: 5" className="input" />
-          </div>
-        </div>
-      </>
-    );
-  }
 
   return (
     <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
