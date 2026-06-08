@@ -34,6 +34,8 @@ export default function NewMatchPage() {
   function onAddressChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setForm((f) => ({ ...f, address: val }));
+    // IME変換中（ローマ字→かな→漢字の途中）はAPI呼び出しをスキップ
+    if ((e.nativeEvent as InputEvent).isComposing) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => calcDistance(val), 800);
   }

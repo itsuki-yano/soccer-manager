@@ -117,7 +117,7 @@ function PlayerSelector({
       {/* 手動追加 */}
       <div className="flex gap-2 mb-3">
         <input type="text" value={customName} onChange={(e) => setCustomName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && addCustom()}
+          onKeyDown={(e) => { if (e.nativeEvent.isComposing) return; if (e.key === "Enter") addCustom(); }}
           placeholder="その他の名前を追加" className="input flex-1" />
         <button onClick={addCustom} className="bg-gray-200 px-3 rounded-lg text-sm">追加</button>
       </div>
@@ -220,6 +220,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   function onAddressChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setForm((f) => ({ ...f, address: val }));
+    // IME変換中（ローマ字→かな→漢字の途中）はAPI呼び出しをスキップ
+    if ((e.nativeEvent as InputEvent).isComposing) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => calcDistance(val), 800);
   }

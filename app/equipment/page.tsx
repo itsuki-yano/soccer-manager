@@ -181,7 +181,7 @@ export default function EquipmentPage() {
           {showAddTop ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex gap-2">
               <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addItem("", newItemName)}
+                onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&addItem("", newItemName)}
                 placeholder="備品名（例: テント大）" className="input flex-1" autoFocus />
               <button onClick={() => addItem("", newItemName)} className="bg-blue-500 text-white px-4 rounded-lg text-sm font-semibold">追加</button>
               <button onClick={() => { setShowAddTop(false); setNewItemName(""); }} className="text-gray-400 px-2">✕</button>
@@ -222,7 +222,7 @@ export default function EquipmentPage() {
                     {editMode && editNameId === item.id ? (
                       <div className="flex gap-2 mb-2">
                         <input type="text" value={nameText} onChange={(e) => setNameText(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && saveName(item.id)}
+                          onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveName(item.id)}
                           className="input flex-1" autoFocus />
                         <button onClick={() => saveName(item.id)} className="bg-blue-500 text-white px-3 rounded-lg text-sm">保存</button>
                         <button onClick={() => setEditNameId(null)} className="bg-gray-100 text-gray-600 px-2 rounded-lg text-sm">✕</button>
@@ -244,7 +244,7 @@ export default function EquipmentPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs text-gray-500">数量:</span>
                           <input type="number" value={qtyText} onChange={(e) => setQtyText(e.target.value)} min={0}
-                            onKeyDown={(e) => e.key === "Enter" && saveQty(item.id)}
+                            onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveQty(item.id)}
                             className="input w-20 text-sm" autoFocus />
                           <button onClick={() => saveQty(item.id)} className="bg-blue-500 text-white px-2 rounded text-xs">保存</button>
                           <button onClick={() => setEditQtyId(null)} className="text-gray-400 text-xs">✕</button>
@@ -261,7 +261,7 @@ export default function EquipmentPage() {
                     {editMode && editMemoId === item.id ? (
                       <div className="flex gap-2">
                         <input type="text" value={memoText} onChange={(e) => setMemoText(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && saveMemo(item.id)}
+                          onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveMemo(item.id)}
                           placeholder="メモ（例: 修理中）" className="input flex-1 text-sm" autoFocus />
                         <button onClick={() => saveMemo(item.id)} className="bg-blue-500 text-white px-2 rounded text-xs">保存</button>
                         <button onClick={() => setEditMemoId(null)} className="bg-gray-100 text-gray-600 px-2 rounded text-xs">✕</button>
@@ -310,7 +310,7 @@ export default function EquipmentPage() {
                           {editMode && editNameId === child.id ? (
                             <div className="flex gap-2 mb-1">
                               <input type="text" value={nameText} onChange={(e) => setNameText(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && saveName(child.id)}
+                                onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveName(child.id)}
                                 className="input flex-1 text-sm" autoFocus />
                               <button onClick={() => saveName(child.id)} className="bg-blue-500 text-white px-2 rounded text-xs">保存</button>
                               <button onClick={() => setEditNameId(null)} className="bg-gray-100 text-gray-600 px-2 rounded text-xs">✕</button>
@@ -333,7 +333,7 @@ export default function EquipmentPage() {
                             {editMode && editMemoId === child.id ? (
                               <div className="flex gap-2 flex-1">
                                 <input type="text" value={memoText} onChange={(e) => setMemoText(e.target.value)}
-                                  onKeyDown={(e) => e.key === "Enter" && saveMemo(child.id)}
+                                  onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveMemo(child.id)}
                                   placeholder="メモ" className="input flex-1 text-xs" autoFocus />
                                 <button onClick={() => saveMemo(child.id)} className="bg-blue-500 text-white px-2 rounded text-xs">保存</button>
                                 <button onClick={() => setEditMemoId(null)} className="bg-gray-100 px-2 rounded text-xs">✕</button>
@@ -357,7 +357,7 @@ export default function EquipmentPage() {
                             editQtyId === child.id ? (
                               <div className="flex items-center gap-2 mt-1">
                                 <input type="number" value={qtyText} onChange={(e) => setQtyText(e.target.value)} min={0}
-                                  onKeyDown={(e) => e.key === "Enter" && saveQty(child.id)}
+                                  onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveQty(child.id)}
                                   className="input w-20 text-sm" autoFocus />
                                 <button onClick={() => saveQty(child.id)} className="bg-blue-500 text-white px-2 rounded text-xs">保存</button>
                                 <button onClick={() => setEditQtyId(null)} className="text-gray-400 text-xs">✕</button>
@@ -398,7 +398,7 @@ export default function EquipmentPage() {
                       <div className="px-4 py-2.5 flex gap-2 items-center">
                         <span className="text-gray-300 mr-1">└</span>
                         <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && addItem(item.id, newItemName)}
+                          onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&addItem(item.id, newItemName)}
                           placeholder="アイテム名を入力" className="input flex-1 text-sm" autoFocus />
                         <button onClick={() => addItem(item.id, newItemName)} className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded">追加</button>
                         <button onClick={() => setAddingParentId(null)} className="text-xs text-gray-400">✕</button>
