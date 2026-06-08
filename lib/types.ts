@@ -42,6 +42,7 @@ export interface Settings {
   gasPricePerKm: number;
   accountant: string;
   leagueName: string;
+  logoUrl: string;
 }
 
 export interface Memo {

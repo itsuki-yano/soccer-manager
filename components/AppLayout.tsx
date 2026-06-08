@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
   { href: "/matches",        icon: "⚽", label: "試合・合宿管理" },
@@ -14,7 +15,7 @@ const NAV_ITEMS = [
   { href: "/settings",       icon: "⚙️",  label: "設定" },
 ];
 
-function Sidebar({ onClose }: { onClose?: () => void }) {
+function Sidebar({ onClose, logoUrl, teamName }: { onClose?: () => void; logoUrl?: string; teamName?: string }) {
   const pathname = usePathname();
   return (
     <div className="flex flex-col h-full bg-white">
@@ -24,10 +25,16 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         onClick={onClose}
         className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
       >
-        <span className="text-3xl">⚽</span>
+        <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center bg-gray-50 flex-shrink-0">
+          {logoUrl ? (
+            <Image src={logoUrl} alt="ロゴ" width={40} height={40} className="w-full h-full object-contain" />
+          ) : (
+            <span className="text-2xl">⚽</span>
+          )}
+        </div>
         <div>
           <div className="font-bold text-gray-800 text-sm leading-tight">マネジメントApp</div>
-          <div className="text-xs text-gray-400 mt-0.5">トラヴェッソ 5年生</div>
+          <div className="text-xs text-gray-400 mt-0.5">{teamName || "トラヴェッソ 5年生"}</div>
         </div>
       </Link>
 
@@ -66,13 +73,22 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [teamName, setTeamName] = useState("");
   const pathname = usePathname();
+
+  useEffect(() => {
+    fetch("/api/settings").then((r) => r.json()).then((d) => {
+      setLogoUrl(d.logoUrl ?? "");
+      setTeamName(d.teamName ?? "");
+    });
+  }, []);
 
   return (
     <div className="flex min-h-screen">
       {/* ─── PC用サイドバー（md以上で常に表示）─── */}
       <aside className="hidden md:flex flex-col w-64 fixed left-0 top-0 h-screen border-r border-gray-200 z-30 shadow-sm">
-        <Sidebar />
+        <Sidebar logoUrl={logoUrl} teamName={teamName} />
       </aside>
 
       {/* ─── スマホ用ドロワー ─── */}
@@ -85,7 +101,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           />
           {/* ドロワー本体 */}
           <div className="fixed left-0 top-0 h-full w-72 z-50 shadow-2xl md:hidden">
-            <Sidebar onClose={() => setMobileOpen(false)} />
+            <Sidebar onClose={() => setMobileOpen(false)} logoUrl={logoUrl} teamName={teamName} />
           </div>
         </>
       )}

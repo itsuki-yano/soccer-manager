@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 const menu = [
@@ -23,9 +24,15 @@ export default function Home() {
   const [linkForm, setLinkForm] = useState({ name: "", url: "" });
   const [savingLink, setSavingLink] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [teamName, setTeamName] = useState("トラヴェッソ 5年生");
 
   useEffect(() => {
     fetch("/api/links").then((r) => r.json()).then((d) => setLinks(Array.isArray(d) ? d : []));
+    fetch("/api/settings").then((r) => r.json()).then((d) => {
+      if (d.logoUrl) setLogoUrl(d.logoUrl);
+      if (d.teamName) setTeamName(d.teamName);
+    });
   }, []);
 
   async function addLink() {
@@ -78,13 +85,19 @@ export default function Home() {
         />
       )}
       <div className="text-center mb-8 md:hidden">
-        <div className="text-4xl mb-2">⚽</div>
+        <div className="w-20 h-20 mx-auto mb-2 rounded-2xl overflow-hidden flex items-center justify-center bg-gray-50">
+          {logoUrl ? (
+            <Image src={logoUrl} alt="チームロゴ" width={80} height={80} className="w-full h-full object-contain" />
+          ) : (
+            <span className="text-4xl">⚽</span>
+          )}
+        </div>
         <h1 className="text-2xl font-bold text-gray-800">マネジメントApp</h1>
-        <p className="text-gray-500 text-sm mt-1">トラヴェッソ 5年生</p>
+        <p className="text-gray-500 text-sm mt-1">{teamName}</p>
       </div>
       <div className="hidden md:block mb-8">
         <h1 className="text-3xl font-bold text-gray-800">ダッシュボード</h1>
-        <p className="text-gray-500 text-sm mt-1">トラヴェッソ 5年生 マネジメントApp</p>
+        <p className="text-gray-500 text-sm mt-1">{teamName} マネジメントApp</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-3 mb-6">

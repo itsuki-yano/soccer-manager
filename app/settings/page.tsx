@@ -1,15 +1,18 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import BackHeader from "@/components/BackHeader";
 import type { Settings } from "@/lib/types";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
-    teamName: "", gasPricePerKm: 16, accountant: "", leagueName: "",
+    teamName: "", gasPricePerKm: 16, accountant: "", leagueName: "", logoUrl: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/settings").then((r) => r.json()).then((d) => {
@@ -17,6 +20,37 @@ export default function SettingsPage() {
       setLoading(false);
     });
   }, []);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/settings/upload", { method: "POST", body: fd });
+    const data = await res.json();
+    if (data.url) {
+      const newSettings = { ...settings, logoUrl: data.url };
+      setSettings(newSettings);
+      // ロゴは即保存
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newSettings),
+      });
+    }
+    setUploadingLogo(false);
+  }
+
+  async function removeLogo() {
+    const newSettings = { ...settings, logoUrl: "" };
+    setSettings(newSettings);
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newSettings),
+    });
+  }
 
   async function save() {
     setSaving(true);
@@ -35,6 +69,36 @@ export default function SettingsPage() {
   return (
     <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="設定" />
+      {/* チームロゴ */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+        <label className="block text-sm font-medium text-gray-600 mb-3">チームロゴ</label>
+        <div className="flex items-center gap-4">
+          <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50 overflow-hidden flex-shrink-0">
+            {settings.logoUrl ? (
+              <Image src={settings.logoUrl} alt="チームロゴ" width={80} height={80} className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-3xl">⚽</span>
+            )}
+          </div>
+          <div className="grid gap-2 flex-1">
+            <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+            <button
+              onClick={() => logoInputRef.current?.click()}
+              disabled={uploadingLogo}
+              className="w-full bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              {uploadingLogo ? "アップロード中..." : settings.logoUrl ? "ロゴを変更" : "ロゴを設定"}
+            </button>
+            {settings.logoUrl && (
+              <button onClick={removeLogo} className="w-full bg-gray-100 text-gray-500 py-2 rounded-lg text-sm">
+                削除
+              </button>
+            )}
+            <p className="text-xs text-gray-400">PNG / JPG / SVG 推奨</p>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 grid gap-4">
         <Field label="チーム名">
           <input

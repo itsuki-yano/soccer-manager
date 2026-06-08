@@ -22,6 +22,7 @@ export async function GET() {
       gasPricePerKm: Number(settingsMap.gasPricePerKm ?? 16),
       accountant: settingsMap.accountant ?? "",
       leagueName: settingsMap.leagueName ?? "西三河リーグ",
+      logoUrl: settingsMap.logoUrl ?? "",
     };
 
     const matches: Match[] = matchRows.slice(1).filter((r) => r[0]).map((r) => ({
