@@ -164,8 +164,9 @@ export default function PracticesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(ev),
     });
-    const { id } = await res.json();
-    setPractices((prev) => [...prev, { id, ...ev }].sort((a, b) => a.date.localeCompare(b.date)));
+    const data = await res.json();
+    if (!data.id) { alert("登録に失敗しました"); return; }
+    setPractices((prev) => [...prev, { id: data.id, ...ev }].sort((a, b) => a.date.localeCompare(b.date)));
     setBandEvents((prev) => prev.filter((e) => e.bandUid !== ev.bandUid));
   }
 
@@ -179,11 +180,11 @@ export default function PracticesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(ev),
       });
-      const { id } = await res.json();
-      added.push({ id, ...ev });
+      const data = await res.json();
+      if (data.id) added.push({ id: data.id, ...ev });
     }
     setPractices((prev) => [...prev, ...added].sort((a, b) => a.date.localeCompare(b.date)));
-    setBandEvents([]);
+    setBandEvents((prev) => prev.filter((e) => !added.some((a) => a.bandUid === e.bandUid)));
     setImportingAll(false);
   }
 
@@ -196,10 +197,14 @@ export default function PracticesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const { id } = await res.json();
-    setPractices((prev) => [...prev, { id, ...body }].sort((a, b) => a.date.localeCompare(b.date)));
-    setForm({ date: "", type: "通常練習", venue: "", startTime: "", endTime: "" });
-    setShowForm(false);
+    const data = await res.json();
+    if (data.id) {
+      setPractices((prev) => [...prev, { id: data.id, ...body }].sort((a, b) => a.date.localeCompare(b.date)));
+      setForm({ date: "", type: "通常練習", venue: "", startTime: "", endTime: "" });
+      setShowForm(false);
+    } else {
+      alert("追加に失敗しました");
+    }
     setSaving(false);
   }
 
