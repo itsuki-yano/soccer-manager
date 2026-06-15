@@ -7,6 +7,7 @@ import type { Settings } from "@/lib/types";
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     teamName: "", gasPricePerKm: 16, accountant: "", leagueName: "", logoUrl: "",
+    bucketDutyStartDate: "", bucketDutyEndDate: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -145,7 +146,39 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+      {/* バケツ当番期間 */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mt-4 grid gap-3">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-lg">🪣</span>
+          <span className="font-semibold text-gray-700 text-sm">バケツ当番の有効期間</span>
+        </div>
+        <p className="text-xs text-gray-400 -mt-2">この期間の練習にバケツ当番を表示します。未設定の場合は常に非表示。</p>
+        <Field label="開始日">
+          <input
+            type="date"
+            value={settings.bucketDutyStartDate}
+            onChange={(e) => setSettings((s) => ({ ...s, bucketDutyStartDate: e.target.value }))}
+            className="input"
+          />
+        </Field>
+        <Field label="終了日">
+          <input
+            type="date"
+            value={settings.bucketDutyEndDate}
+            onChange={(e) => setSettings((s) => ({ ...s, bucketDutyEndDate: e.target.value }))}
+            className="input"
+          />
+        </Field>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="w-full bg-blue-500 text-white py-2.5 rounded-xl font-semibold disabled:opacity-50 text-sm"
+        >
+          {saved ? "✓ 保存しました" : saving ? "保存中..." : "保存"}
+        </button>
+      </div>
+
+      <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
         <h3 className="font-semibold text-yellow-800 mb-2">Googleスプレッドシート連携</h3>
         <p className="text-sm text-yellow-700">
           データはGoogleスプレッドシートに保存されます。<br />

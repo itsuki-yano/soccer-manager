@@ -23,6 +23,8 @@ export async function GET() {
       accountant: settingsMap.accountant ?? "",
       leagueName: settingsMap.leagueName ?? "西三河リーグ",
       logoUrl: settingsMap.logoUrl ?? "",
+      bucketDutyStartDate: settingsMap.bucketDutyStartDate ?? "",
+      bucketDutyEndDate: settingsMap.bucketDutyEndDate ?? "",
     };
 
     const matches: Match[] = matchRows.slice(1).filter((r) => r[0]).map((r) => ({

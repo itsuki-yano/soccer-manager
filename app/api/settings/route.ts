@@ -13,6 +13,8 @@ export async function GET() {
       accountant: map.accountant ?? "",
       leagueName: map.leagueName ?? "西三河リーグ",
       logoUrl: map.logoUrl ?? "",
+      bucketDutyStartDate: map.bucketDutyStartDate ?? "",
+      bucketDutyEndDate: map.bucketDutyEndDate ?? "",
     };
     return NextResponse.json(settings);
   } catch (e) {
@@ -24,7 +26,7 @@ export async function PUT(req: Request) {
   try {
     const body: Partial<Settings> = await req.json();
     const rows = await getSheetData("settings!A:B");
-    const keys = ["teamName", "gasPricePerKm", "accountant", "leagueName", "logoUrl"] as const;
+    const keys = ["teamName", "gasPricePerKm", "accountant", "leagueName", "logoUrl", "bucketDutyStartDate", "bucketDutyEndDate"] as const;
     for (const key of keys) {
       if (body[key] === undefined) continue;
       const idx = rows.findIndex((r) => r[0] === key);

@@ -43,6 +43,25 @@ export interface Settings {
   accountant: string;
   leagueName: string;
   logoUrl: string;
+  bucketDutyStartDate: string;
+  bucketDutyEndDate: string;
+}
+
+export interface Practice {
+  id: string;
+  date: string;
+  type: string; // "通常練習" | "自主練習"
+  venue: string;
+  startTime: string;
+  endTime: string;
+  bandUid: string;
+}
+
+export interface BucketDuty {
+  id: string;
+  practiceId: string;
+  bringPersonName: string;
+  returnPersonName: string;
 }
 
 export interface Memo {

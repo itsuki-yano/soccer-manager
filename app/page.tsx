@@ -5,14 +5,16 @@ import Image from "next/image";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 const menu = [
-  { href: "/matches", label: "試合・合宿管理", icon: "⚽", desc: "試合登録・配車当番の設定" },
-  { href: "/coach-expenses", label: "コーチ飲食費", icon: "🧃", desc: "飲み物代・食事代の管理" },
-  { href: "/parents", label: "選手マスタ", icon: "👟", desc: "選手・班・背番号の登録" },
-  { href: "/export", label: "Excel出力", icon: "📊", desc: "精算書をダウンロード" },
-  { href: "/equipment", label: "備品管理", icon: "🎒", desc: "備品・救急セットの在庫管理" },
-  { href: "/fees", label: "費用徴収管理", icon: "💰", desc: "合宿費・クラブ費の徴収状況" },
-  { href: "/memo", label: "備忘録", icon: "📝", desc: "連絡事項・メモの記録" },
-  { href: "/settings", label: "設定", icon: "⚙️", desc: "チーム名・ガソリン単価" },
+  { href: "/matches",        label: "試合・合宿管理", icon: "⚽", desc: "試合登録・配車当番の設定" },
+  { href: "/practices",      label: "通常練習",       icon: "🏃", desc: "練習管理・バケツ当番" },
+  { href: "/roles",          label: "役割予定",       icon: "📋", desc: "選手別の担当予定を確認" },
+  { href: "/coach-expenses", label: "コーチ飲食費",   icon: "🧃", desc: "飲み物代・食事代の管理" },
+  { href: "/parents",        label: "選手マスタ",     icon: "👟", desc: "選手・班・背番号の登録" },
+  { href: "/export",         label: "Excel出力",      icon: "📊", desc: "精算書をダウンロード" },
+  { href: "/equipment",      label: "備品管理",       icon: "🎒", desc: "備品・救急セットの在庫管理" },
+  { href: "/fees",           label: "費用徴収管理",   icon: "💰", desc: "合宿費・クラブ費の徴収状況" },
+  { href: "/memo",           label: "備忘録",         icon: "📝", desc: "連絡事項・メモの記録" },
+  { href: "/settings",       label: "設定",           icon: "⚙️", desc: "チーム名・ガソリン単価" },
 ];
 
 type Link_ = { id: string; name: string; url: string };
