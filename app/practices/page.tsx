@@ -124,6 +124,7 @@ export default function PracticesPage() {
   const [showBand, setShowBand] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [importingAll, setImportingAll] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; date: string } | null>(null);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
@@ -166,6 +167,24 @@ export default function PracticesPage() {
     const { id } = await res.json();
     setPractices((prev) => [...prev, { id, ...ev }].sort((a, b) => a.date.localeCompare(b.date)));
     setBandEvents((prev) => prev.filter((e) => e.bandUid !== ev.bandUid));
+  }
+
+  async function importAll() {
+    setImportingAll(true);
+    const toImport = [...bandEvents];
+    const added: Practice[] = [];
+    for (const ev of toImport) {
+      const res = await fetch("/api/practices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ev),
+      });
+      const { id } = await res.json();
+      added.push({ id, ...ev });
+    }
+    setPractices((prev) => [...prev, ...added].sort((a, b) => a.date.localeCompare(b.date)));
+    setBandEvents([]);
+    setImportingAll(false);
   }
 
   async function addPractice() {
@@ -306,7 +325,16 @@ export default function PracticesPage() {
       {/* BAND取得結果 */}
       {showBand && bandEvents.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-          <p className="text-sm font-semibold text-green-800 mb-3">BANDから {bandEvents.length}件 取得</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-green-800">BANDから {bandEvents.length}件 取得</p>
+            <button
+              onClick={importAll}
+              disabled={importingAll}
+              className="text-xs bg-green-600 text-white px-4 py-1.5 rounded-lg font-semibold disabled:opacity-50"
+            >
+              {importingAll ? "登録中..." : "一括登録"}
+            </button>
+          </div>
           <div className="grid gap-2">
             {bandEvents.map((ev, i) => (
               <div key={i} className="flex items-center justify-between bg-white rounded-lg p-3 border border-green-100">
@@ -317,7 +345,7 @@ export default function PracticesPage() {
                   </div>
                   {ev.venue && <div className="text-xs text-gray-500 mt-0.5">{ev.venue}</div>}
                 </div>
-                <button onClick={() => importEvent(ev)} className="text-xs bg-green-500 text-white px-3 py-1.5 rounded-lg font-semibold">登録</button>
+                <button onClick={() => importEvent(ev)} disabled={importingAll} className="text-xs bg-green-500 text-white px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40">登録</button>
               </div>
             ))}
           </div>
