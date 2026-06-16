@@ -26,6 +26,8 @@ export default function RolesPage() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [practices, setPractices] = useState<Practice[]>([]);
   const [bucketDuties, setBucketDuties] = useState<BucketDuty[]>([]);
+  const [bucketStart, setBucketStart] = useState("");
+  const [bucketEnd, setBucketEnd] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedName, setSelectedName] = useState("");
   const [calYear, setCalYear] = useState(new Date().getFullYear());
@@ -39,12 +41,15 @@ export default function RolesPage() {
       fetch("/api/drivers").then((r) => r.json()),
       fetch("/api/practices").then((r) => r.json()),
       fetch("/api/bucket-duties").then((r) => r.json()),
-    ]).then(([prts, ms, drvs, ps, bds]) => {
+      fetch("/api/settings").then((r) => r.json()),
+    ]).then(([prts, ms, drvs, ps, bds, st]) => {
       setParents(Array.isArray(prts) ? prts : []);
       setMatches(Array.isArray(ms) ? ms : []);
       setDrivers(Array.isArray(drvs) ? drvs : []);
       setPractices(Array.isArray(ps) ? ps : []);
       setBucketDuties(Array.isArray(bds) ? bds : []);
+      setBucketStart(st?.bucketDutyStartDate ?? "");
+      setBucketEnd(st?.bucketDutyEndDate ?? "");
       setLoading(false);
     });
   }, []);
@@ -75,10 +80,11 @@ export default function RolesPage() {
       }
     });
 
-    // バケツ当番（土曜日の自主練習のみ）
+    // バケツ当番（土曜日の自主練習・設定期間内のみ）
     practices.forEach((p) => {
       if (p.type !== "自主練習") return;
       if (new Date(p.date + "T00:00:00").getDay() !== 6) return;
+      if (bucketStart && bucketEnd && (p.date < bucketStart || p.date > bucketEnd)) return;
       const duty = bucketDuties.find((d) => d.practiceId === p.id);
       if (!duty) return;
       const practiceLabel = `${p.type} ${fmtDate(p.date)}`;

@@ -21,10 +21,12 @@ function fmtDate(d: string) {
   return `${d.replace(/-/g, "/")}（${DOW[dt.getDay()]}）`;
 }
 
-function isBucketActive(practice: Practice): boolean {
+function isBucketActive(practice: Practice, start: string, end: string): boolean {
   if (practice.type !== "自主練習") return false;
   const dow = new Date(practice.date + "T00:00:00").getDay();
-  return dow === 6; // 土曜日のみ
+  if (dow !== 6) return false; // 土曜日のみ
+  if (!start || !end) return true; // 期間未設定の場合は全て対象
+  return practice.date >= start && practice.date <= end;
 }
 
 function BucketDutyCard({
@@ -240,6 +242,8 @@ export default function PracticesPage() {
   if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
   const today = new Date().toISOString().slice(0, 10);
+  const bucketStart = settings?.bucketDutyStartDate ?? "";
+  const bucketEnd = settings?.bucketDutyEndDate ?? "";
   const sorted = [...practices].sort((a, b) => a.date.localeCompare(b.date));
   const upcoming = sorted.filter((p) => p.date >= today);
   const past = sorted.filter((p) => p.date < today).reverse();
@@ -376,7 +380,7 @@ export default function PracticesPage() {
               <p className="text-xs font-medium text-gray-400 mb-2">今後の練習</p>
               {upcoming.map((p) => {
                 const duty = duties.find((d) => d.practiceId === p.id) ?? null;
-                const active = isBucketActive(p);
+                const active = isBucketActive(p, bucketStart, bucketEnd);
                 const suggested = active ? getSuggestedBring(p, sorted) : "";
                 return (
                   <div key={p.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3">
@@ -415,7 +419,7 @@ export default function PracticesPage() {
               <p className="text-xs font-medium text-gray-400 mb-2 mt-4">過去の練習</p>
               {past.map((p) => {
                 const duty = duties.find((d) => d.practiceId === p.id) ?? null;
-                const active = isBucketActive(p);
+                const active = isBucketActive(p, bucketStart, bucketEnd);
                 return (
                   <div key={p.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3 opacity-70">
                     <div className="flex items-start justify-between">
@@ -493,7 +497,7 @@ export default function PracticesPage() {
               if (monthPractices.length === 0) return <p className="text-xs text-gray-400 text-center py-2">この月の練習はありません</p>;
               return monthPractices.map((p) => {
                 const duty = duties.find((d) => d.practiceId === p.id);
-                const active = isBucketActive(p);
+                const active = isBucketActive(p, bucketStart, bucketEnd);
                 return (
                   <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                     <div className="flex items-center gap-2">
