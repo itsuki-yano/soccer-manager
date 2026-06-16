@@ -70,9 +70,10 @@ export default function RolesPage() {
       }
     });
 
-    // バケツ当番（練習）
+    // バケツ当番（土曜日の自主練習のみ）
     practices.forEach((p) => {
-      if (p.date < today) return;
+      if (p.type !== "自主練習") return;
+      if (new Date(p.date + "T00:00:00").getDay() !== 6) return;
       const duty = bucketDuties.find((d) => d.practiceId === p.id);
       if (!duty) return;
       const practiceLabel = `${p.type} ${fmtDate(p.date)}`;

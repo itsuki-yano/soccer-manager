@@ -21,9 +21,10 @@ function fmtDate(d: string) {
   return `${d.replace(/-/g, "/")}（${DOW[dt.getDay()]}）`;
 }
 
-function isBucketActive(date: string, start: string, end: string): boolean {
-  if (!start || !end) return false;
-  return date >= start && date <= end;
+function isBucketActive(practice: Practice): boolean {
+  if (practice.type !== "自主練習") return false;
+  const dow = new Date(practice.date + "T00:00:00").getDay();
+  return dow === 6; // 土曜日のみ
 }
 
 function BucketDutyCard({
@@ -242,8 +243,6 @@ export default function PracticesPage() {
   const sorted = [...practices].sort((a, b) => a.date.localeCompare(b.date));
   const upcoming = sorted.filter((p) => p.date >= today);
   const past = sorted.filter((p) => p.date < today).reverse();
-  const bucketStart = settings?.bucketDutyStartDate ?? "";
-  const bucketEnd = settings?.bucketDutyEndDate ?? "";
 
   // カレンダー用
   const firstDay = new Date(calYear, calMonth, 1).getDay();
@@ -377,7 +376,7 @@ export default function PracticesPage() {
               <p className="text-xs font-medium text-gray-400 mb-2">今後の練習</p>
               {upcoming.map((p) => {
                 const duty = duties.find((d) => d.practiceId === p.id) ?? null;
-                const active = isBucketActive(p.date, bucketStart, bucketEnd);
+                const active = isBucketActive(p);
                 const suggested = active ? getSuggestedBring(p, sorted) : "";
                 return (
                   <div key={p.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3">
@@ -416,7 +415,7 @@ export default function PracticesPage() {
               <p className="text-xs font-medium text-gray-400 mb-2 mt-4">過去の練習</p>
               {past.map((p) => {
                 const duty = duties.find((d) => d.practiceId === p.id) ?? null;
-                const active = isBucketActive(p.date, bucketStart, bucketEnd);
+                const active = isBucketActive(p);
                 return (
                   <div key={p.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3 opacity-70">
                     <div className="flex items-start justify-between">
@@ -494,7 +493,7 @@ export default function PracticesPage() {
               if (monthPractices.length === 0) return <p className="text-xs text-gray-400 text-center py-2">この月の練習はありません</p>;
               return monthPractices.map((p) => {
                 const duty = duties.find((d) => d.practiceId === p.id);
-                const active = isBucketActive(p.date, bucketStart, bucketEnd);
+                const active = isBucketActive(p);
                 return (
                   <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                     <div className="flex items-center gap-2">
