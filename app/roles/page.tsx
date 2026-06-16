@@ -84,9 +84,9 @@ export default function RolesPage() {
       }
     });
 
-    // 重複除去・日付順
+    // 重複除去・日付降順
     const unique = roles.filter((r, i, arr) => arr.findIndex((x) => x.kind === r.kind && x.date === r.date) === i);
-    return unique.sort((a, b) => a.date.localeCompare(b.date));
+    return unique.sort((a, b) => b.date.localeCompare(a.date));
   }
 
   const roles = selectedName ? getRoles(selectedName) : [];
@@ -158,17 +158,18 @@ export default function RolesPage() {
       {selectedName && roles.length > 0 && view === "list" && (
         <div className="grid gap-2">
           {roles.map((r, i) => {
+            const isPast = r.date < today;
             const c = kindColor(r.kind);
             return (
-              <div key={i} className={`flex items-center gap-3 ${c.bg} border ${c.border} rounded-xl p-3`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${c.bg} border ${c.border}`}>
+              <div key={i} className={`flex items-center gap-3 rounded-xl p-3 border ${isPast ? "bg-gray-50 border-gray-200 opacity-60" : `${c.bg} ${c.border}`}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${isPast ? "bg-gray-100 border border-gray-200" : `${c.bg} border ${c.border}`}`}>
                   {r.kind === "bucket_bring" ? "🪣" : r.kind === "bucket_return" ? "🪣" : "🎒"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className={`font-semibold text-sm ${c.text}`}>{r.eventName}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{fmtDate(r.date)}</div>
+                  <div className={`font-semibold text-sm ${isPast ? "text-gray-500" : c.text}`}>{r.eventName}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{fmtDate(r.date)}</div>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full font-semibold ${c.badge} whitespace-nowrap`}>{r.label}</span>
+                <span className={`text-xs px-2 py-1 rounded-full font-semibold whitespace-nowrap ${isPast ? "bg-gray-100 text-gray-400" : c.badge}`}>{r.label}</span>
               </div>
             );
           })}
@@ -218,7 +219,7 @@ export default function RolesPage() {
           {/* 当月の役割一覧 */}
           {(() => {
             const monthStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}`;
-            const monthRoles = roles.filter((r) => r.date.startsWith(monthStr));
+            const monthRoles = [...roles].filter((r) => r.date.startsWith(monthStr)).sort((a, b) => b.date.localeCompare(a.date));
             if (monthRoles.length === 0) return <p className="text-xs text-gray-400 text-center mt-4 py-2">この月の担当はありません</p>;
             return (
               <div className="mt-4 border-t border-gray-100 pt-3 grid gap-2">

@@ -432,18 +432,13 @@ export default function PracticesPage() {
                         {p.startTime && <span className="ml-2">🕐 {p.startTime}{p.endTime ? `〜${p.endTime}` : ""}</span>}
                       </div>
                     )}
-                    {active && duty && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
-                          <div className="text-xs text-blue-500">持っていった</div>
-                          <div className="text-sm font-semibold text-blue-800">{duty.bringPersonName || "−"}</div>
-                        </div>
-                        <div className="bg-pink-50 border border-pink-200 rounded-lg p-2 text-center">
-                          <div className="text-xs text-pink-500">持って帰った</div>
-                          <div className="text-sm font-semibold text-pink-800">{duty.returnPersonName || "−"}</div>
-                        </div>
-                      </div>
-                    )}
+                    <BucketDutyCard
+                      practice={p}
+                      duty={duty}
+                      parents={parents}
+                      bucketActive={active}
+                      onSave={saveBucketDuty}
+                    />
                   </div>
                 );
               })}
