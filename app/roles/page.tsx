@@ -11,6 +11,9 @@ function fmtDate(d: string) {
   return `${d.replace(/-/g, "/")}（${DOW[dt.getDay()]}）`;
 }
 
+// 全角・半角スペースを除去して比較
+function normName(s: string) { return s.replace(/[\s　]/g, ""); }
+
 type RoleItem =
   | { kind: "driver"; date: string; label: string; eventName: string }
   | { kind: "luggage_out"; date: string; label: string; eventName: string }
@@ -48,25 +51,26 @@ export default function RolesPage() {
 
   function getRoles(name: string): RoleItem[] {
     const roles: RoleItem[] = [];
-    const today = new Date().toISOString().slice(0, 10);
 
     // 配車当番・荷物当番（試合）
     matches.forEach((m) => {
       const eventName = m.matchName || `${m.matchType} ${m.venue}`;
       const matchDrivers = drivers.filter((d) => d.matchId === m.id);
 
+      const normN = normName(name);
+
       // 配車当番
-      if (matchDrivers.some((d) => d.parentName === name)) {
+      if (matchDrivers.some((d) => normName(d.parentName) === normN)) {
         roles.push({ kind: "driver", date: m.date, label: "配車当番", eventName });
       }
 
       // 荷物当番
-      const inOut = m.equipmentBringOut?.split(",").map((s) => s.trim()) ?? [];
-      const inIn = m.equipmentBringIn?.split(",").map((s) => s.trim()) ?? [];
-      if (inOut.includes(name)) {
+      const inOut = m.equipmentBringOut?.split(",").map((s) => normName(s.trim())) ?? [];
+      const inIn = m.equipmentBringIn?.split(",").map((s) => normName(s.trim())) ?? [];
+      if (inOut.includes(normN)) {
         roles.push({ kind: "luggage_out", date: m.date, label: "荷物持帰り", eventName });
       }
-      if (inIn.includes(name) && !inOut.includes(name)) {
+      if (inIn.includes(normN) && !inOut.includes(normN)) {
         roles.push({ kind: "luggage_out", date: m.date, label: "荷物持込", eventName });
       }
     });
