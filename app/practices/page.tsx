@@ -342,15 +342,21 @@ export default function PracticesPage() {
           </div>
           <div className="grid gap-2">
             {bandEvents.map((ev, i) => (
-              <div key={i} className="flex items-center justify-between bg-white rounded-lg p-3 border border-green-100">
-                <div>
+              <div key={i} className="bg-white rounded-lg p-3 border border-green-100">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[ev.type] ?? "bg-gray-100 text-gray-600"}`}>{ev.type}</span>
                     <span className="text-sm font-medium text-gray-800">{fmtDate(ev.date)}</span>
                   </div>
-                  {ev.venue && <div className="text-xs text-gray-500 mt-0.5">{ev.venue}</div>}
+                  <button onClick={() => importEvent(ev)} disabled={importingAll} className="text-xs bg-green-500 text-white px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40">登録</button>
                 </div>
-                <button onClick={() => importEvent(ev)} disabled={importingAll} className="text-xs bg-green-500 text-white px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40">登録</button>
+                <input
+                  type="text"
+                  value={ev.venue}
+                  onChange={(e) => setBandEvents((prev) => prev.map((x, j) => j === i ? { ...x, venue: e.target.value } : x))}
+                  placeholder="会場を入力（例: かりがね小学校）"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-green-300"
+                />
               </div>
             ))}
           </div>

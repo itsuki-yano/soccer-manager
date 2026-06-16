@@ -78,7 +78,7 @@ export async function GET() {
         bandUid: e.uid,
         date,
         type: detectPracticeType(e.summary),
-        venue: (e.location ?? "").split(/[,、\n]/)[0].trim() || "かりがね小学校",
+        venue: (e.location ?? "").split(/[,、\n]/)[0].trim(),
         startTime,
         endTime,
       };
