@@ -12,6 +12,7 @@ function fmtDate(d: string) {
 }
 
 type RoleItem =
+  | { kind: "driver"; date: string; label: string; eventName: string }
   | { kind: "luggage_out"; date: string; label: string; eventName: string }
   | { kind: "bucket_bring"; date: string; label: string; eventName: string }
   | { kind: "bucket_return"; date: string; label: string; eventName: string };
@@ -49,24 +50,24 @@ export default function RolesPage() {
     const roles: RoleItem[] = [];
     const today = new Date().toISOString().slice(0, 10);
 
-    // 荷物当番（試合の持帰り）
+    // 配車当番・荷物当番（試合）
     matches.forEach((m) => {
-      if (m.date < today) return;
+      const eventName = m.matchName || `${m.matchType} ${m.venue}`;
       const matchDrivers = drivers.filter((d) => d.matchId === m.id);
+
+      // 配車当番
       if (matchDrivers.some((d) => d.parentName === name)) {
-        const isOut = m.equipmentBringOut?.split(",").map((s) => s.trim()).includes(name);
-        if (isOut) {
-          roles.push({ kind: "luggage_out", date: m.date, label: "荷物持帰り", eventName: m.matchName || `${m.matchType} ${m.venue}` });
-        }
+        roles.push({ kind: "driver", date: m.date, label: "配車当番", eventName });
       }
-      // 荷物当番（配車当番として登録）でも試合の荷物担当があれば
+
+      // 荷物当番
       const inOut = m.equipmentBringOut?.split(",").map((s) => s.trim()) ?? [];
       const inIn = m.equipmentBringIn?.split(",").map((s) => s.trim()) ?? [];
       if (inOut.includes(name)) {
-        roles.push({ kind: "luggage_out", date: m.date, label: "荷物持帰り", eventName: m.matchName || `${m.matchType} ${m.venue}` });
+        roles.push({ kind: "luggage_out", date: m.date, label: "荷物持帰り", eventName });
       }
       if (inIn.includes(name) && !inOut.includes(name)) {
-        roles.push({ kind: "luggage_out", date: m.date, label: "荷物持込", eventName: m.matchName || `${m.matchType} ${m.venue}` });
+        roles.push({ kind: "luggage_out", date: m.date, label: "荷物持込", eventName });
       }
     });
 
@@ -103,8 +104,9 @@ export default function RolesPage() {
   });
 
   const kindColor = (kind: string) => {
-    if (kind === "bucket_bring") return { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", badge: "bg-blue-100 text-blue-700" };
-    if (kind === "bucket_return") return { bg: "bg-pink-50", border: "border-pink-200", text: "text-pink-700", badge: "bg-pink-100 text-pink-700" };
+    if (kind === "driver")       return { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", badge: "bg-purple-100 text-purple-700" };
+    if (kind === "bucket_bring") return { bg: "bg-blue-50",   border: "border-blue-200",   text: "text-blue-700",   badge: "bg-blue-100 text-blue-700" };
+    if (kind === "bucket_return")return { bg: "bg-pink-50",   border: "border-pink-200",   text: "text-pink-700",   badge: "bg-pink-100 text-pink-700" };
     return { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", badge: "bg-orange-100 text-orange-700" };
   };
 
@@ -164,7 +166,7 @@ export default function RolesPage() {
             return (
               <div key={i} className={`flex items-center gap-3 rounded-xl p-3 border ${isPast ? "bg-gray-50 border-gray-200 opacity-60" : `${c.bg} ${c.border}`}`}>
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${isPast ? "bg-gray-100 border border-gray-200" : `${c.bg} border ${c.border}`}`}>
-                  {r.kind === "bucket_bring" ? "🪣" : r.kind === "bucket_return" ? "🪣" : "🎒"}
+                  {r.kind === "driver" ? "🚗" : r.kind === "bucket_bring" ? "🪣" : r.kind === "bucket_return" ? "🪣" : "🎒"}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className={`font-semibold text-sm ${isPast ? "text-gray-500" : c.text}`}>{r.eventName}</div>
@@ -203,7 +205,7 @@ export default function RolesPage() {
                   {dayRoles.length > 0 && (
                     <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
                       {dayRoles.slice(0, 2).map((r, ri) => {
-                        const dotColor = r.kind === "bucket_bring" ? "bg-blue-400" : r.kind === "bucket_return" ? "bg-pink-400" : "bg-orange-400";
+                        const dotColor = r.kind === "driver" ? "bg-purple-400" : r.kind === "bucket_bring" ? "bg-blue-400" : r.kind === "bucket_return" ? "bg-pink-400" : "bg-orange-400";
                         return <span key={ri} className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />;
                       })}
                     </div>
@@ -213,6 +215,7 @@ export default function RolesPage() {
             })}
           </div>
           <div className="flex gap-3 mt-3 justify-center flex-wrap">
+            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />配車当番</div>
             <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />バケツ持込</div>
             <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-pink-400 inline-block" />バケツ持帰</div>
             <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />荷物担当</div>
