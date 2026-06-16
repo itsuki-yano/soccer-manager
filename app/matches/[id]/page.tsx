@@ -410,10 +410,10 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* 配車当番 */}
-      <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 ${isHomeVenue ? "opacity-50 pointer-events-none" : ""}`}>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-2 mb-3">
           <h2 className="font-bold text-gray-700">配車当番</h2>
-          {isHomeVenue && <span className="text-xs text-gray-400">（ホーム開催のため不要）</span>}
+          {isHomeVenue && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム（距離計算なし）</span>}
         </div>
 
         {/* 精算フラグ */}
