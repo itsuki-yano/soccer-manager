@@ -393,9 +393,11 @@ export default function DutyRosterPage() {
             const slotDrivers = linkedMatchId
               ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName)
               : groupMembers;
+            // 備品持帰り: 紐づけ試合に設定済みならそちら、なければ前の班のメンバー
+            const prevGroup = i === 0 ? lastGroup : futureGroups[i - 1];
             const slotEquipOut = linkedMatch?.equipmentBringOut
               ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean)
-              : [];
+              : getGroupMembers(prevGroup);
             const isEditing = Boolean(linkedMatchId && editMatchId === linkedMatchId);
             const isPicking = pickingSlot === i;
             const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
