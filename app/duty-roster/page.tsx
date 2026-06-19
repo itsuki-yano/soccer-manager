@@ -278,10 +278,19 @@ export default function DutyRosterPage() {
     // 未来の試合（日付昇順）
     const futureMatchesSorted = matches.filter((m) => m.date >= today).sort((a, b) => a.date.localeCompare(b.date));
 
-    // スロットの有効な試合ID（nullなら自動割当）
-    const effectiveSlotMatchIds = slotMatchIds.map((override, i) =>
-      override !== null ? override : (futureMatchesSorted[i]?.id ?? null)
+    // スロットの有効な試合ID（明示的に選んだ場合のみ紐づけ、自動割当なし）
+    const effectiveSlotMatchIds = slotMatchIds.map((override) =>
+      override !== null && override !== "" ? override : null
     );
+
+    // 各スロットの班メンバーを取得（配車当番の表示用）
+    function getGroupMembers(g: string): string[] {
+      const normGVal = normG(g);
+      return parents
+        .filter((p) => normG(p.group) === normGVal)
+        .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
+        .map((p) => p.playerName);
+    }
 
     // 班バッジ色（"1" or "1班" どちらでも対応）
     function normG(g: string) { return g.endsWith("班") ? g : `${g}班`; }
@@ -379,12 +388,16 @@ export default function DutyRosterPage() {
           {futureGroups.map((group, i) => {
             const linkedMatchId = effectiveSlotMatchIds[i];
             const linkedMatch = linkedMatchId ? matches.find((m) => m.id === linkedMatchId) : null;
-            const slotDrivers = linkedMatchId ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName) : [];
-            const slotEquipOut = linkedMatch?.equipmentBringOut ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
-            const slotSkipped = linkedMatch?.skippedDrivers ? linkedMatch.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : [];
+            const groupMembers = getGroupMembers(group);
+            // 配車当番: 紐づけ試合のドライバー設定済みならそちら、なければ班メンバー
+            const slotDrivers = linkedMatchId
+              ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName)
+              : groupMembers;
+            const slotEquipOut = linkedMatch?.equipmentBringOut
+              ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean)
+              : [];
             const isEditing = Boolean(linkedMatchId && editMatchId === linkedMatchId);
             const isPicking = pickingSlot === i;
-            const isSkipping = Boolean(linkedMatchId && skipOnlyMatchId === linkedMatchId);
             const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
 
             return (
@@ -398,7 +411,7 @@ export default function DutyRosterPage() {
                       <span className="text-xs text-gray-500 truncate">{fmtDate(linkedMatch.date)}　{linkedMatch.matchName || linkedMatch.matchType}</span>
                     )}
                   </div>
-                  {!isEditing && !isPicking && !isSkipping && (
+                  {!isEditing && !isPicking && (
                     <div className="flex gap-1.5 shrink-0">
                       <button
                         onClick={() => setPickingSlot(i)}
@@ -407,16 +420,10 @@ export default function DutyRosterPage() {
                         {linkedMatch ? "試合変更" : "試合選択"}
                       </button>
                       {linkedMatch && (
-                        <>
-                          <button
-                            onClick={() => { setSkipOnlyMatchId(linkedMatch.id); setSkipOnlyNames(slotSkipped); setEditMatchId(null); }}
-                            className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
-                          >スキップ</button>
-                          <button
-                            onClick={() => { setSkipOnlyMatchId(null); startEditMatch(linkedMatch, group); }}
-                            className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg"
-                          >設定</button>
-                        </>
+                        <button
+                          onClick={() => { setSkipOnlyMatchId(null); startEditMatch(linkedMatch, group); }}
+                          className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg"
+                        >変更</button>
                       )}
                     </div>
                   )}
@@ -425,14 +432,16 @@ export default function DutyRosterPage() {
                 {/* 試合選択ピッカー */}
                 {isPicking && (
                   <div className="space-y-1.5 mb-2">
-                    <p className="text-xs text-gray-500 font-semibold">紐づける試合を選択（選択後に担当を設定）</p>
+                    <p className="text-xs text-gray-500 font-semibold">紐づける試合を選択</p>
                     <div className="grid gap-1 max-h-44 overflow-y-auto">
-                      <button
-                        onClick={() => { const ids = [...slotMatchIds]; ids[i] = ""; setSlotMatchIds(ids); setPickingSlot(null); setEditMatchId(null); }}
-                        className="text-xs text-left px-2 py-1.5 rounded-lg border border-gray-200 text-gray-400"
-                      >
-                        試合未定（解除）
-                      </button>
+                      {linkedMatch && (
+                        <button
+                          onClick={() => { const ids = [...slotMatchIds]; ids[i] = ""; setSlotMatchIds(ids); setPickingSlot(null); setEditMatchId(null); }}
+                          className="text-xs text-left px-2 py-1.5 rounded-lg border border-gray-200 text-gray-400"
+                        >
+                          紐づけ解除
+                        </button>
+                      )}
                       {futureMatchesSorted.map((fm) => (
                         <button
                           key={fm.id}
@@ -441,7 +450,6 @@ export default function DutyRosterPage() {
                             ids[i] = fm.id;
                             setSlotMatchIds(ids);
                             setPickingSlot(null);
-                            // 試合選択と同時に班メンバーを自動セットして編集開始
                             startEditMatch(fm, group);
                           }}
                           className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedMatchId === fm.id ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
@@ -454,25 +462,16 @@ export default function DutyRosterPage() {
                   </div>
                 )}
 
-                {/* 編集フォーム or スキップフォーム or 表示 */}
+                {/* 編集フォーム or 表示 */}
                 {isEditing && linkedMatch ? (
                   <EditForm m={linkedMatch} groupLabel={group} />
-                ) : isSkipping && linkedMatch ? (
-                  <SkipForm m={linkedMatch} names={slotDrivers} />
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg p-2 bg-purple-50 border border-purple-100">
                       <p className="text-xs text-gray-400 mb-1">🚗 配車当番</p>
-                      {slotDrivers.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {slotDrivers.map((n) => <span key={n} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
-                        </div>
-                      ) : <span className="text-xs text-gray-300">{linkedMatch ? "未設定" : "−"}</span>}
-                      {slotSkipped.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {slotSkipped.map((n) => <span key={n} className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full line-through">{n}</span>)}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-1">
+                        {slotDrivers.map((n) => <span key={n} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                      </div>
                     </div>
                     <div className="rounded-lg p-2 bg-orange-50 border border-orange-100">
                       <p className="text-xs text-gray-400 mb-1">🎒 備品持帰り</p>
@@ -480,7 +479,7 @@ export default function DutyRosterPage() {
                         <div className="flex flex-wrap gap-1">
                           {slotEquipOut.map((n) => <span key={n} className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
                         </div>
-                      ) : <span className="text-xs text-gray-300">{linkedMatch ? "未設定" : "−"}</span>}
+                      ) : <span className="text-xs text-gray-400 text-sm">−</span>}
                     </div>
                   </div>
                 )}
