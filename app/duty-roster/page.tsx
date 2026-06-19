@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import type { Match, Driver, Parent, Practice, BucketDuty, Settings, DutySwap } from "@/lib/types";
@@ -41,7 +42,8 @@ function MultiSelect({
   );
 }
 
-export default function DutyRosterPage() {
+function DutyRosterInner() {
+  const searchParams = useSearchParams();
   const [matches, setMatches] = useState<Match[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [parents, setParents] = useState<Parent[]>([]);
@@ -124,6 +126,23 @@ export default function DutyRosterPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // URL パラメータ ?matchId= があれば最初の空きスロットに自動リンク
+  useEffect(() => {
+    const matchId = searchParams.get("matchId");
+    if (!matchId) return;
+    setSlotMatchIds((prev) => {
+      // 既にこの matchId がリンク済みなら何もしない
+      if (prev.includes(matchId)) return prev;
+      // 最初の null スロットにセット
+      const idx = prev.findIndex((v) => v === null);
+      if (idx < 0) return prev;
+      const next = [...prev];
+      next[idx] = matchId;
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   function normalizeGroup(g: string) {
     if (!g) return "";
@@ -511,11 +530,11 @@ export default function DutyRosterPage() {
                     <div className="flex gap-1.5 shrink-0">
                       <button
                         onClick={() => { setSwapSlot(i); setSwapFrom(""); setSwapTo(""); }}
-                        className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
+                        className="text-xs text-yellow-700 bg-yellow-100 border border-yellow-300 px-2.5 py-1 rounded-lg font-medium"
                       >交代</button>
                       <button
                         onClick={() => setPickingSlot(i)}
-                        className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
+                        className="text-xs text-blue-700 bg-blue-100 border border-blue-300 px-2.5 py-1 rounded-lg font-medium"
                       >
                         {linkedMatch ? "試合変更" : "試合選択"}
                       </button>
@@ -599,7 +618,7 @@ export default function DutyRosterPage() {
                             const ids = [...slotMatchIds]; ids[i] = ""; setSlotMatchIds(ids);
                             setPickingSlot(null); setEditMatchId(null);
                           }}
-                          className="text-xs text-left px-2 py-1.5 rounded-lg border border-gray-200 text-gray-400"
+                          className="text-xs text-left px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-500 font-medium"
                         >
                           紐づけ解除
                         </button>
@@ -620,7 +639,7 @@ export default function DutyRosterPage() {
                         </button>
                       ))}
                     </div>
-                    <button onClick={() => setPickingSlot(null)} className="text-xs text-gray-400">キャンセル</button>
+                    <button onClick={() => setPickingSlot(null)} className="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg font-medium">キャンセル</button>
                   </div>
                 )}
 
@@ -992,5 +1011,14 @@ export default function DutyRosterPage() {
         {mobileTab === "driver" ? <DriverPanel /> : <BucketPanel />}
       </div>
     </main>
+  );
+}
+
+import { Suspense } from "react";
+export default function DutyRosterPage() {
+  return (
+    <Suspense>
+      <DutyRosterInner />
+    </Suspense>
   );
 }
