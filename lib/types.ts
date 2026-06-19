@@ -28,6 +28,7 @@ export interface Parent {
   jerseyNumber: string;
   carCapacity: number;
   group: string;
+  bucketOrder: number;
 }
 
 export interface CoachExpense {

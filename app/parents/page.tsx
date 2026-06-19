@@ -4,8 +4,8 @@ import BackHeader from "@/components/BackHeader";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Parent } from "@/lib/types";
 
-type EditForm = { playerName: string; furigana: string; jerseyNumber: string; group: string; carCapacity: string };
-const EMPTY_FORM: EditForm = { playerName: "", furigana: "", jerseyNumber: "", group: "", carCapacity: "" };
+type EditForm = { playerName: string; furigana: string; jerseyNumber: string; group: string; carCapacity: string; bucketOrder: string };
+const EMPTY_FORM: EditForm = { playerName: "", furigana: "", jerseyNumber: "", group: "", carCapacity: "", bucketOrder: "" };
 
 function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void }) {
   const setF = (k: keyof EditForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -39,6 +39,11 @@ function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void 
           <input type="number" min="0" max="9" value={f.carCapacity} onChange={setF("carCapacity")} placeholder="例: 5" className="input" />
         </div>
       </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-0.5">🪣 バケツ当番の順番</label>
+        <input type="number" min="0" value={f.bucketOrder} onChange={setF("bucketOrder")} placeholder="例: 1（数字が小さい順に当番）" className="input" />
+        <p className="text-xs text-gray-400 mt-0.5">0または未入力 = 未設定。班順・背番号順とは別の独自順番。</p>
+      </div>
     </>
   );
 }
@@ -53,6 +58,7 @@ export default function ParentsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm>(EMPTY_FORM);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [sortMode, setSortMode] = useState<"班" | "背番号" | "バケツ当番">("班");
 
   useEffect(() => {
     fetch("/api/parents").then((r) => r.json()).then((d) => {
@@ -62,7 +68,11 @@ export default function ParentsPage() {
   }, []);
 
   function toParentBody(f: EditForm) {
-    return { playerName: f.playerName, furigana: f.furigana, jerseyNumber: f.jerseyNumber, group: f.group, carCapacity: Number(f.carCapacity) || 0 };
+    return {
+      playerName: f.playerName, furigana: f.furigana, jerseyNumber: f.jerseyNumber,
+      group: f.group, carCapacity: Number(f.carCapacity) || 0,
+      bucketOrder: Number(f.bucketOrder) || 0,
+    };
   }
 
   async function save() {
@@ -82,7 +92,11 @@ export default function ParentsPage() {
 
   function startEdit(p: Parent) {
     setEditId(p.id);
-    setEditForm({ playerName: p.playerName, furigana: p.furigana, jerseyNumber: p.jerseyNumber, group: p.group, carCapacity: p.carCapacity ? String(p.carCapacity) : "" });
+    setEditForm({
+      playerName: p.playerName, furigana: p.furigana, jerseyNumber: p.jerseyNumber,
+      group: p.group, carCapacity: p.carCapacity ? String(p.carCapacity) : "",
+      bucketOrder: p.bucketOrder ? String(p.bucketOrder) : "",
+    });
   }
 
   async function saveEdit(id: string) {
@@ -107,8 +121,22 @@ export default function ParentsPage() {
 
   if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
-  const filtered = filterGroup === "全員" ? parents : parents.filter((p) => p.group === filterGroup.replace("班", ""));
+  const filtered = filterGroup === "全員" ? parents : parents.filter((p) => {
+    const g = p.group?.endsWith("班") ? p.group : `${p.group}班`;
+    return g === filterGroup;
+  });
+
   const sorted = [...filtered].sort((a, b) => {
+    if (sortMode === "背番号") {
+      const na = Number(a.jerseyNumber) || 999, nb = Number(b.jerseyNumber) || 999;
+      return na - nb;
+    }
+    if (sortMode === "バケツ当番") {
+      const oa = a.bucketOrder || 999, ob = b.bucketOrder || 999;
+      if (oa !== ob) return oa - ob;
+      return (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName);
+    }
+    // 班順（デフォルト）
     const ga = a.group || "9", gb = b.group || "9";
     if (ga !== gb) return ga.localeCompare(gb);
     return (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName);
@@ -140,6 +168,17 @@ export default function ParentsPage() {
         </div>
       )}
 
+      {/* 並び順選択 */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <span className="text-xs text-gray-500 shrink-0">並び順:</span>
+        {(["班", "背番号", "バケツ当番"] as const).map((mode) => (
+          <button key={mode} onClick={() => setSortMode(mode)}
+            className={`text-xs px-3 py-1 rounded-full border transition-colors ${sortMode === mode ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-600 border-gray-200"}`}>
+            {mode === "班" ? "🏠 班順" : mode === "背番号" ? "🔢 背番号順" : "🪣 バケツ当番順"}
+          </button>
+        ))}
+      </div>
+
       {/* 班フィルター */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
         {["全員", "1班", "2班", "3班", "4班"].map((g) => (
@@ -169,11 +208,19 @@ export default function ParentsPage() {
             ) : (
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  {p.group && (
-                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium w-8 text-center">
-                      {p.group}班
-                    </span>
-                  )}
+                  {/* 順番インジケーター */}
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    {p.group && (
+                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
+                        {p.group.endsWith("班") ? p.group : `${p.group}班`}
+                      </span>
+                    )}
+                    {p.bucketOrder > 0 && (
+                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
+                        🪣{p.bucketOrder}
+                      </span>
+                    )}
+                  </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400 font-mono w-5 text-right">{idx + 1}.</span>

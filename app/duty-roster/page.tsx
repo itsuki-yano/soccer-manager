@@ -248,8 +248,8 @@ export default function DutyRosterPage() {
 
   // ────────── 配車・荷物当番パネル ──────────
   const DriverPanel = () => {
-    // 班ローテーション計算
-    const sortedGroups = [...new Set(parents.map((p) => p.group).filter(Boolean))].sort();
+    // 班ローテーション計算（全て normalizeGroup で統一）
+    const sortedGroups = [...new Set(parents.map((p) => normalizeGroup(p.group)).filter(Boolean))].sort();
 
     function normN(s: string) { return s.replace(/[\s　]/g, ""); }
 
@@ -259,7 +259,10 @@ export default function DutyRosterPage() {
       const cnt: Record<string, number> = {};
       mDrivers.forEach((d) => {
         const p = parents.find((px) => normN(px.playerName) === normN(d.parentName));
-        if (p?.group) cnt[p.group] = (cnt[p.group] || 0) + 1;
+        if (p?.group) {
+          const ng = normalizeGroup(p.group);
+          cnt[ng] = (cnt[ng] || 0) + 1;
+        }
       });
       return Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
     }
@@ -267,14 +270,15 @@ export default function DutyRosterPage() {
     // 過去の試合（全件、新→旧）
     const pastMatches = matches.filter((m) => m.date < today).sort((a, b) => b.date.localeCompare(a.date));
 
-    // 最後に当番した班を特定
+    // 最後に当番した班を特定（正規化済み）
     const lastGroupMatch = pastMatches.find((m) => drivers.some((d) => d.matchId === m.id));
     const lastGroup = lastGroupMatch ? getMatchGroup(lastGroupMatch.id) : "";
 
     // 未来5回分のローテーション（4スロット + 備品持帰り用に1つ余分）
     function nextInRotation(g: string): string {
       if (!sortedGroups.length) return "";
-      const idx = g ? sortedGroups.indexOf(normG(g)) : -1;
+      // g は既に normalizeGroup 済みなので直接 indexOf
+      const idx = g ? sortedGroups.indexOf(g) : -1;
       return sortedGroups[(idx + 1) % sortedGroups.length];
     }
     const futureGroups: string[] = [];
@@ -301,9 +305,9 @@ export default function DutyRosterPage() {
 
     // 各スロットの班メンバーを取得（スワップ適用済み）
     function getGroupMembers(g: string): string[] {
-      const normGVal = normG(g);
+      const normGVal = normalizeGroup(g);
       const base = parents
-        .filter((p) => normG(p.group) === normGVal)
+        .filter((p) => normalizeGroup(p.group) === normGVal)
         .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
         .map((p) => p.playerName);
       // スワップを適用: A↔B の交換
@@ -336,7 +340,6 @@ export default function DutyRosterPage() {
     }
 
     // 班バッジ色（"1" or "1班" どちらでも対応）
-    function normG(g: string) { return g.endsWith("班") ? g : `${g}班`; }
     const GROUP_COLORS: Record<string, { bg: string; text: string }> = {
       "1班": { bg: "bg-blue-100", text: "text-blue-700" },
       "2班": { bg: "bg-green-100", text: "text-green-700" },
@@ -344,11 +347,11 @@ export default function DutyRosterPage() {
       "4班": { bg: "bg-purple-100", text: "text-purple-700" },
     };
     function groupBadge(g: string) {
-      const label = normG(g);
+      const label = normalizeGroup(g);
       const c = GROUP_COLORS[label] ?? { bg: "bg-gray-100", text: "text-gray-600" };
       return `text-xs px-2 py-0.5 rounded-full font-semibold shrink-0 ${c.bg} ${c.text}`;
     }
-    function groupDisplay(g: string) { return normG(g); }
+    function groupDisplay(g: string) { return normalizeGroup(g); }
 
     // 編集フォームの共通部分
     function EditForm({ m, groupLabel }: { m: Match; groupLabel?: string }) {

@@ -4,10 +4,11 @@ import type { Parent } from "@/lib/types";
 
 export async function GET() {
   try {
-    const rows = await getSheetData("parents!A:F");
+    const rows = await getSheetData("parents!A:G");
     const parents: Parent[] = rows.slice(1).filter((r) => r[0]).map((r) => ({
       id: r[0], playerName: r[1] ?? "", furigana: r[2] ?? "",
       jerseyNumber: r[3] ?? "", group: r[4] ?? "", carCapacity: Number(r[5] ?? 0),
+      bucketOrder: Number(r[6] ?? 0),
     }));
     return NextResponse.json(parents);
   } catch (e) {
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   try {
     const body: Omit<Parent, "id"> = await req.json();
     const id = crypto.randomUUID();
-    await appendRow("parents", [id, body.playerName, body.furigana, body.jerseyNumber, body.group, body.carCapacity]);
+    await appendRow("parents", [id, body.playerName, body.furigana, body.jerseyNumber, body.group, body.carCapacity, body.bucketOrder ?? 0]);
     return NextResponse.json({ id });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
