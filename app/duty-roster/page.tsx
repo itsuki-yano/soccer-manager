@@ -131,14 +131,15 @@ export default function DutyRosterPage() {
     setInheritDriver(null);
     setInheritEquip(null);
 
-    const currentDrivers = applySwaps(drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName));
+    // DB保存済みのデータはwrite-throughでスワップ適用済みのためそのまま使用
+    const currentDrivers = drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName);
     setEditSkipped(m.skippedDrivers ? m.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []);
 
-    const currentEquip = applySwaps(m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : []);
+    const currentEquip = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
     setEditEquipOut(currentEquip);
 
     if (currentDrivers.length === 0 && expectedGroup) {
-      // 班のメンバーを配車当番に自動セット
+      // 班のメンバーを配車当番に自動セット（スワップ適用）
       const normG = normalizeGroup(expectedGroup);
       const groupMembers = applySwaps(
         parents
@@ -500,15 +501,17 @@ export default function DutyRosterPage() {
             const linkedMatchId = effectiveSlotMatchIds[i];
             const linkedMatch = linkedMatchId ? matches.find((m) => m.id === linkedMatchId) : null;
             const groupMembers = getGroupMembers(group);
-            // 配車当番: 紐づけ試合のドライバー設定済みならそちら、なければ班メンバー（スワップ適用）
-            const slotDrivers = linkedMatchId
-              ? applySwaps(drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName))
-              : groupMembers;
-            // 備品持帰り: 配車班の「次の班」が同タイミングで持ち帰る（3班配車→4班持帰り）（スワップ適用）
+            // 配車当番: 紐づけ試合のDB設定済みならそちら（write-through済み）、なければ班メンバー（スワップ適用）
+            const rawLinkedDrivers = linkedMatchId
+              ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName)
+              : [];
+            const slotDrivers = rawLinkedDrivers.length > 0 ? rawLinkedDrivers : groupMembers;
+            // 備品持帰り: DB設定済みならそちら（write-through済み）、なければ次の班メンバー（スワップ適用）
             const equipGroup = futureGroups[i + 1] ?? "";
-            const slotEquipOut = linkedMatch?.equipmentBringOut
-              ? applySwaps(linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean))
-              : getGroupMembers(equipGroup);
+            const rawLinkedEquip = linkedMatch?.equipmentBringOut
+              ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean)
+              : [];
+            const slotEquipOut = rawLinkedEquip.length > 0 ? rawLinkedEquip : getGroupMembers(equipGroup);
             const isEditing = Boolean(linkedMatchId && editMatchId === linkedMatchId);
             const isPicking = pickingSlot === i;
             const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;

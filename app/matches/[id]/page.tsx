@@ -3,7 +3,7 @@ import { useEffect, useState, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BackHeader from "@/components/BackHeader";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
-import type { Match, Driver, Parent, DutySwap } from "@/lib/types";
+import type { Match, Driver, Parent } from "@/lib/types";
 
 const MATCH_TYPES = ["公式戦", "合宿", "TM", "その他"];
 
@@ -147,7 +147,6 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [allMatches, setAllMatches] = useState<Match[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [parents, setParents] = useState<Parent[]>([]);
-  const [dutySwaps, setDutySwaps] = useState<DutySwap[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingEq, setSavingEq] = useState(false);
@@ -171,36 +170,23 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
       fetch("/api/matches").then((r) => r.json()),
       fetch(`/api/drivers?matchId=${id}`).then((r) => r.json()),
       fetch("/api/parents").then((r) => r.json()),
-      fetch("/api/duty-swaps").then((r) => r.json()),
-    ]).then(([matches, drvs, prts, swps]) => {
+    ]).then(([matches, drvs, prts]) => {
       const matchList: Match[] = Array.isArray(matches) ? matches : [];
       const drvList: Driver[] = Array.isArray(drvs) ? drvs : [];
       const prtList: Parent[] = Array.isArray(prts) ? prts : [];
-      const swapList: DutySwap[] = Array.isArray(swps) ? swps : [];
-      setDutySwaps(swapList);
-
-      function applySwaps(names: string[]): string[] {
-        return names.map((name) => {
-          const sw = swapList.find((s) => s.personA === name || s.personB === name);
-          if (!sw) return name;
-          return sw.personA === name ? sw.personB : sw.personA;
-        });
-      }
-
       const m = matchList.find((x) => x.id === id);
       if (m) {
         setMatch(m);
         setMatchType(m.matchType ?? "公式戦");
         setNeedsSettlement(m.needsSettlement ?? false);
         setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm });
-        // 備品持帰りを配列に復元（スワップ適用）
-        const outNames = applySwaps(m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : []);
+        // 備品持帰りを配列に復元
+        const outNames = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
         setSelectedEquipOut(outNames);
       }
       setAllMatches(matchList);
       setDrivers(drvList);
-      // 配車当番にスワップ適用
-      const driverNames = applySwaps(drvList.map((d) => d.parentName));
+      const driverNames = drvList.map((d) => d.parentName);
       setSelectedDrivers(driverNames);
 
       // 配車当番が未設定の場合、直前の試合の備品持帰りから引継ぎ候補を表示
