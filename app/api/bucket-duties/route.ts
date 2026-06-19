@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSheetData, appendRow, updateRow } from "@/lib/sheets";
+import { getSheetData, appendRow, updateRow, deleteRow } from "@/lib/sheets";
 import type { BucketDuty } from "@/lib/types";
 
 function rowToDuty(r: string[]): BucketDuty {
@@ -46,6 +46,20 @@ export async function POST(req: Request) {
       ]);
       return NextResponse.json({ id });
     }
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const practiceId = searchParams.get("practiceId");
+    if (!practiceId) return NextResponse.json({ error: "practiceId required" }, { status: 400 });
+    const rows = await getSheetData("bucket_duties!A:D");
+    const idx = rows.slice(1).findIndex((r) => r[1] === practiceId);
+    if (idx >= 0) await deleteRow("bucket_duties", idx + 2);
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

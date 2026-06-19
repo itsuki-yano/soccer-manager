@@ -582,7 +582,23 @@ export default function DutyRosterPage() {
                     <div className="grid gap-1 max-h-44 overflow-y-auto">
                       {linkedMatch && (
                         <button
-                          onClick={() => { const ids = [...slotMatchIds]; ids[i] = ""; setSlotMatchIds(ids); setPickingSlot(null); setEditMatchId(null); }}
+                          onClick={async () => {
+                            // 配車・備品データをDBからクリア
+                            await fetch("/api/drivers", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ matchId: linkedMatchId, parentNames: [] }),
+                            });
+                            await fetch(`/api/matches/${linkedMatchId}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ ...linkedMatch, equipmentBringOut: "", carCount: 0 }),
+                            });
+                            setDrivers((prev) => prev.filter((d) => d.matchId !== linkedMatchId));
+                            setMatches((prev) => prev.map((m) => m.id === linkedMatchId ? { ...m, equipmentBringOut: "", carCount: 0 } : m));
+                            const ids = [...slotMatchIds]; ids[i] = ""; setSlotMatchIds(ids);
+                            setPickingSlot(null); setEditMatchId(null);
+                          }}
                           className="text-xs text-left px-2 py-1.5 rounded-lg border border-gray-200 text-gray-400"
                         >
                           紐づけ解除
@@ -816,7 +832,10 @@ export default function DutyRosterPage() {
                         <div className="grid gap-1 max-h-44 overflow-y-auto">
                           {linkedPractice && (
                             <button
-                              onClick={() => {
+                              onClick={async () => {
+                                // バケツ当番データをDBから削除
+                                await fetch(`/api/bucket-duties?practiceId=${linkedPracticeId}`, { method: "DELETE" });
+                                setDuties((prev) => prev.filter((d) => d.practiceId !== linkedPracticeId));
                                 const ids = [...slotBucketPracticeIds];
                                 ids[i] = null;
                                 setSlotBucketPracticeIds(ids);
