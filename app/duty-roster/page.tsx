@@ -845,52 +845,68 @@ function DutyRosterInner() {
                     </div>
 
                     {/* 練習選択ピッカー */}
-                    {isPicking && (
-                      <div className="space-y-1.5 mb-2">
-                        <p className="text-xs text-gray-500 font-semibold">紐づける自主練習を選択</p>
-                        <div className="grid gap-1 max-h-44 overflow-y-auto">
-                          {linkedPractice && (
-                            <button
-                              onClick={async () => {
-                                // バケツ当番データをDBから削除
-                                await fetch(`/api/bucket-duties?practiceId=${linkedPracticeId}`, { method: "DELETE" });
-                                setDuties((prev) => prev.filter((d) => d.practiceId !== linkedPracticeId));
-                                const ids = [...slotBucketPracticeIds];
-                                ids[i] = null;
-                                setSlotBucketPracticeIds(ids);
-                                setPickingBucketSlot(null);
-                              }}
-                              className="text-xs text-left px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-500 font-medium"
-                            >
-                              紐づけ解除
-                            </button>
-                          )}
-                          {futurePractices.map((pr) => (
-                            <button
-                              key={pr.id}
-                              onClick={() => {
-                                const ids = [...slotBucketPracticeIds];
-                                ids[i] = pr.id;
-                                setSlotBucketPracticeIds(ids);
-                                setPickingBucketSlot(null);
-                                // 既存dutyがあれば読み込み
-                                const existing = duties.find((d) => d.practiceId === pr.id);
-                                setEditBucketSlot(i);
-                                setEditBring(existing?.bringPersonName || bringPerson);
-                                setEditRet(existing?.returnPersonName || returnPerson);
-                              }}
-                              className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedPracticeId === pr.id ? "border-yellow-400 bg-yellow-50 text-yellow-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-                            >
-                              {fmtDate(pr.date)}　自主練習
-                            </button>
-                          ))}
-                          {futurePractices.length === 0 && (
-                            <p className="text-xs text-gray-400 px-2">未来の自主練習がありません</p>
-                          )}
+                    {isPicking && (() => {
+                      // 今後8週分の土曜日を生成し、DB登録済み練習とマージ
+                      const upcomingSaturdays: { date: string; practiceId: string | null }[] = [];
+                      const dt = new Date(today + "T00:00:00");
+                      // 次の土曜日まで進める
+                      while (dt.getDay() !== 6) dt.setDate(dt.getDate() + 1);
+                      for (let w = 0; w < 8; w++) {
+                        const d = dt.toISOString().slice(0, 10);
+                        const matched = futurePractices.find((p) => p.date === d);
+                        upcomingSaturdays.push({ date: d, practiceId: matched?.id ?? null });
+                        dt.setDate(dt.getDate() + 7);
+                      }
+                      return (
+                        <div className="space-y-1.5 mb-2">
+                          <p className="text-xs text-gray-500 font-semibold">紐づける自主練習を選択</p>
+                          <div className="grid gap-1 max-h-52 overflow-y-auto">
+                            {linkedPractice && (
+                              <button
+                                onClick={async () => {
+                                  // バケツ当番データをDBから削除
+                                  await fetch(`/api/bucket-duties?practiceId=${linkedPracticeId}`, { method: "DELETE" });
+                                  setDuties((prev) => prev.filter((d) => d.practiceId !== linkedPracticeId));
+                                  const ids = [...slotBucketPracticeIds];
+                                  ids[i] = null;
+                                  setSlotBucketPracticeIds(ids);
+                                  setPickingBucketSlot(null);
+                                }}
+                                className="text-xs text-left px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-500 font-medium"
+                              >
+                                紐づけ解除
+                              </button>
+                            )}
+                            {upcomingSaturdays.map(({ date, practiceId: pid }) => (
+                              <button
+                                key={date}
+                                onClick={() => {
+                                  if (!pid) return; // DB未登録は選択不可
+                                  const ids = [...slotBucketPracticeIds];
+                                  ids[i] = pid;
+                                  setSlotBucketPracticeIds(ids);
+                                  setPickingBucketSlot(null);
+                                  const existing = duties.find((d) => d.practiceId === pid);
+                                  setEditBucketSlot(i);
+                                  setEditBring(existing?.bringPersonName || bringPerson);
+                                  setEditRet(existing?.returnPersonName || returnPerson);
+                                }}
+                                className={`text-xs text-left px-2 py-1.5 rounded-lg border ${
+                                  linkedPracticeId === pid
+                                    ? "border-yellow-400 bg-yellow-50 text-yellow-700"
+                                    : pid
+                                    ? "border-gray-200 text-gray-600 hover:bg-gray-50"
+                                    : "border-gray-100 text-gray-300 cursor-not-allowed"
+                                }`}
+                              >
+                                {fmtDate(date)}　{pid ? "自主練習" : "（未登録）"}
+                              </button>
+                            ))}
+                          </div>
+                          <button onClick={() => setPickingBucketSlot(null)} className="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg font-medium">キャンセル</button>
                         </div>
-                        <button onClick={() => setPickingBucketSlot(null)} className="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg font-medium">キャンセル</button>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* 編集フォーム or 表示 */}
                     {isEditing ? (
