@@ -65,8 +65,13 @@ export default function DutyRosterPage() {
   const [skipOnlyNames, setSkipOnlyNames] = useState<string[]>([]);
   const [savingSkip, setSavingSkip] = useState(false);
 
-  // 未来スロットの試合紐づけ
-  const [slotMatchIds, setSlotMatchIds] = useState<(string | null)[]>([null, null, null, null]);
+  // 未来スロットの試合紐づけ（localStorageで永続化）
+  const [slotMatchIds, setSlotMatchIds] = useState<(string | null)[]>(() => {
+    try {
+      const saved = localStorage.getItem("dutyRosterSlotMatchIds");
+      return saved ? JSON.parse(saved) : [null, null, null, null];
+    } catch { return [null, null, null, null]; }
+  });
   const [pickingSlot, setPickingSlot] = useState<number | null>(null);
 
   // 個人スワップ
@@ -75,8 +80,23 @@ export default function DutyRosterPage() {
   const [swapTo, setSwapTo] = useState("");
   const [savingSwap, setSavingSwap] = useState(false);
 
-  // バケツ当番スロット
-  const [slotBucketPracticeIds, setSlotBucketPracticeIds] = useState<(string | null)[]>([null, null, null, null]);
+  // slotMatchIds を localStorage に保存
+  useEffect(() => {
+    try { localStorage.setItem("dutyRosterSlotMatchIds", JSON.stringify(slotMatchIds)); } catch {}
+  }, [slotMatchIds]);
+
+  // バケツ当番スロット（localStorageで永続化）
+  const [slotBucketPracticeIds, setSlotBucketPracticeIds] = useState<(string | null)[]>(() => {
+    try {
+      const saved = localStorage.getItem("dutyRosterSlotBucketPracticeIds");
+      return saved ? JSON.parse(saved) : [null, null, null, null];
+    } catch { return [null, null, null, null]; }
+  });
+  // slotBucketPracticeIds を localStorage に保存
+  useEffect(() => {
+    try { localStorage.setItem("dutyRosterSlotBucketPracticeIds", JSON.stringify(slotBucketPracticeIds)); } catch {}
+  }, [slotBucketPracticeIds]);
+
   const [pickingBucketSlot, setPickingBucketSlot] = useState<number | null>(null);
   const [editBucketSlot, setEditBucketSlot] = useState<number | null>(null);
   const [editBring, setEditBring] = useState("");
