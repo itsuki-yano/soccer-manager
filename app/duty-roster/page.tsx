@@ -117,24 +117,35 @@ export default function DutyRosterPage() {
     return g.endsWith("班") ? g : `${g}班`;
   }
 
+  // スワップを適用して名前リストを変換
+  function applySwaps(names: string[]): string[] {
+    return names.map((name) => {
+      const sw = swaps.find((s) => s.personA === name || s.personB === name);
+      if (!sw) return name;
+      return sw.personA === name ? sw.personB : sw.personA;
+    });
+  }
+
   function startEditMatch(m: Match, expectedGroup?: string) {
     setEditMatchId(m.id);
     setInheritDriver(null);
     setInheritEquip(null);
 
-    const currentDrivers = drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName);
+    const currentDrivers = applySwaps(drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName));
     setEditSkipped(m.skippedDrivers ? m.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []);
 
-    const currentEquip = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
+    const currentEquip = applySwaps(m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : []);
     setEditEquipOut(currentEquip);
 
     if (currentDrivers.length === 0 && expectedGroup) {
       // 班のメンバーを配車当番に自動セット
       const normG = normalizeGroup(expectedGroup);
-      const groupMembers = parents
-        .filter((p) => normalizeGroup(p.group) === normG)
-        .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
-        .map((p) => p.playerName);
+      const groupMembers = applySwaps(
+        parents
+          .filter((p) => normalizeGroup(p.group) === normG)
+          .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
+          .map((p) => p.playerName)
+      );
       setEditDriverNames(groupMembers);
     } else {
       setEditDriverNames(currentDrivers);
@@ -328,6 +339,45 @@ export default function DutyRosterPage() {
       });
       const data = await res.json();
       setSwaps((prev) => [...prev, { id: data.id, personA: swapFrom, personB: swapTo }]);
+
+      // 紐づけ済みの未来スロットの試合データ（配車+備品持帰り）をDBに書き込む
+      function applyOneSwap(names: string[]): string[] {
+        return names.map((n) => n === swapFrom ? swapTo : n === swapTo ? swapFrom : n);
+      }
+      for (let si = 0; si < 4; si++) {
+        const lid = effectiveSlotMatchIds[si];
+        if (!lid) continue;
+        const lm = matches.find((m) => m.id === lid);
+        if (!lm) continue;
+
+        // 配車当番を更新
+        const curDrv = drivers.filter((d) => d.matchId === lid).map((d) => d.parentName);
+        const newDrv = applyOneSwap(curDrv);
+        if (curDrv.join() !== newDrv.join()) {
+          await fetch("/api/drivers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ matchId: lid, parentNames: newDrv }),
+          });
+          setDrivers((prev) => [
+            ...prev.filter((d) => d.matchId !== lid),
+            ...newDrv.map((name) => ({ matchId: lid, parentName: name })),
+          ]);
+        }
+
+        // 備品持帰りを更新
+        const curEq = lm.equipmentBringOut ? lm.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
+        const newEq = applyOneSwap(curEq);
+        if (curEq.join() !== newEq.join()) {
+          await fetch(`/api/matches/${lid}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...lm, equipmentBringOut: newEq.join(", ") }),
+          });
+          setMatches((prev) => prev.map((m) => m.id === lid ? { ...m, equipmentBringOut: newEq.join(", ") } : m));
+        }
+      }
+
       setSwapSlot(null);
       setSwapFrom("");
       setSwapTo("");
@@ -450,15 +500,14 @@ export default function DutyRosterPage() {
             const linkedMatchId = effectiveSlotMatchIds[i];
             const linkedMatch = linkedMatchId ? matches.find((m) => m.id === linkedMatchId) : null;
             const groupMembers = getGroupMembers(group);
-            // 配車当番: 紐づけ試合のドライバー設定済みならそちら、なければ班メンバー
+            // 配車当番: 紐づけ試合のドライバー設定済みならそちら、なければ班メンバー（スワップ適用）
             const slotDrivers = linkedMatchId
-              ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName)
+              ? applySwaps(drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName))
               : groupMembers;
-            // 備品持帰り: 配車班の「次の班」が同タイミングで持ち帰る（3班配車→4班持帰り）
-            // futureGroups[i+1] が次の班（5つ分計算済みなので常に存在する）
+            // 備品持帰り: 配車班の「次の班」が同タイミングで持ち帰る（3班配車→4班持帰り）（スワップ適用）
             const equipGroup = futureGroups[i + 1] ?? "";
             const slotEquipOut = linkedMatch?.equipmentBringOut
-              ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean)
+              ? applySwaps(linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean))
               : getGroupMembers(equipGroup);
             const isEditing = Boolean(linkedMatchId && editMatchId === linkedMatchId);
             const isPicking = pickingSlot === i;
@@ -510,7 +559,16 @@ export default function DutyRosterPage() {
                           className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white"
                         >
                           <option value="">選択</option>
-                          {slotDrivers.map((n) => <option key={n} value={n}>{n}</option>)}
+                          {slotDrivers.length > 0 && (
+                            <optgroup label="🚗 配車当番">
+                              {slotDrivers.map((n) => <option key={`d-${n}`} value={n}>{n}</option>)}
+                            </optgroup>
+                          )}
+                          {slotEquipOut.length > 0 && (
+                            <optgroup label="🎒 備品持帰り">
+                              {slotEquipOut.filter((n) => !slotDrivers.includes(n)).map((n) => <option key={`e-${n}`} value={n}>{n}</option>)}
+                            </optgroup>
+                          )}
                         </select>
                       </div>
                       <div>
