@@ -274,7 +274,7 @@ export default function DutyRosterPage() {
                         }}
                         className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
                       >
-                        ⏭️
+                        スキップ
                       </button>
                       <button
                         onClick={() => { setSkipOnlyMatchId(null); startEditMatch(m); }}
@@ -334,7 +334,7 @@ export default function DutyRosterPage() {
                     <MultiSelect names={parentNames} selected={editEquipOut} onChange={setEditEquipOut} />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-gray-500 mb-1">⏭️ スキップ（今回免除）</p>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">スキップ（今回免除）</p>
                     <p className="text-xs text-gray-400 mb-1">次回ローテーションに影響しません</p>
                     <MultiSelect names={parentNames} selected={editSkipped} onChange={setEditSkipped} />
                   </div>
@@ -356,7 +356,7 @@ export default function DutyRosterPage() {
                 </div>
               ) : skipOnlyMatchId === m.id ? (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-500">⏭️ スキップ設定（今回のみ免除）</p>
+                  <p className="text-xs font-semibold text-gray-500">スキップ設定（今回のみ免除）</p>
                   <MultiSelect names={matchDrivers.length > 0 ? matchDrivers : parentNames} selected={skipOnlyNames} onChange={setSkipOnlyNames} />
                   <div className="flex gap-2">
                     <button
@@ -390,7 +390,7 @@ export default function DutyRosterPage() {
                     {skipped.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {skipped.map((n) => (
-                          <span key={n} className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full line-through">⏭️{n}</span>
+                          <span key={n} className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full line-through">{n}</span>
                         ))}
                       </div>
                     )}
