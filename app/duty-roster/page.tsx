@@ -110,34 +110,24 @@ export default function DutyRosterPage() {
     const currentEquip = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
     setEditEquipOut(currentEquip);
 
-    // 直前の試合を探す（スキップがあれば1つ前まで遡る）
-    const sortedPrev = matches
+    // 直前の試合を取得（スキップ有無問わず）
+    const prev = matches
       .filter((x) => x.id !== m.id && x.date < m.date)
-      .sort((a, b) => b.date.localeCompare(a.date));
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
 
-    // スキップがあった試合は引継ぎ元から除外し、さらに前を参照する
-    const inheritSource = sortedPrev.find((x) => !x.skippedDrivers);
-    const prev = sortedPrev[0]; // 直前（スキップ有無問わず）
-
-    if (inheritSource) {
-      // 配車当番: 未設定なら引継ぎ元の備品持帰りを候補に
-      if (currentDrivers.length === 0 && inheritSource.equipmentBringOut) {
-        const names = inheritSource.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean);
-        if (names.length > 0) setInheritDriver({ date: inheritSource.date, names });
-      }
-      // 備品持帰り: 未設定なら引継ぎ元の配車当番を候補に
-      if (currentEquip.length === 0) {
-        const srcDriverNames = drivers.filter((d) => d.matchId === inheritSource.id).map((d) => d.parentName);
-        if (srcDriverNames.length > 0) setInheritEquip({ date: inheritSource.date, names: srcDriverNames });
-      }
-    } else if (prev) {
-      // 全試合スキップ済みの場合は直前から引継ぎ
+    if (prev) {
+      // スキップされた人を除外した引継ぎ候補を作成（試合詳細と同じ挙動）
+      const skippedSet = new Set(
+        prev.skippedDrivers ? prev.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []
+      );
+      // 配車当番: 未設定なら前回の備品持帰り（スキップ除外）を候補に
       if (currentDrivers.length === 0 && prev.equipmentBringOut) {
-        const names = prev.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean);
+        const names = prev.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean).filter((n) => !skippedSet.has(n));
         if (names.length > 0) setInheritDriver({ date: prev.date, names });
       }
+      // 備品持帰り: 未設定なら前回の配車当番（スキップ除外）を候補に
       if (currentEquip.length === 0) {
-        const prevDriverNames = drivers.filter((d) => d.matchId === prev.id).map((d) => d.parentName);
+        const prevDriverNames = drivers.filter((d) => d.matchId === prev.id).map((d) => d.parentName).filter((n) => !skippedSet.has(n));
         if (prevDriverNames.length > 0) setInheritEquip({ date: prev.date, names: prevDriverNames });
       }
     }
