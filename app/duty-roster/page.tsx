@@ -626,7 +626,7 @@ function DutyRosterInner() {
                             });
                             setDrivers((prev) => prev.filter((d) => d.matchId !== linkedMatchId));
                             setMatches((prev) => prev.map((m) => m.id === linkedMatchId ? { ...m, equipmentBringOut: "", carCount: 0 } : m));
-                            const ids = [...slotMatchIds]; ids[i] = ""; setSlotMatchIds(ids);
+                            const ids = [...slotMatchIds]; ids[i] = null; setSlotMatchIds(ids);
                             setPickingSlot(null); setEditMatchId(null);
                           }}
                           className="text-xs text-left px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-500 font-medium"
