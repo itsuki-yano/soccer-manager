@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
-import type { Match, Driver, Parent, Practice, BucketDuty, Settings } from "@/lib/types";
+import type { Match, Driver, Parent, Practice, BucketDuty, Settings, DutySwap } from "@/lib/types";
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -54,6 +54,7 @@ export default function DutyRosterPage() {
   const [parents, setParents] = useState<Parent[]>([]);
   const [practices, setPractices] = useState<Practice[]>([]);
   const [duties, setDuties] = useState<BucketDuty[]>([]);
+  const [swaps, setSwaps] = useState<DutySwap[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileTab, setMobileTab] = useState<"driver" | "bucket">("driver");
@@ -76,6 +77,12 @@ export default function DutyRosterPage() {
   const [slotMatchIds, setSlotMatchIds] = useState<(string | null)[]>([null, null, null, null]);
   const [pickingSlot, setPickingSlot] = useState<number | null>(null);
 
+  // 個人スワップ
+  const [swapSlot, setSwapSlot] = useState<number | null>(null);
+  const [swapFrom, setSwapFrom] = useState("");
+  const [swapTo, setSwapTo] = useState("");
+  const [savingSwap, setSavingSwap] = useState(false);
+
   // バケツ当番編集
   const [editBucketId, setEditBucketId] = useState<string | null>(null);
   const [editBring, setEditBring] = useState("");
@@ -83,13 +90,14 @@ export default function DutyRosterPage() {
   const [savingBucket, setSavingBucket] = useState(false);
 
   const load = useCallback(async () => {
-    const [ms, drvs, prts, ps, bds, st] = await Promise.all([
+    const [ms, drvs, prts, ps, bds, st, sw] = await Promise.all([
       fetch("/api/matches").then((r) => r.json()),
       fetch("/api/drivers").then((r) => r.json()),
       fetch("/api/parents").then((r) => r.json()),
       fetch("/api/practices").then((r) => r.json()),
       fetch("/api/bucket-duties").then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()),
+      fetch("/api/duty-swaps").then((r) => r.json()),
     ]);
     setMatches(Array.isArray(ms) ? ms : []);
     setDrivers(Array.isArray(drvs) ? drvs : []);
@@ -97,6 +105,7 @@ export default function DutyRosterPage() {
     setPractices(Array.isArray(ps) ? ps : []);
     setDuties(Array.isArray(bds) ? bds : []);
     setSettings(st);
+    setSwaps(Array.isArray(sw) ? sw : []);
     setLoading(false);
   }, []);
 
@@ -283,13 +292,40 @@ export default function DutyRosterPage() {
       override !== null && override !== "" ? override : null
     );
 
-    // 各スロットの班メンバーを取得（配車当番の表示用）
+    // 各スロットの班メンバーを取得（スワップ適用済み）
     function getGroupMembers(g: string): string[] {
       const normGVal = normG(g);
-      return parents
+      const base = parents
         .filter((p) => normG(p.group) === normGVal)
         .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
         .map((p) => p.playerName);
+      // スワップを適用: A↔B の交換
+      return base.map((name) => {
+        const sw = swaps.find((s) => s.personA === name || s.personB === name);
+        if (!sw) return name;
+        return sw.personA === name ? sw.personB : sw.personA;
+      });
+    }
+
+    async function saveSwap() {
+      if (!swapFrom || !swapTo) return;
+      setSavingSwap(true);
+      const res = await fetch("/api/duty-swaps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personA: swapFrom, personB: swapTo }),
+      });
+      const data = await res.json();
+      setSwaps((prev) => [...prev, { id: data.id, personA: swapFrom, personB: swapTo }]);
+      setSwapSlot(null);
+      setSwapFrom("");
+      setSwapTo("");
+      setSavingSwap(false);
+    }
+
+    async function deleteSwap(id: string) {
+      await fetch(`/api/duty-swaps/${id}`, { method: "DELETE" });
+      setSwaps((prev) => prev.filter((s) => s.id !== id));
     }
 
     // 班バッジ色（"1" or "1班" どちらでも対応）
@@ -382,6 +418,21 @@ export default function DutyRosterPage() {
           <span>🚗</span> 配車・荷物当番
         </h2>
 
+        {/* 登録中のスワップ */}
+        {swaps.length > 0 && (
+          <div className="mb-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+            <p className="text-xs font-semibold text-yellow-700 mb-2">現在の個人交代</p>
+            <div className="space-y-1">
+              {swaps.map((s) => (
+                <div key={s.id} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-gray-700">{s.personA} ↔ {s.personB}</span>
+                  <button onClick={() => deleteSwap(s.id)} className="text-xs text-red-400 hover:text-red-600">解除</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── 今後の当番（次4回） ── */}
         <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">今後の当番（次4回）</p>
         <div className="grid gap-2 mb-5">
@@ -413,8 +464,12 @@ export default function DutyRosterPage() {
                       <span className="text-xs text-gray-500 truncate">{fmtDate(linkedMatch.date)}　{linkedMatch.matchName || linkedMatch.matchType}</span>
                     )}
                   </div>
-                  {!isEditing && !isPicking && (
+                  {!isEditing && !isPicking && swapSlot !== i && (
                     <div className="flex gap-1.5 shrink-0">
+                      <button
+                        onClick={() => { setSwapSlot(i); setSwapFrom(""); setSwapTo(""); }}
+                        className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
+                      >交代</button>
                       <button
                         onClick={() => setPickingSlot(i)}
                         className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
@@ -430,6 +485,43 @@ export default function DutyRosterPage() {
                     </div>
                   )}
                 </div>
+
+                {/* 個人交代フォーム */}
+                {swapSlot === i && (
+                  <div className="space-y-2 mb-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-yellow-700">個人交代（全スロットに反映）</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-gray-500 mb-0.5 block">交代する人</label>
+                        <select
+                          value={swapFrom}
+                          onChange={(e) => setSwapFrom(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white"
+                        >
+                          <option value="">選択</option>
+                          {slotDrivers.map((n) => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-0.5 block">代わりに入る人</label>
+                        <select
+                          value={swapTo}
+                          onChange={(e) => setSwapTo(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white"
+                        >
+                          <option value="">選択</option>
+                          {parentNames.filter((n) => n !== swapFrom).map((n) => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={saveSwap} disabled={savingSwap || !swapFrom || !swapTo} className="flex-1 bg-yellow-500 text-white py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50">
+                        {savingSwap ? "保存中..." : "交代を保存"}
+                      </button>
+                      <button onClick={() => setSwapSlot(null)} className="flex-1 bg-gray-100 text-gray-600 py-1.5 rounded-lg text-xs">キャンセル</button>
+                    </div>
+                  </div>
+                )}
 
                 {/* 試合選択ピッカー */}
                 {isPicking && (

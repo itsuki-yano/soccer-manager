@@ -58,6 +58,12 @@ export interface Practice {
   bandUid: string;
 }
 
+export interface DutySwap {
+  id: string;
+  personA: string;
+  personB: string;
+}
+
 export interface BucketDuty {
   id: string;
   practiceId: string;
