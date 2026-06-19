@@ -102,17 +102,34 @@ export default function DutyRosterPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  function startEditMatch(m: Match) {
+  // 班の表記を正規化（"1" → "1班"、"1班" → "1班"）
+  function normalizeGroup(g: string) {
+    if (!g) return "";
+    return g.endsWith("班") ? g : `${g}班`;
+  }
+
+  function startEditMatch(m: Match, expectedGroup?: string) {
     setEditMatchId(m.id);
     setInheritDriver(null);
     setInheritEquip(null);
 
     const currentDrivers = drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName);
-    setEditDriverNames(currentDrivers);
     setEditSkipped(m.skippedDrivers ? m.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []);
 
     const currentEquip = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
     setEditEquipOut(currentEquip);
+
+    if (currentDrivers.length === 0 && expectedGroup) {
+      // 班のメンバーを配車当番に自動セット
+      const normG = normalizeGroup(expectedGroup);
+      const groupMembers = parents
+        .filter((p) => normalizeGroup(p.group) === normG)
+        .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
+        .map((p) => p.playerName);
+      setEditDriverNames(groupMembers);
+    } else {
+      setEditDriverNames(currentDrivers);
+    }
 
     // 直前の試合を取得（スキップ有無問わず）
     const prev = matches
@@ -120,15 +137,9 @@ export default function DutyRosterPage() {
       .sort((a, b) => b.date.localeCompare(a.date))[0];
 
     if (prev) {
-      // スキップされた人を除外した引継ぎ候補を作成（試合詳細と同じ挙動）
       const skippedSet = new Set(
         prev.skippedDrivers ? prev.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []
       );
-      // 配車当番: 未設定なら前回の備品持帰り（スキップ除外）を候補に
-      if (currentDrivers.length === 0 && prev.equipmentBringOut) {
-        const names = prev.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean).filter((n) => !skippedSet.has(n));
-        if (names.length > 0) setInheritDriver({ date: prev.date, names });
-      }
       // 備品持帰り: 未設定なら前回の配車当番（スキップ除外）を候補に
       if (currentEquip.length === 0) {
         const prevDriverNames = drivers.filter((d) => d.matchId === prev.id).map((d) => d.parentName).filter((n) => !skippedSet.has(n));
@@ -272,7 +283,8 @@ export default function DutyRosterPage() {
       override !== null ? override : (futureMatchesSorted[i]?.id ?? null)
     );
 
-    // 班バッジ色
+    // 班バッジ色（"1" or "1班" どちらでも対応）
+    function normG(g: string) { return g.endsWith("班") ? g : `${g}班`; }
     const GROUP_COLORS: Record<string, { bg: string; text: string }> = {
       "1班": { bg: "bg-blue-100", text: "text-blue-700" },
       "2班": { bg: "bg-green-100", text: "text-green-700" },
@@ -280,9 +292,11 @@ export default function DutyRosterPage() {
       "4班": { bg: "bg-purple-100", text: "text-purple-700" },
     };
     function groupBadge(g: string) {
-      const c = GROUP_COLORS[g] ?? { bg: "bg-gray-100", text: "text-gray-600" };
+      const label = normG(g);
+      const c = GROUP_COLORS[label] ?? { bg: "bg-gray-100", text: "text-gray-600" };
       return `text-xs px-2 py-0.5 rounded-full font-semibold shrink-0 ${c.bg} ${c.text}`;
     }
+    function groupDisplay(g: string) { return normG(g); }
 
     // 編集フォームの共通部分
     function EditForm({ m, groupLabel }: { m: Match; groupLabel?: string }) {
@@ -379,14 +393,9 @@ export default function DutyRosterPage() {
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 flex-wrap min-w-0">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-bold shrink-0 ${i === 0 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-600"}`}>{slotLabel}</span>
-                    {group && <span className={groupBadge(group)}>{group}</span>}
-                    {linkedMatch ? (
-                      <>
-                        <span className="text-sm font-semibold text-gray-800">{fmtDate(linkedMatch.date)}</span>
-                        <span className="text-xs text-gray-500 truncate">{linkedMatch.matchName || linkedMatch.matchType}</span>
-                      </>
-                    ) : (
-                      <span className="text-sm text-gray-400">試合未定</span>
+                    {group && <span className={groupBadge(group)}>{groupDisplay(group)}</span>}
+                    {linkedMatch && (
+                      <span className="text-xs text-gray-500 truncate">{fmtDate(linkedMatch.date)}　{linkedMatch.matchName || linkedMatch.matchType}</span>
                     )}
                   </div>
                   {!isEditing && !isPicking && !isSkipping && (
@@ -395,7 +404,7 @@ export default function DutyRosterPage() {
                         onClick={() => setPickingSlot(i)}
                         className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
                       >
-                        試合
+                        {linkedMatch ? "試合変更" : "試合選択"}
                       </button>
                       {linkedMatch && (
                         <>
@@ -404,7 +413,7 @@ export default function DutyRosterPage() {
                             className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
                           >スキップ</button>
                           <button
-                            onClick={() => { setSkipOnlyMatchId(null); startEditMatch(linkedMatch); }}
+                            onClick={() => { setSkipOnlyMatchId(null); startEditMatch(linkedMatch, group); }}
                             className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg"
                           >設定</button>
                         </>
@@ -416,21 +425,28 @@ export default function DutyRosterPage() {
                 {/* 試合選択ピッカー */}
                 {isPicking && (
                   <div className="space-y-1.5 mb-2">
-                    <p className="text-xs text-gray-500 font-semibold">紐づける試合を選択</p>
+                    <p className="text-xs text-gray-500 font-semibold">紐づける試合を選択（選択後に担当を設定）</p>
                     <div className="grid gap-1 max-h-44 overflow-y-auto">
                       <button
-                        onClick={() => { const ids = [...slotMatchIds]; ids[i] = ""; setSlotMatchIds(ids); setPickingSlot(null); }}
+                        onClick={() => { const ids = [...slotMatchIds]; ids[i] = ""; setSlotMatchIds(ids); setPickingSlot(null); setEditMatchId(null); }}
                         className="text-xs text-left px-2 py-1.5 rounded-lg border border-gray-200 text-gray-400"
                       >
-                        試合未定
+                        試合未定（解除）
                       </button>
-                      {futureMatchesSorted.map((m) => (
+                      {futureMatchesSorted.map((fm) => (
                         <button
-                          key={m.id}
-                          onClick={() => { const ids = [...slotMatchIds]; ids[i] = m.id; setSlotMatchIds(ids); setPickingSlot(null); }}
-                          className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedMatchId === m.id ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                          key={fm.id}
+                          onClick={() => {
+                            const ids = [...slotMatchIds];
+                            ids[i] = fm.id;
+                            setSlotMatchIds(ids);
+                            setPickingSlot(null);
+                            // 試合選択と同時に班メンバーを自動セットして編集開始
+                            startEditMatch(fm, group);
+                          }}
+                          className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedMatchId === fm.id ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
                         >
-                          {fmtDate(m.date)}　{m.matchName || m.matchType}{m.venue ? ` @ ${m.venue}` : ""}
+                          {fmtDate(fm.date)}　{fm.matchName || fm.matchType}{fm.venue ? ` @ ${fm.venue}` : ""}
                         </button>
                       ))}
                     </div>
@@ -491,7 +507,7 @@ export default function DutyRosterPage() {
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2 flex-wrap min-w-0">
                         <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full shrink-0">過去</span>
-                        {group && <span className={groupBadge(group)}>{group}</span>}
+                        {group && <span className={groupBadge(group)}>{groupDisplay(group)}</span>}
                         <span className="text-sm font-semibold text-gray-500">{fmtDate(m.date)}</span>
                         <span className="text-xs text-gray-400 truncate">{m.matchName || m.matchType}{m.venue ? ` @ ${m.venue}` : ""}</span>
                       </div>
