@@ -271,26 +271,33 @@ export default function DutyRosterPage() {
     const lastGroupMatch = pastMatches.find((m) => drivers.some((d) => d.matchId === m.id));
     const lastGroup = lastGroupMatch ? getMatchGroup(lastGroupMatch.id) : "";
 
-    // 未来4回の班ローテーション
+    // 未来5回分のローテーション（4スロット + 備品持帰り用に1つ余分）
+    function nextInRotation(g: string): string {
+      if (!sortedGroups.length) return "";
+      const idx = g ? sortedGroups.indexOf(normG(g)) : -1;
+      return sortedGroups[(idx + 1) % sortedGroups.length];
+    }
     const futureGroups: string[] = [];
     if (sortedGroups.length > 0) {
       let g = lastGroup;
-      for (let i = 0; i < 4; i++) {
-        const idx = g ? sortedGroups.indexOf(g) : -1;
-        g = sortedGroups[(idx + 1) % sortedGroups.length];
+      for (let i = 0; i < 5; i++) {
+        g = nextInRotation(g);
         futureGroups.push(g);
       }
     } else {
-      futureGroups.push(...["", "", "", ""]);
+      futureGroups.push(...["", "", "", "", ""]);
     }
 
     // 未来の試合（日付昇順）
     const futureMatchesSorted = matches.filter((m) => m.date >= today).sort((a, b) => a.date.localeCompare(b.date));
 
-    // スロットの有効な試合ID（明示的に選んだ場合のみ紐づけ、自動割当なし）
-    const effectiveSlotMatchIds = slotMatchIds.map((override) =>
-      override !== null && override !== "" ? override : null
-    );
+    // スロットの有効な試合ID（過去日付のリンクは自動解除）
+    const effectiveSlotMatchIds = slotMatchIds.map((override) => {
+      if (!override || override === "") return null;
+      const m = matches.find((x) => x.id === override);
+      if (!m || m.date < today) return null; // 日付が過去になったら解除
+      return override;
+    });
 
     // 各スロットの班メンバーを取得（スワップ適用済み）
     function getGroupMembers(g: string): string[] {
@@ -436,7 +443,7 @@ export default function DutyRosterPage() {
         {/* ── 今後の当番（次4回） ── */}
         <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">今後の当番（次4回）</p>
         <div className="grid gap-2 mb-5">
-          {futureGroups.map((group, i) => {
+          {futureGroups.slice(0, 4).map((group, i) => {
             const linkedMatchId = effectiveSlotMatchIds[i];
             const linkedMatch = linkedMatchId ? matches.find((m) => m.id === linkedMatchId) : null;
             const groupMembers = getGroupMembers(group);
@@ -444,11 +451,12 @@ export default function DutyRosterPage() {
             const slotDrivers = linkedMatchId
               ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName)
               : groupMembers;
-            // 備品持帰り: 紐づけ試合に設定済みならそちら、なければ前の班のメンバー
-            const prevGroup = i === 0 ? lastGroup : futureGroups[i - 1];
+            // 備品持帰り: 配車班の「次の班」が同タイミングで持ち帰る（3班配車→4班持帰り）
+            // futureGroups[i+1] が次の班（5つ分計算済みなので常に存在する）
+            const equipGroup = futureGroups[i + 1] ?? "";
             const slotEquipOut = linkedMatch?.equipmentBringOut
               ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean)
-              : getGroupMembers(prevGroup);
+              : getGroupMembers(equipGroup);
             const isEditing = Boolean(linkedMatchId && editMatchId === linkedMatchId);
             const isPicking = pickingSlot === i;
             const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
