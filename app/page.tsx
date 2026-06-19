@@ -7,6 +7,7 @@ import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 const menu = [
   { href: "/matches",        label: "試合・合宿管理", icon: "⚽", desc: "試合登録・配車当番の設定" },
   { href: "/practices",      label: "通常練習",       icon: "🏃", desc: "練習管理・バケツ当番" },
+  { href: "/duty-roster",   label: "当番一覧",       icon: "📅", desc: "配車・荷物・バケツ当番の順番確認" },
   { href: "/roles",          label: "役割予定",       icon: "📋", desc: "選手別の担当予定を確認" },
   { href: "/coach-expenses", label: "コーチ飲食費",   icon: "🧃", desc: "飲み物代・食事代の管理" },
   { href: "/parents",        label: "選手マスタ",     icon: "👟", desc: "選手・班・背番号の登録" },

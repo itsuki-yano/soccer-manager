@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 const NAV_ITEMS = [
   { href: "/matches",        icon: "⚽", label: "試合・合宿管理" },
   { href: "/practices",      icon: "🏃", label: "通常練習" },
+  { href: "/duty-roster",   icon: "📅", label: "当番一覧" },
   { href: "/roles",          icon: "📋", label: "役割予定" },
   { href: "/coach-expenses", icon: "🧃", label: "コーチ飲食費" },
   { href: "/parents",        icon: "👟", label: "選手マスタ" },
