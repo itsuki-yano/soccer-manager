@@ -836,7 +836,7 @@ function DutyRosterInner() {
                           >変更</button>
                           <button
                             onClick={() => setPickingBucketSlot(i)}
-                            className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
+                            className="text-xs text-blue-700 bg-blue-100 border border-blue-300 px-2.5 py-1 rounded-lg font-medium"
                           >
                             {linkedPractice ? "練習変更" : "練習選択"}
                           </button>
@@ -860,7 +860,7 @@ function DutyRosterInner() {
                                 setSlotBucketPracticeIds(ids);
                                 setPickingBucketSlot(null);
                               }}
-                              className="text-xs text-left px-2 py-1.5 rounded-lg border border-gray-200 text-gray-400"
+                              className="text-xs text-left px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-500 font-medium"
                             >
                               紐づけ解除
                             </button>
@@ -888,7 +888,7 @@ function DutyRosterInner() {
                             <p className="text-xs text-gray-400 px-2">未来の自主練習がありません</p>
                           )}
                         </div>
-                        <button onClick={() => setPickingBucketSlot(null)} className="text-xs text-gray-400">キャンセル</button>
+                        <button onClick={() => setPickingBucketSlot(null)} className="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg font-medium">キャンセル</button>
                       </div>
                     )}
 
