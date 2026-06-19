@@ -72,6 +72,10 @@ export default function DutyRosterPage() {
   const [skipOnlyNames, setSkipOnlyNames] = useState<string[]>([]);
   const [savingSkip, setSavingSkip] = useState(false);
 
+  // 未来スロットの試合紐づけ（null = 自動割当）
+  const [slotMatchIds, setSlotMatchIds] = useState<(string | null)[]>([null, null, null, null]);
+  const [pickingSlot, setPickingSlot] = useState<number | null>(null);
+
   // バケツ当番編集
   const [editBucketId, setEditBucketId] = useState<string | null>(null);
   const [editBring, setEditBring] = useState("");
@@ -223,188 +227,321 @@ export default function DutyRosterPage() {
   const orderedBucket = [...futureBucket, ...pastBucket];
 
   // ────────── 配車・荷物当番パネル ──────────
-  const DriverPanel = () => (
-    <div>
-      <h2 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
-        <span>🚗</span> 配車・荷物当番
-      </h2>
-      {orderedMatches.length === 0 && (
-        <p className="text-sm text-gray-400 text-center py-8">試合が登録されていません</p>
-      )}
-      <div className="grid gap-2">
-        {orderedMatches.map((m, i) => {
-          const isPast = m.date < today;
-          const isNext = !isPast && i === 0;
-          const matchDrivers = drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName);
-          const equipOut = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
-          const skipped = m.skippedDrivers ? m.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : [];
-          const isEditing = editMatchId === m.id;
+  const DriverPanel = () => {
+    // 班ローテーション計算
+    const sortedGroups = [...new Set(parents.map((p) => p.group).filter(Boolean))].sort();
 
-          return (
-            <div
-              key={m.id}
-              className={`bg-white rounded-xl border p-3 transition-all ${isPast ? "opacity-60 border-gray-100" : isNext ? "border-blue-300 shadow-md" : "border-gray-100 shadow-sm"}`}
-            >
-              {/* ヘッダー */}
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  {isNext && <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold shrink-0">次回</span>}
-                  {isPast && <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full shrink-0">過去</span>}
-                  <span className={`text-sm font-semibold ${isPast ? "text-gray-500" : "text-gray-800"}`}>{fmtDate(m.date)}</span>
-                  <span className={`text-xs ${isPast ? "text-gray-400" : "text-gray-500"} truncate`}>{m.matchName || m.matchType}{m.venue ? ` @ ${m.venue}` : ""}</span>
-                </div>
-                <div className="flex gap-1.5 shrink-0">
-                  {!isEditing && skipOnlyMatchId !== m.id && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setSkipOnlyMatchId(m.id);
-                          setSkipOnlyNames(m.skippedDrivers ? m.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []);
-                          setEditMatchId(null);
-                        }}
-                        className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
-                      >
-                        スキップ
-                      </button>
-                      <button
-                        onClick={() => { setSkipOnlyMatchId(null); startEditMatch(m); }}
-                        className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg"
-                      >
-                        変更
-                      </button>
-                    </>
-                  )}
-                  <Link
-                    href={`/matches/${m.id}`}
-                    className="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded-lg"
-                  >
-                    詳細 ›
-                  </Link>
+    function normN(s: string) { return s.replace(/[\s　]/g, ""); }
+
+    function getMatchGroup(matchId: string): string {
+      const mDrivers = drivers.filter((d) => d.matchId === matchId);
+      if (mDrivers.length === 0) return "";
+      const cnt: Record<string, number> = {};
+      mDrivers.forEach((d) => {
+        const p = parents.find((px) => normN(px.playerName) === normN(d.parentName));
+        if (p?.group) cnt[p.group] = (cnt[p.group] || 0) + 1;
+      });
+      return Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+    }
+
+    // 過去の試合（全件、新→旧）
+    const pastMatches = matches.filter((m) => m.date < today).sort((a, b) => b.date.localeCompare(a.date));
+
+    // 最後に当番した班を特定
+    const lastGroupMatch = pastMatches.find((m) => drivers.some((d) => d.matchId === m.id));
+    const lastGroup = lastGroupMatch ? getMatchGroup(lastGroupMatch.id) : "";
+
+    // 未来4回の班ローテーション
+    const futureGroups: string[] = [];
+    if (sortedGroups.length > 0) {
+      let g = lastGroup;
+      for (let i = 0; i < 4; i++) {
+        const idx = g ? sortedGroups.indexOf(g) : -1;
+        g = sortedGroups[(idx + 1) % sortedGroups.length];
+        futureGroups.push(g);
+      }
+    } else {
+      futureGroups.push(...["", "", "", ""]);
+    }
+
+    // 未来の試合（日付昇順）
+    const futureMatchesSorted = matches.filter((m) => m.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+
+    // スロットの有効な試合ID（nullなら自動割当）
+    const effectiveSlotMatchIds = slotMatchIds.map((override, i) =>
+      override !== null ? override : (futureMatchesSorted[i]?.id ?? null)
+    );
+
+    // 班バッジ色
+    const GROUP_COLORS: Record<string, { bg: string; text: string }> = {
+      "1班": { bg: "bg-blue-100", text: "text-blue-700" },
+      "2班": { bg: "bg-green-100", text: "text-green-700" },
+      "3班": { bg: "bg-orange-100", text: "text-orange-700" },
+      "4班": { bg: "bg-purple-100", text: "text-purple-700" },
+    };
+    function groupBadge(g: string) {
+      const c = GROUP_COLORS[g] ?? { bg: "bg-gray-100", text: "text-gray-600" };
+      return `text-xs px-2 py-0.5 rounded-full font-semibold shrink-0 ${c.bg} ${c.text}`;
+    }
+
+    // 編集フォームの共通部分
+    function EditForm({ m, groupLabel }: { m: Match; groupLabel?: string }) {
+      return (
+        <div className="space-y-3">
+          {inheritDriver && editDriverNames.length === 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+              <div className="text-xs text-blue-700 min-w-0">
+                <span className="font-semibold">前回({fmtDate(inheritDriver.date)})の備品持帰り</span>を引継ぎますか？
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {inheritDriver.names.map((n) => <span key={n} className="bg-blue-100 px-1.5 py-0.5 rounded-full">{n}</span>)}
                 </div>
               </div>
-
-              {isEditing ? (
-                <div className="space-y-3">
-                  {/* 配車当番引継ぎバナー */}
-                  {inheritDriver && editDriverNames.length === 0 && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
-                      <div className="text-xs text-blue-700 min-w-0">
-                        <span className="font-semibold">前回({fmtDate(inheritDriver.date)})の備品持帰り</span>を引継ぎますか？
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {inheritDriver.names.map((n) => <span key={n} className="bg-blue-100 px-1.5 py-0.5 rounded-full">{n}</span>)}
-                        </div>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <button onClick={() => { setEditDriverNames(inheritDriver.names); setInheritDriver(null); }} className="text-xs bg-blue-500 text-white px-2 py-1 rounded-lg">引継ぐ</button>
-                        <button onClick={() => setInheritDriver(null)} className="text-xs text-gray-400 px-1">✕</button>
-                      </div>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 mb-1">🚗 配車当番</p>
-                    <MultiSelect names={parentNames} selected={editDriverNames} onChange={setEditDriverNames} />
-                  </div>
-                  {/* 備品持帰り引継ぎバナー */}
-                  {inheritEquip && editEquipOut.length === 0 && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
-                      <div className="text-xs text-orange-700 min-w-0">
-                        <span className="font-semibold">前回({fmtDate(inheritEquip.date)})の配車当番</span>を引継ぎますか？
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {inheritEquip.names.map((n) => <span key={n} className="bg-orange-100 px-1.5 py-0.5 rounded-full">{n}</span>)}
-                        </div>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <button onClick={() => { setEditEquipOut(inheritEquip.names); setInheritEquip(null); }} className="text-xs bg-orange-500 text-white px-2 py-1 rounded-lg">引継ぐ</button>
-                        <button onClick={() => setInheritEquip(null)} className="text-xs text-gray-400 px-1">✕</button>
-                      </div>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 mb-1">🎒 備品持帰り</p>
-                    <MultiSelect names={parentNames} selected={editEquipOut} onChange={setEditEquipOut} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 mb-1">スキップ（今回免除）</p>
-                    <p className="text-xs text-gray-400 mb-1">次回ローテーションに影響しません</p>
-                    <MultiSelect names={parentNames} selected={editSkipped} onChange={setEditSkipped} />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => saveMatchDuty(m)}
-                      disabled={saving}
-                      className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
-                    >
-                      {saving ? "保存中..." : "保存"}
-                    </button>
-                    <button
-                      onClick={() => setEditMatchId(null)}
-                      className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm"
-                    >
-                      キャンセル
-                    </button>
-                  </div>
-                </div>
-              ) : skipOnlyMatchId === m.id ? (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-500">スキップ設定（今回のみ免除）</p>
-                  <MultiSelect names={matchDrivers.length > 0 ? matchDrivers : parentNames} selected={skipOnlyNames} onChange={setSkipOnlyNames} />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => saveSkipOnly(m)}
-                      disabled={savingSkip}
-                      className="flex-1 bg-gray-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
-                    >
-                      {savingSkip ? "保存中..." : "スキップ保存"}
-                    </button>
-                    <button
-                      onClick={() => setSkipOnlyMatchId(null)}
-                      className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm"
-                    >
-                      キャンセル
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className={`rounded-lg p-2 ${isPast ? "bg-gray-50" : "bg-purple-50 border border-purple-100"}`}>
-                    <p className="text-xs text-gray-400 mb-1">🚗 配車当番</p>
-                    {matchDrivers.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {matchDrivers.map((n) => (
-                          <span key={n} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">{n}</span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-300">未設定</span>
-                    )}
-                    {skipped.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {skipped.map((n) => (
-                          <span key={n} className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full line-through">{n}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className={`rounded-lg p-2 ${isPast ? "bg-gray-50" : "bg-orange-50 border border-orange-100"}`}>
-                    <p className="text-xs text-gray-400 mb-1">🎒 備品持帰り</p>
-                    {equipOut.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {equipOut.map((n) => (
-                          <span key={n} className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full">{n}</span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-300">未設定</span>
-                    )}
-                  </div>
-                </div>
-              )}
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => { setEditDriverNames(inheritDriver.names); setInheritDriver(null); }} className="text-xs bg-blue-500 text-white px-2 py-1 rounded-lg">引継ぐ</button>
+                <button onClick={() => setInheritDriver(null)} className="text-xs text-gray-400 px-1">✕</button>
+              </div>
             </div>
-          );
-        })}
+          )}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-1">🚗 配車当番{groupLabel ? `（${groupLabel}）` : ""}</p>
+            <MultiSelect names={parentNames} selected={editDriverNames} onChange={setEditDriverNames} />
+          </div>
+          {inheritEquip && editEquipOut.length === 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+              <div className="text-xs text-orange-700 min-w-0">
+                <span className="font-semibold">前回({fmtDate(inheritEquip.date)})の配車当番</span>を引継ぎますか？
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {inheritEquip.names.map((n) => <span key={n} className="bg-orange-100 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                </div>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => { setEditEquipOut(inheritEquip.names); setInheritEquip(null); }} className="text-xs bg-orange-500 text-white px-2 py-1 rounded-lg">引継ぐ</button>
+                <button onClick={() => setInheritEquip(null)} className="text-xs text-gray-400 px-1">✕</button>
+              </div>
+            </div>
+          )}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-1">🎒 備品持帰り</p>
+            <MultiSelect names={parentNames} selected={editEquipOut} onChange={setEditEquipOut} />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-1">スキップ（今回免除）</p>
+            <MultiSelect names={parentNames} selected={editSkipped} onChange={setEditSkipped} />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => saveMatchDuty(m)} disabled={saving} className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
+              {saving ? "保存中..." : "保存"}
+            </button>
+            <button onClick={() => setEditMatchId(null)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm">キャンセル</button>
+          </div>
+        </div>
+      );
+    }
+
+    function SkipForm({ m, names }: { m: Match; names: string[] }) {
+      return (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-500">スキップ設定（今回のみ免除）</p>
+          <MultiSelect names={names.length > 0 ? names : parentNames} selected={skipOnlyNames} onChange={setSkipOnlyNames} />
+          <div className="flex gap-2">
+            <button onClick={() => saveSkipOnly(m)} disabled={savingSkip} className="flex-1 bg-gray-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
+              {savingSkip ? "保存中..." : "スキップ保存"}
+            </button>
+            <button onClick={() => setSkipOnlyMatchId(null)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm">キャンセル</button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <h2 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <span>🚗</span> 配車・荷物当番
+        </h2>
+
+        {/* ── 今後の当番（次4回） ── */}
+        <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">今後の当番（次4回）</p>
+        <div className="grid gap-2 mb-5">
+          {futureGroups.map((group, i) => {
+            const linkedMatchId = effectiveSlotMatchIds[i];
+            const linkedMatch = linkedMatchId ? matches.find((m) => m.id === linkedMatchId) : null;
+            const slotDrivers = linkedMatchId ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName) : [];
+            const slotEquipOut = linkedMatch?.equipmentBringOut ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
+            const slotSkipped = linkedMatch?.skippedDrivers ? linkedMatch.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : [];
+            const isEditing = Boolean(linkedMatchId && editMatchId === linkedMatchId);
+            const isPicking = pickingSlot === i;
+            const isSkipping = Boolean(linkedMatchId && skipOnlyMatchId === linkedMatchId);
+            const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
+
+            return (
+              <div key={i} className={`bg-white rounded-xl border p-3 ${i === 0 ? "border-blue-300 shadow-md" : "border-gray-100 shadow-sm"}`}>
+                {/* ヘッダー */}
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold shrink-0 ${i === 0 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-600"}`}>{slotLabel}</span>
+                    {group && <span className={groupBadge(group)}>{group}</span>}
+                    {linkedMatch ? (
+                      <>
+                        <span className="text-sm font-semibold text-gray-800">{fmtDate(linkedMatch.date)}</span>
+                        <span className="text-xs text-gray-500 truncate">{linkedMatch.matchName || linkedMatch.matchType}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-gray-400">試合未定</span>
+                    )}
+                  </div>
+                  {!isEditing && !isPicking && !isSkipping && (
+                    <div className="flex gap-1.5 shrink-0">
+                      <button
+                        onClick={() => setPickingSlot(i)}
+                        className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
+                      >
+                        試合
+                      </button>
+                      {linkedMatch && (
+                        <>
+                          <button
+                            onClick={() => { setSkipOnlyMatchId(linkedMatch.id); setSkipOnlyNames(slotSkipped); setEditMatchId(null); }}
+                            className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
+                          >スキップ</button>
+                          <button
+                            onClick={() => { setSkipOnlyMatchId(null); startEditMatch(linkedMatch); }}
+                            className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg"
+                          >設定</button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 試合選択ピッカー */}
+                {isPicking && (
+                  <div className="space-y-1.5 mb-2">
+                    <p className="text-xs text-gray-500 font-semibold">紐づける試合を選択</p>
+                    <div className="grid gap-1 max-h-44 overflow-y-auto">
+                      <button
+                        onClick={() => { const ids = [...slotMatchIds]; ids[i] = ""; setSlotMatchIds(ids); setPickingSlot(null); }}
+                        className="text-xs text-left px-2 py-1.5 rounded-lg border border-gray-200 text-gray-400"
+                      >
+                        試合未定
+                      </button>
+                      {futureMatchesSorted.map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => { const ids = [...slotMatchIds]; ids[i] = m.id; setSlotMatchIds(ids); setPickingSlot(null); }}
+                          className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedMatchId === m.id ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                        >
+                          {fmtDate(m.date)}　{m.matchName || m.matchType}{m.venue ? ` @ ${m.venue}` : ""}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={() => setPickingSlot(null)} className="text-xs text-gray-400">キャンセル</button>
+                  </div>
+                )}
+
+                {/* 編集フォーム or スキップフォーム or 表示 */}
+                {isEditing && linkedMatch ? (
+                  <EditForm m={linkedMatch} groupLabel={group} />
+                ) : isSkipping && linkedMatch ? (
+                  <SkipForm m={linkedMatch} names={slotDrivers} />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg p-2 bg-purple-50 border border-purple-100">
+                      <p className="text-xs text-gray-400 mb-1">🚗 配車当番</p>
+                      {slotDrivers.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {slotDrivers.map((n) => <span key={n} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                        </div>
+                      ) : <span className="text-xs text-gray-300">{linkedMatch ? "未設定" : "−"}</span>}
+                      {slotSkipped.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {slotSkipped.map((n) => <span key={n} className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full line-through">{n}</span>)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="rounded-lg p-2 bg-orange-50 border border-orange-100">
+                      <p className="text-xs text-gray-400 mb-1">🎒 備品持帰り</p>
+                      {slotEquipOut.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {slotEquipOut.map((n) => <span key={n} className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                        </div>
+                      ) : <span className="text-xs text-gray-300">{linkedMatch ? "未設定" : "−"}</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── 過去の当番 ── */}
+        {pastMatches.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">過去の当番</p>
+            <div className="grid gap-2">
+              {pastMatches.map((m) => {
+                const matchDrivers = drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName);
+                const equipOut = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
+                const skipped = m.skippedDrivers ? m.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : [];
+                const group = getMatchGroup(m.id);
+                const isEditing = editMatchId === m.id;
+                const isSkipping = skipOnlyMatchId === m.id;
+
+                return (
+                  <div key={m.id} className="bg-white rounded-xl border border-gray-100 p-3 opacity-70">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full shrink-0">過去</span>
+                        {group && <span className={groupBadge(group)}>{group}</span>}
+                        <span className="text-sm font-semibold text-gray-500">{fmtDate(m.date)}</span>
+                        <span className="text-xs text-gray-400 truncate">{m.matchName || m.matchType}{m.venue ? ` @ ${m.venue}` : ""}</span>
+                      </div>
+                      {!isEditing && !isSkipping && (
+                        <div className="flex gap-1.5 shrink-0">
+                          <button onClick={() => { setSkipOnlyMatchId(m.id); setSkipOnlyNames(skipped); setEditMatchId(null); }} className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg">スキップ</button>
+                          <button onClick={() => { setSkipOnlyMatchId(null); startEditMatch(m); }} className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg">変更</button>
+                          <Link href={`/matches/${m.id}`} className="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded-lg">詳細 ›</Link>
+                        </div>
+                      )}
+                    </div>
+
+                    {isEditing ? (
+                      <EditForm m={m} groupLabel={group} />
+                    ) : isSkipping ? (
+                      <SkipForm m={m} names={matchDrivers} />
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-lg p-2 bg-gray-50">
+                          <p className="text-xs text-gray-400 mb-1">🚗 配車当番</p>
+                          {matchDrivers.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {matchDrivers.map((n) => <span key={n} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                            </div>
+                          ) : <span className="text-xs text-gray-300">未設定</span>}
+                          {skipped.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {skipped.map((n) => <span key={n} className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full line-through">{n}</span>)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="rounded-lg p-2 bg-gray-50">
+                          <p className="text-xs text-gray-400 mb-1">🎒 備品持帰り</p>
+                          {equipOut.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {equipOut.map((n) => <span key={n} className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                            </div>
+                          ) : <span className="text-xs text-gray-300">未設定</span>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   // ────────── バケツ当番パネル ──────────
   const BucketPanel = () => (
