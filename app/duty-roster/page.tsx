@@ -695,7 +695,8 @@ export default function DutyRosterPage() {
     const pastDuties = duties
       .filter((d) => {
         const pr = practices.find((p) => p.id === d.practiceId);
-        return pr && pr.date < today;
+        if (!pr || pr.date >= today) return false;
+        return new Date(pr.date + "T00:00:00").getDay() === 6; // 土曜日のみ
       })
       .sort((a, b) => {
         const pa = practices.find((p) => p.id === a.practiceId);
@@ -721,9 +722,12 @@ export default function DutyRosterPage() {
       practice: practices.find((p) => p.id === d.practiceId)!,
     })).filter((x) => x.practice);
 
-    // 自主練習（未来 + 日付なし）を選択候補に
+    // 自主練習（土曜日）のみを選択候補に
     const futurePractices = practices
-      .filter((p) => p.date >= today)
+      .filter((p) => {
+        if (p.date < today) return false;
+        return new Date(p.date + "T00:00:00").getDay() === 6; // 土曜日のみ
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
 
     return (
