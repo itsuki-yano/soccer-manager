@@ -58,7 +58,7 @@ export default function DutyRosterPage() {
   const [loading, setLoading] = useState(true);
   const [mobileTab, setMobileTab] = useState<"driver" | "bucket">("driver");
 
-  // 配車・荷物当番編集
+  // 配車・荷物当番編集（フル）
   const [editMatchId, setEditMatchId] = useState<string | null>(null);
   const [editDriverNames, setEditDriverNames] = useState<string[]>([]);
   const [editEquipOut, setEditEquipOut] = useState<string[]>([]);
@@ -66,6 +66,11 @@ export default function DutyRosterPage() {
   const [inheritDriver, setInheritDriver] = useState<{ date: string; names: string[] } | null>(null);
   const [inheritEquip, setInheritEquip] = useState<{ date: string; names: string[] } | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // スキップ簡易設定
+  const [skipOnlyMatchId, setSkipOnlyMatchId] = useState<string | null>(null);
+  const [skipOnlyNames, setSkipOnlyNames] = useState<string[]>([]);
+  const [savingSkip, setSavingSkip] = useState(false);
 
   // バケツ当番編集
   const [editBucketId, setEditBucketId] = useState<string | null>(null);
@@ -105,23 +110,51 @@ export default function DutyRosterPage() {
     const currentEquip = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
     setEditEquipOut(currentEquip);
 
-    // 直前の試合を探す
-    const prev = matches
-      .filter((x) => x.id !== m.id && x.date <= m.date)
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    // 直前の試合を探す（スキップがあれば1つ前まで遡る）
+    const sortedPrev = matches
+      .filter((x) => x.id !== m.id && x.date < m.date)
+      .sort((a, b) => b.date.localeCompare(a.date));
 
-    if (prev) {
-      // 配車当番: 未設定なら前回の備品持帰りを候補に
+    // スキップがあった試合は引継ぎ元から除外し、さらに前を参照する
+    const inheritSource = sortedPrev.find((x) => !x.skippedDrivers);
+    const prev = sortedPrev[0]; // 直前（スキップ有無問わず）
+
+    if (inheritSource) {
+      // 配車当番: 未設定なら引継ぎ元の備品持帰りを候補に
+      if (currentDrivers.length === 0 && inheritSource.equipmentBringOut) {
+        const names = inheritSource.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean);
+        if (names.length > 0) setInheritDriver({ date: inheritSource.date, names });
+      }
+      // 備品持帰り: 未設定なら引継ぎ元の配車当番を候補に
+      if (currentEquip.length === 0) {
+        const srcDriverNames = drivers.filter((d) => d.matchId === inheritSource.id).map((d) => d.parentName);
+        if (srcDriverNames.length > 0) setInheritEquip({ date: inheritSource.date, names: srcDriverNames });
+      }
+    } else if (prev) {
+      // 全試合スキップ済みの場合は直前から引継ぎ
       if (currentDrivers.length === 0 && prev.equipmentBringOut) {
         const names = prev.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean);
         if (names.length > 0) setInheritDriver({ date: prev.date, names });
       }
-      // 備品持帰り: 未設定なら前回の配車当番を候補に
       if (currentEquip.length === 0) {
         const prevDriverNames = drivers.filter((d) => d.matchId === prev.id).map((d) => d.parentName);
         if (prevDriverNames.length > 0) setInheritEquip({ date: prev.date, names: prevDriverNames });
       }
     }
+  }
+
+  async function saveSkipOnly(m: Match) {
+    setSavingSkip(true);
+    await fetch(`/api/matches/${m.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...m, skippedDrivers: skipOnlyNames.join(", ") }),
+    });
+    setMatches((prev) =>
+      prev.map((x) => x.id === m.id ? { ...x, skippedDrivers: skipOnlyNames.join(", ") } : x)
+    );
+    setSkipOnlyMatchId(null);
+    setSavingSkip(false);
   }
 
   async function saveMatchDuty(m: Match) {
@@ -231,13 +264,25 @@ export default function DutyRosterPage() {
                   <span className={`text-xs ${isPast ? "text-gray-400" : "text-gray-500"} truncate`}>{m.matchName || m.matchType}{m.venue ? ` @ ${m.venue}` : ""}</span>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  {!isEditing && (
-                    <button
-                      onClick={() => startEditMatch(m)}
-                      className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg"
-                    >
-                      変更
-                    </button>
+                  {!isEditing && skipOnlyMatchId !== m.id && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setSkipOnlyMatchId(m.id);
+                          setSkipOnlyNames(m.skippedDrivers ? m.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []);
+                          setEditMatchId(null);
+                        }}
+                        className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
+                      >
+                        ⏭️
+                      </button>
+                      <button
+                        onClick={() => { setSkipOnlyMatchId(null); startEditMatch(m); }}
+                        className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg"
+                      >
+                        変更
+                      </button>
+                    </>
                   )}
                   <Link
                     href={`/matches/${m.id}`}
@@ -303,6 +348,26 @@ export default function DutyRosterPage() {
                     </button>
                     <button
                       onClick={() => setEditMatchId(null)}
+                      className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm"
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              ) : skipOnlyMatchId === m.id ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-500">⏭️ スキップ設定（今回のみ免除）</p>
+                  <MultiSelect names={matchDrivers.length > 0 ? matchDrivers : parentNames} selected={skipOnlyNames} onChange={setSkipOnlyNames} />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => saveSkipOnly(m)}
+                      disabled={savingSkip}
+                      className="flex-1 bg-gray-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+                    >
+                      {savingSkip ? "保存中..." : "スキップ保存"}
+                    </button>
+                    <button
+                      onClick={() => setSkipOnlyMatchId(null)}
                       className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm"
                     >
                       キャンセル
