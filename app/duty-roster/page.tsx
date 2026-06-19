@@ -62,6 +62,8 @@ export default function DutyRosterPage() {
   const [editMatchId, setEditMatchId] = useState<string | null>(null);
   const [editDriverNames, setEditDriverNames] = useState<string[]>([]);
   const [editEquipOut, setEditEquipOut] = useState<string[]>([]);
+  const [inheritDriver, setInheritDriver] = useState<{ date: string; names: string[] } | null>(null);
+  const [inheritEquip, setInheritEquip] = useState<{ date: string; names: string[] } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // バケツ当番編集
@@ -92,10 +94,32 @@ export default function DutyRosterPage() {
 
   function startEditMatch(m: Match) {
     setEditMatchId(m.id);
-    setEditDriverNames(drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName));
-    setEditEquipOut(
-      m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : []
-    );
+    setInheritDriver(null);
+    setInheritEquip(null);
+
+    const currentDrivers = drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName);
+    setEditDriverNames(currentDrivers);
+
+    const currentEquip = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
+    setEditEquipOut(currentEquip);
+
+    // 直前の試合を探す
+    const prev = matches
+      .filter((x) => x.id !== m.id && x.date <= m.date)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+    if (prev) {
+      // 配車当番: 未設定なら前回の備品持帰りを候補に
+      if (currentDrivers.length === 0 && prev.equipmentBringOut) {
+        const names = prev.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean);
+        if (names.length > 0) setInheritDriver({ date: prev.date, names });
+      }
+      // 備品持帰り: 未設定なら前回の配車当番を候補に
+      if (currentEquip.length === 0) {
+        const prevDriverNames = drivers.filter((d) => d.matchId === prev.id).map((d) => d.parentName);
+        if (prevDriverNames.length > 0) setInheritEquip({ date: prev.date, names: prevDriverNames });
+      }
+    }
   }
 
   async function saveMatchDuty(m: Match) {
@@ -222,10 +246,40 @@ export default function DutyRosterPage() {
 
               {isEditing ? (
                 <div className="space-y-3">
+                  {/* 配車当番引継ぎバナー */}
+                  {inheritDriver && editDriverNames.length === 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                      <div className="text-xs text-blue-700 min-w-0">
+                        <span className="font-semibold">前回({fmtDate(inheritDriver.date)})の備品持帰り</span>を引継ぎますか？
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {inheritDriver.names.map((n) => <span key={n} className="bg-blue-100 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => { setEditDriverNames(inheritDriver.names); setInheritDriver(null); }} className="text-xs bg-blue-500 text-white px-2 py-1 rounded-lg">引継ぐ</button>
+                        <button onClick={() => setInheritDriver(null)} className="text-xs text-gray-400 px-1">✕</button>
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <p className="text-xs font-semibold text-gray-500 mb-1">🚗 配車当番</p>
                     <MultiSelect names={parentNames} selected={editDriverNames} onChange={setEditDriverNames} />
                   </div>
+                  {/* 備品持帰り引継ぎバナー */}
+                  {inheritEquip && editEquipOut.length === 0 && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                      <div className="text-xs text-orange-700 min-w-0">
+                        <span className="font-semibold">前回({fmtDate(inheritEquip.date)})の配車当番</span>を引継ぎますか？
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {inheritEquip.names.map((n) => <span key={n} className="bg-orange-100 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => { setEditEquipOut(inheritEquip.names); setInheritEquip(null); }} className="text-xs bg-orange-500 text-white px-2 py-1 rounded-lg">引継ぐ</button>
+                        <button onClick={() => setInheritEquip(null)} className="text-xs text-gray-400 px-1">✕</button>
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <p className="text-xs font-semibold text-gray-500 mb-1">🎒 備品持帰り</p>
                     <MultiSelect names={parentNames} selected={editEquipOut} onChange={setEditEquipOut} />
