@@ -12,13 +12,6 @@ function fmtDate(d: string) {
   return `${d.replace(/-/g, "/")}（${DOW[dt.getDay()]}）`;
 }
 
-function isBucketActive(p: Practice, start: string, end: string): boolean {
-  if (p.type !== "自主練習") return false;
-  if (new Date(p.date + "T00:00:00").getDay() !== 6) return false;
-  if (!start || !end) return true;
-  return p.date >= start && p.date <= end;
-}
-
 // チェックボックスグリッドで複数選択
 function MultiSelect({
   names,
@@ -59,21 +52,20 @@ export default function DutyRosterPage() {
   const [loading, setLoading] = useState(true);
   const [mobileTab, setMobileTab] = useState<"driver" | "bucket">("driver");
 
-  // 配車・荷物当番編集（フル）
+  // 配車・荷物当番編集
   const [editMatchId, setEditMatchId] = useState<string | null>(null);
   const [editDriverNames, setEditDriverNames] = useState<string[]>([]);
   const [editEquipOut, setEditEquipOut] = useState<string[]>([]);
-  const [editSkipped, setEditSkipped] = useState<string[]>([]);
   const [inheritDriver, setInheritDriver] = useState<{ date: string; names: string[] } | null>(null);
   const [inheritEquip, setInheritEquip] = useState<{ date: string; names: string[] } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // スキップ簡易設定
+  // スキップ簡易設定（過去試合用）
   const [skipOnlyMatchId, setSkipOnlyMatchId] = useState<string | null>(null);
   const [skipOnlyNames, setSkipOnlyNames] = useState<string[]>([]);
   const [savingSkip, setSavingSkip] = useState(false);
 
-  // 未来スロットの試合紐づけ（null = 自動割当）
+  // 未来スロットの試合紐づけ
   const [slotMatchIds, setSlotMatchIds] = useState<(string | null)[]>([null, null, null, null]);
   const [pickingSlot, setPickingSlot] = useState<number | null>(null);
 
@@ -83,8 +75,10 @@ export default function DutyRosterPage() {
   const [swapTo, setSwapTo] = useState("");
   const [savingSwap, setSavingSwap] = useState(false);
 
-  // バケツ当番編集
-  const [editBucketId, setEditBucketId] = useState<string | null>(null);
+  // バケツ当番スロット
+  const [slotBucketPracticeIds, setSlotBucketPracticeIds] = useState<(string | null)[]>([null, null, null, null]);
+  const [pickingBucketSlot, setPickingBucketSlot] = useState<number | null>(null);
+  const [editBucketSlot, setEditBucketSlot] = useState<number | null>(null);
   const [editBring, setEditBring] = useState("");
   const [editRet, setEditRet] = useState("");
   const [savingBucket, setSavingBucket] = useState(false);
@@ -111,13 +105,11 @@ export default function DutyRosterPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // 班の表記を正規化（"1" → "1班"、"1班" → "1班"）
   function normalizeGroup(g: string) {
     if (!g) return "";
     return g.endsWith("班") ? g : `${g}班`;
   }
 
-  // スワップを適用して名前リストを変換
   function applySwaps(names: string[]): string[] {
     return names.map((name) => {
       const sw = swaps.find((s) => s.personA === name || s.personB === name);
@@ -126,20 +118,16 @@ export default function DutyRosterPage() {
     });
   }
 
-  function startEditMatch(m: Match, expectedGroup?: string) {
+  // expectedEquipGroup: 備品持帰り班（次の班）を自動セットするために使用
+  function startEditMatch(m: Match, expectedGroup?: string, expectedEquipGroup?: string) {
     setEditMatchId(m.id);
     setInheritDriver(null);
     setInheritEquip(null);
 
-    // DB保存済みのデータはwrite-throughでスワップ適用済みのためそのまま使用
     const currentDrivers = drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName);
-    setEditSkipped(m.skippedDrivers ? m.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []);
-
     const currentEquip = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
-    setEditEquipOut(currentEquip);
 
     if (currentDrivers.length === 0 && expectedGroup) {
-      // 班のメンバーを配車当番に自動セット（スワップ適用）
       const normG = normalizeGroup(expectedGroup);
       const groupMembers = applySwaps(
         parents
@@ -152,17 +140,29 @@ export default function DutyRosterPage() {
       setEditDriverNames(currentDrivers);
     }
 
-    // 直前の試合を取得（スキップ有無問わず）
-    const prev = matches
-      .filter((x) => x.id !== m.id && x.date < m.date)
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
-
-    if (prev) {
-      const skippedSet = new Set(
-        prev.skippedDrivers ? prev.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []
+    if (currentEquip.length === 0 && expectedEquipGroup) {
+      // 備品持帰り: 次の班メンバーを自動セット
+      const normEG = normalizeGroup(expectedEquipGroup);
+      const equipMembers = applySwaps(
+        parents
+          .filter((p) => normalizeGroup(p.group) === normEG)
+          .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
+          .map((p) => p.playerName)
       );
-      // 備品持帰り: 未設定なら前回の配車当番（スキップ除外）を候補に
-      if (currentEquip.length === 0) {
+      setEditEquipOut(equipMembers);
+    } else {
+      setEditEquipOut(currentEquip);
+    }
+
+    // 備品持帰り未設定の場合: 前回の配車当番を引継ぎ候補に
+    if (currentEquip.length === 0 && !expectedEquipGroup) {
+      const prev = matches
+        .filter((x) => x.id !== m.id && x.date < m.date)
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
+      if (prev) {
+        const skippedSet = new Set(
+          prev.skippedDrivers ? prev.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []
+        );
         const prevDriverNames = drivers.filter((d) => d.matchId === prev.id).map((d) => d.parentName).filter((n) => !skippedSet.has(n));
         if (prevDriverNames.length > 0) setInheritEquip({ date: prev.date, names: prevDriverNames });
       }
@@ -198,7 +198,6 @@ export default function DutyRosterPage() {
           ...m,
           carCount: editDriverNames.length,
           equipmentBringOut: editEquipOut.join(", "),
-          skippedDrivers: editSkipped.join(", "),
         }),
       }),
     ]);
@@ -209,7 +208,7 @@ export default function DutyRosterPage() {
     setMatches((prev) =>
       prev.map((x) =>
         x.id === m.id
-          ? { ...x, carCount: editDriverNames.length, equipmentBringOut: editEquipOut.join(", "), skippedDrivers: editSkipped.join(", ") }
+          ? { ...x, carCount: editDriverNames.length, equipmentBringOut: editEquipOut.join(", ") }
           : x
       )
     );
@@ -217,26 +216,22 @@ export default function DutyRosterPage() {
     setSaving(false);
   }
 
-  function startEditBucket(p: Practice) {
-    const duty = duties.find((d) => d.practiceId === p.id);
-    setEditBucketId(p.id);
-    setEditBring(duty?.bringPersonName ?? "");
-    setEditRet(duty?.returnPersonName ?? "");
-  }
-
-  async function saveBucketDuty(practiceId: string) {
+  async function saveBucketSlot(slotIdx: number, practiceId: string | null) {
     setSavingBucket(true);
-    const res = await fetch("/api/bucket-duties", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ practiceId, bringPersonName: editBring, returnPersonName: editRet }),
-    });
-    const data = await res.json();
-    setDuties((prev) => [
-      ...prev.filter((d) => d.practiceId !== practiceId),
-      { id: data.id ?? "", practiceId, bringPersonName: editBring, returnPersonName: editRet },
-    ]);
-    setEditBucketId(null);
+    const pid = practiceId ?? "";
+    if (pid) {
+      const res = await fetch("/api/bucket-duties", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ practiceId: pid, bringPersonName: editBring, returnPersonName: editRet }),
+      });
+      const data = await res.json();
+      setDuties((prev) => [
+        ...prev.filter((d) => d.practiceId !== pid),
+        { id: data.id ?? "", practiceId: pid, bringPersonName: editBring, returnPersonName: editRet },
+      ]);
+    }
+    setEditBucketSlot(null);
     setSavingBucket(false);
   }
 
@@ -245,22 +240,11 @@ export default function DutyRosterPage() {
   const today = new Date().toISOString().slice(0, 10);
   const parentNames = [...parents].sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName);
 
-  // 試合: 未来昇順 → 過去降順
   const futureMatches = matches.filter((m) => m.date >= today).sort((a, b) => a.date.localeCompare(b.date));
   const pastMatches = matches.filter((m) => m.date < today).sort((a, b) => b.date.localeCompare(a.date));
-  const orderedMatches = [...futureMatches, ...pastMatches];
-
-  // バケツ: 未来昇順 → 過去降順
-  const bStart = settings?.bucketDutyStartDate ?? "";
-  const bEnd = settings?.bucketDutyEndDate ?? "";
-  const activePractices = practices.filter((p) => isBucketActive(p, bStart, bEnd));
-  const futureBucket = activePractices.filter((p) => p.date >= today).sort((a, b) => a.date.localeCompare(b.date));
-  const pastBucket = activePractices.filter((p) => p.date < today).sort((a, b) => b.date.localeCompare(a.date));
-  const orderedBucket = [...futureBucket, ...pastBucket];
 
   // ────────── 配車・荷物当番パネル ──────────
   const DriverPanel = () => {
-    // 班ローテーション計算（全て normalizeGroup で統一）
     const sortedGroups = [...new Set(parents.map((p) => normalizeGroup(p.group)).filter(Boolean))].sort();
 
     function normN(s: string) { return s.replace(/[\s　]/g, ""); }
@@ -279,17 +263,11 @@ export default function DutyRosterPage() {
       return Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
     }
 
-    // 過去の試合（全件、新→旧）
-    const pastMatches = matches.filter((m) => m.date < today).sort((a, b) => b.date.localeCompare(a.date));
-
-    // 最後に当番した班を特定（正規化済み）
     const lastGroupMatch = pastMatches.find((m) => drivers.some((d) => d.matchId === m.id));
     const lastGroup = lastGroupMatch ? getMatchGroup(lastGroupMatch.id) : "";
 
-    // 未来5回分のローテーション（4スロット + 備品持帰り用に1つ余分）
     function nextInRotation(g: string): string {
       if (!sortedGroups.length) return "";
-      // g は既に normalizeGroup 済みなので直接 indexOf
       const idx = g ? sortedGroups.indexOf(g) : -1;
       return sortedGroups[(idx + 1) % sortedGroups.length];
     }
@@ -304,25 +282,21 @@ export default function DutyRosterPage() {
       futureGroups.push(...["", "", "", "", ""]);
     }
 
-    // 未来の試合（日付昇順）
     const futureMatchesSorted = matches.filter((m) => m.date >= today).sort((a, b) => a.date.localeCompare(b.date));
 
-    // スロットの有効な試合ID（過去日付のリンクは自動解除）
     const effectiveSlotMatchIds = slotMatchIds.map((override) => {
       if (!override || override === "") return null;
       const m = matches.find((x) => x.id === override);
-      if (!m || m.date < today) return null; // 日付が過去になったら解除
+      if (!m || m.date < today) return null;
       return override;
     });
 
-    // 各スロットの班メンバーを取得（スワップ適用済み）
     function getGroupMembers(g: string): string[] {
       const normGVal = normalizeGroup(g);
       const base = parents
         .filter((p) => normalizeGroup(p.group) === normGVal)
         .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
         .map((p) => p.playerName);
-      // スワップを適用: A↔B の交換
       return base.map((name) => {
         const sw = swaps.find((s) => s.personA === name || s.personB === name);
         if (!sw) return name;
@@ -341,7 +315,6 @@ export default function DutyRosterPage() {
       const data = await res.json();
       setSwaps((prev) => [...prev, { id: data.id, personA: swapFrom, personB: swapTo }]);
 
-      // 紐づけ済みの未来スロットの試合データ（配車+備品持帰り）をDBに書き込む
       function applyOneSwap(names: string[]): string[] {
         return names.map((n) => n === swapFrom ? swapTo : n === swapTo ? swapFrom : n);
       }
@@ -351,7 +324,6 @@ export default function DutyRosterPage() {
         const lm = matches.find((m) => m.id === lid);
         if (!lm) continue;
 
-        // 配車当番を更新
         const curDrv = drivers.filter((d) => d.matchId === lid).map((d) => d.parentName);
         const newDrv = applyOneSwap(curDrv);
         if (curDrv.join() !== newDrv.join()) {
@@ -366,7 +338,6 @@ export default function DutyRosterPage() {
           ]);
         }
 
-        // 備品持帰りを更新
         const curEq = lm.equipmentBringOut ? lm.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
         const newEq = applyOneSwap(curEq);
         if (curEq.join() !== newEq.join()) {
@@ -390,7 +361,6 @@ export default function DutyRosterPage() {
       setSwaps((prev) => prev.filter((s) => s.id !== id));
     }
 
-    // 班バッジ色（"1" or "1班" どちらでも対応）
     const GROUP_COLORS: Record<string, { bg: string; text: string }> = {
       "1班": { bg: "bg-blue-100", text: "text-blue-700" },
       "2班": { bg: "bg-green-100", text: "text-green-700" },
@@ -404,7 +374,6 @@ export default function DutyRosterPage() {
     }
     function groupDisplay(g: string) { return normalizeGroup(g); }
 
-    // 編集フォームの共通部分
     function EditForm({ m, groupLabel }: { m: Match; groupLabel?: string }) {
       return (
         <div className="space-y-3">
@@ -444,10 +413,6 @@ export default function DutyRosterPage() {
             <p className="text-xs font-semibold text-gray-500 mb-1">🎒 備品持帰り</p>
             <MultiSelect names={parentNames} selected={editEquipOut} onChange={setEditEquipOut} />
           </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 mb-1">スキップ（今回免除）</p>
-            <MultiSelect names={parentNames} selected={editSkipped} onChange={setEditSkipped} />
-          </div>
           <div className="flex gap-2">
             <button onClick={() => saveMatchDuty(m)} disabled={saving} className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
               {saving ? "保存中..." : "保存"}
@@ -479,7 +444,6 @@ export default function DutyRosterPage() {
           <span>🚗</span> 配車・荷物当番
         </h2>
 
-        {/* 登録中のスワップ */}
         {swaps.length > 0 && (
           <div className="mb-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
             <p className="text-xs font-semibold text-yellow-700 mb-2">現在の個人交代</p>
@@ -494,19 +458,16 @@ export default function DutyRosterPage() {
           </div>
         )}
 
-        {/* ── 今後の当番（次4回） ── */}
         <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">今後の当番（次4回）</p>
         <div className="grid gap-2 mb-5">
           {futureGroups.slice(0, 4).map((group, i) => {
             const linkedMatchId = effectiveSlotMatchIds[i];
             const linkedMatch = linkedMatchId ? matches.find((m) => m.id === linkedMatchId) : null;
             const groupMembers = getGroupMembers(group);
-            // 配車当番: 紐づけ試合のDB設定済みならそちら（write-through済み）、なければ班メンバー（スワップ適用）
             const rawLinkedDrivers = linkedMatchId
               ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName)
               : [];
             const slotDrivers = rawLinkedDrivers.length > 0 ? rawLinkedDrivers : groupMembers;
-            // 備品持帰り: DB設定済みならそちら（write-through済み）、なければ次の班メンバー（スワップ適用）
             const equipGroup = futureGroups[i + 1] ?? "";
             const rawLinkedEquip = linkedMatch?.equipmentBringOut
               ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean)
@@ -518,7 +479,6 @@ export default function DutyRosterPage() {
 
             return (
               <div key={i} className={`bg-white rounded-xl border p-3 ${i === 0 ? "border-blue-300 shadow-md" : "border-gray-100 shadow-sm"}`}>
-                {/* ヘッダー */}
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 flex-wrap min-w-0">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-bold shrink-0 ${i === 0 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-600"}`}>{slotLabel}</span>
@@ -541,7 +501,7 @@ export default function DutyRosterPage() {
                       </button>
                       {linkedMatch && (
                         <button
-                          onClick={() => { setSkipOnlyMatchId(null); startEditMatch(linkedMatch, group); }}
+                          onClick={() => { setSkipOnlyMatchId(null); startEditMatch(linkedMatch, group, equipGroup); }}
                           className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg"
                         >変更</button>
                       )}
@@ -616,7 +576,7 @@ export default function DutyRosterPage() {
                             ids[i] = fm.id;
                             setSlotMatchIds(ids);
                             setPickingSlot(null);
-                            startEditMatch(fm, group);
+                            startEditMatch(fm, group, equipGroup);
                           }}
                           className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedMatchId === fm.id ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
                         >
@@ -628,7 +588,6 @@ export default function DutyRosterPage() {
                   </div>
                 )}
 
-                {/* 編集フォーム or 表示 */}
                 {isEditing && linkedMatch ? (
                   <EditForm m={linkedMatch} groupLabel={group} />
                 ) : (
@@ -645,7 +604,7 @@ export default function DutyRosterPage() {
                         <div className="flex flex-wrap gap-1">
                           {slotEquipOut.map((n) => <span key={n} className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
                         </div>
-                      ) : <span className="text-xs text-gray-400 text-sm">−</span>}
+                      ) : <span className="text-xs text-gray-400">−</span>}
                     </div>
                   </div>
                 )}
@@ -654,7 +613,7 @@ export default function DutyRosterPage() {
           })}
         </div>
 
-        {/* ── 過去の当番 ── */}
+        {/* 過去の当番 */}
         {pastMatches.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">過去の当番</p>
@@ -725,111 +684,251 @@ export default function DutyRosterPage() {
   };
 
   // ────────── バケツ当番パネル ──────────
-  const BucketPanel = () => (
-    <div>
-      <h2 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
-        <span>🪣</span> バケツ当番
-      </h2>
-      {orderedBucket.length === 0 && (
-        <p className="text-sm text-gray-400 text-center py-8">
-          {!bStart || !bEnd ? "設定画面でバケツ当番の期間を設定してください" : "対象の練習がありません"}
-        </p>
-      )}
-      <div className="grid gap-2">
-        {orderedBucket.map((p, i) => {
-          const isPast = p.date < today;
-          const isNext = !isPast && i === 0;
-          const duty = duties.find((d) => d.practiceId === p.id);
-          const isEditing = editBucketId === p.id;
+  const BucketPanel = () => {
+    // bucketOrder順に並べた保護者リスト（0は除外）
+    const bucketPeople = parents
+      .filter((p) => p.bucketOrder > 0)
+      .sort((a, b) => a.bucketOrder - b.bucketOrder)
+      .map((p) => p.playerName);
 
-          return (
-            <div
-              key={p.id}
-              className={`bg-white rounded-xl border p-3 transition-all ${isPast ? "opacity-60 border-gray-100" : isNext ? "border-yellow-300 shadow-md" : "border-gray-100 shadow-sm"}`}
-            >
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {isNext && <span className="text-xs bg-yellow-500 text-white px-2 py-0.5 rounded-full font-bold shrink-0">次回</span>}
-                  {isPast && <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full shrink-0">過去</span>}
-                  <span className={`text-sm font-semibold ${isPast ? "text-gray-500" : "text-gray-800"}`}>{fmtDate(p.date)}</span>
-                  <span className="text-xs text-gray-400">自主練習</span>
-                </div>
-                {!isEditing && (
-                  <button
-                    onClick={() => startEditBucket(p)}
-                    className="text-xs text-yellow-600 border border-yellow-200 px-2 py-1 rounded-lg shrink-0"
-                  >
-                    {duty ? "変更" : "設定"}
-                  </button>
-                )}
-              </div>
+    // 最後にバケツ当番をした人を特定（過去の練習に紐づいたdutyから）
+    const pastDuties = duties
+      .filter((d) => {
+        const pr = practices.find((p) => p.id === d.practiceId);
+        return pr && pr.date < today;
+      })
+      .sort((a, b) => {
+        const pa = practices.find((p) => p.id === a.practiceId);
+        const pb = practices.find((p) => p.id === b.practiceId);
+        return (pb?.date ?? "").localeCompare(pa?.date ?? "");
+      });
+    const lastBringPerson = pastDuties[0]?.bringPersonName ?? "";
+    const lastIdx = lastBringPerson && bucketPeople.length > 0
+      ? bucketPeople.indexOf(lastBringPerson)
+      : -1;
 
-              {isEditing ? (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-0.5 block">持っていく</label>
-                      <select
-                        value={editBring}
-                        onChange={(e) => setEditBring(e.target.value)}
-                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white"
-                      >
-                        <option value="">未設定</option>
-                        {parentNames.map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
+    // 次の5人（スロット4回分＋持って帰る人用1人）
+    const futurePeople: string[] = [];
+    if (bucketPeople.length > 0) {
+      for (let i = 0; i < 5; i++) {
+        futurePeople.push(bucketPeople[(lastIdx + 1 + i) % bucketPeople.length]);
+      }
+    }
+
+    // 過去の自主練習（duty有り）を新→旧で表示
+    const pastBucketRecords = pastDuties.map((d) => ({
+      duty: d,
+      practice: practices.find((p) => p.id === d.practiceId)!,
+    })).filter((x) => x.practice);
+
+    // 自主練習（未来 + 日付なし）を選択候補に
+    const futurePractices = practices
+      .filter((p) => p.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    return (
+      <div>
+        <h2 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <span>🪣</span> バケツ当番
+        </h2>
+
+        {bucketPeople.length === 0 && (
+          <p className="text-sm text-gray-400 text-center py-6">
+            選手マスタでバケツ当番順を設定してください
+          </p>
+        )}
+
+        {bucketPeople.length > 0 && (
+          <>
+            <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">今後の当番（次4回）</p>
+            <div className="grid gap-2 mb-5">
+              {[0, 1, 2, 3].map((i) => {
+                const bringPerson = futurePeople[i] ?? "";
+                const returnPerson = futurePeople[i + 1] ?? "";
+                const linkedPracticeId = slotBucketPracticeIds[i];
+                const linkedPractice = linkedPracticeId ? practices.find((p) => p.id === linkedPracticeId) : null;
+                const existingDuty = linkedPracticeId ? duties.find((d) => d.practiceId === linkedPracticeId) : null;
+                const displayBring = existingDuty?.bringPersonName || bringPerson;
+                const displayReturn = existingDuty?.returnPersonName || returnPerson;
+                const isEditing = editBucketSlot === i;
+                const isPicking = pickingBucketSlot === i;
+                const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
+
+                return (
+                  <div key={i} className={`bg-white rounded-xl border p-3 ${i === 0 ? "border-yellow-300 shadow-md" : "border-gray-100 shadow-sm"}`}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold shrink-0 ${i === 0 ? "bg-yellow-500 text-white" : "bg-gray-200 text-gray-600"}`}>{slotLabel}</span>
+                        {linkedPractice ? (
+                          <span className="text-xs text-gray-500 truncate">{fmtDate(linkedPractice.date)}　自主練習</span>
+                        ) : (
+                          <span className="text-xs text-gray-400">日付未定</span>
+                        )}
+                      </div>
+                      {!isEditing && !isPicking && (
+                        <div className="flex gap-1.5 shrink-0">
+                          <button
+                            onClick={() => {
+                              setEditBucketSlot(i);
+                              setEditBring(displayBring);
+                              setEditRet(displayReturn);
+                            }}
+                            className="text-xs text-yellow-600 border border-yellow-200 px-2 py-1 rounded-lg"
+                          >変更</button>
+                          <button
+                            onClick={() => setPickingBucketSlot(i)}
+                            className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
+                          >
+                            {linkedPractice ? "練習変更" : "練習選択"}
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-0.5 block">持って帰る</label>
-                      <select
-                        value={editRet}
-                        onChange={(e) => setEditRet(e.target.value)}
-                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white"
-                      >
-                        <option value="">未設定</option>
-                        {parentNames.map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
-                    </div>
+
+                    {/* 練習選択ピッカー */}
+                    {isPicking && (
+                      <div className="space-y-1.5 mb-2">
+                        <p className="text-xs text-gray-500 font-semibold">紐づける自主練習を選択</p>
+                        <div className="grid gap-1 max-h-44 overflow-y-auto">
+                          {linkedPractice && (
+                            <button
+                              onClick={() => {
+                                const ids = [...slotBucketPracticeIds];
+                                ids[i] = null;
+                                setSlotBucketPracticeIds(ids);
+                                setPickingBucketSlot(null);
+                              }}
+                              className="text-xs text-left px-2 py-1.5 rounded-lg border border-gray-200 text-gray-400"
+                            >
+                              紐づけ解除
+                            </button>
+                          )}
+                          {futurePractices.map((pr) => (
+                            <button
+                              key={pr.id}
+                              onClick={() => {
+                                const ids = [...slotBucketPracticeIds];
+                                ids[i] = pr.id;
+                                setSlotBucketPracticeIds(ids);
+                                setPickingBucketSlot(null);
+                                // 既存dutyがあれば読み込み
+                                const existing = duties.find((d) => d.practiceId === pr.id);
+                                setEditBucketSlot(i);
+                                setEditBring(existing?.bringPersonName || bringPerson);
+                                setEditRet(existing?.returnPersonName || returnPerson);
+                              }}
+                              className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedPracticeId === pr.id ? "border-yellow-400 bg-yellow-50 text-yellow-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                            >
+                              {fmtDate(pr.date)}　自主練習
+                            </button>
+                          ))}
+                          {futurePractices.length === 0 && (
+                            <p className="text-xs text-gray-400 px-2">未来の自主練習がありません</p>
+                          )}
+                        </div>
+                        <button onClick={() => setPickingBucketSlot(null)} className="text-xs text-gray-400">キャンセル</button>
+                      </div>
+                    )}
+
+                    {/* 編集フォーム or 表示 */}
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-gray-500 mb-0.5 block">持っていく</label>
+                            <select
+                              value={editBring}
+                              onChange={(e) => setEditBring(e.target.value)}
+                              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white"
+                            >
+                              <option value="">未設定</option>
+                              {parentNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 mb-0.5 block">持って帰る</label>
+                            <select
+                              value={editRet}
+                              onChange={(e) => setEditRet(e.target.value)}
+                              className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white"
+                            >
+                              <option value="">未設定</option>
+                              {parentNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        {!linkedPracticeId && (
+                          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                            自主練習を選択すると保存できます
+                          </p>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => saveBucketSlot(i, linkedPracticeId)}
+                            disabled={savingBucket || !linkedPracticeId}
+                            className="flex-1 bg-yellow-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+                          >
+                            {savingBucket ? "保存中..." : "保存"}
+                          </button>
+                          <button onClick={() => setEditBucketSlot(null)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm">
+                            キャンセル
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-lg p-2 bg-blue-50 border border-blue-100">
+                          <p className="text-xs text-gray-400 mb-0.5">持っていく</p>
+                          <p className="text-sm font-semibold text-blue-800">{displayBring || "−"}</p>
+                        </div>
+                        <div className="rounded-lg p-2 bg-pink-50 border border-pink-100">
+                          <p className="text-xs text-gray-400 mb-0.5">持って帰る</p>
+                          <p className="text-sm font-semibold text-pink-800">{displayReturn || "−"}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => saveBucketDuty(p.id)}
-                      disabled={savingBucket}
-                      className="flex-1 bg-yellow-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
-                    >
-                      {savingBucket ? "保存中..." : "保存"}
-                    </button>
-                    <button
-                      onClick={() => setEditBucketId(null)}
-                      className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm"
-                    >
-                      キャンセル
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className={`rounded-lg p-2 ${isPast ? "bg-gray-50" : "bg-blue-50 border border-blue-100"}`}>
-                    <p className="text-xs text-gray-400 mb-0.5">持っていく</p>
-                    <p className={`text-sm font-semibold ${isPast ? "text-gray-400" : "text-blue-800"}`}>{duty?.bringPersonName || "−"}</p>
-                  </div>
-                  <div className={`rounded-lg p-2 ${isPast ? "bg-gray-50" : "bg-pink-50 border border-pink-100"}`}>
-                    <p className="text-xs text-gray-400 mb-0.5">持って帰る</p>
-                    <p className={`text-sm font-semibold ${isPast ? "text-gray-400" : "text-pink-800"}`}>{duty?.returnPersonName || "−"}</p>
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
-          );
-        })}
+          </>
+        )}
+
+        {/* 過去のバケツ当番 */}
+        {pastBucketRecords.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">過去のバケツ当番</p>
+            <div className="grid gap-2">
+              {pastBucketRecords.map(({ duty, practice }) => (
+                <div key={duty.id} className="bg-white rounded-xl border border-gray-100 p-3 opacity-70">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full shrink-0">過去</span>
+                    <span className="text-sm font-semibold text-gray-500">{fmtDate(practice.date)}</span>
+                    <span className="text-xs text-gray-400">自主練習</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg p-2 bg-gray-50">
+                      <p className="text-xs text-gray-400 mb-0.5">持っていく</p>
+                      <p className="text-sm text-gray-500">{duty.bringPersonName || "−"}</p>
+                    </div>
+                    <div className="rounded-lg p-2 bg-gray-50">
+                      <p className="text-xs text-gray-400 mb-0.5">持って帰る</p>
+                      <p className="text-sm text-gray-500">{duty.returnPersonName || "−"}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <main className="max-w-5xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="当番一覧" />
 
-      {/* スマホ: タブ切替 */}
       <div className="flex bg-gray-100 rounded-xl overflow-hidden border border-gray-200 mb-4 md:hidden">
         {(["driver", "bucket"] as const).map((tab) => (
           <button
@@ -842,7 +941,6 @@ export default function DutyRosterPage() {
         ))}
       </div>
 
-      {/* PC: 2カラム / スマホ: タブ内容 */}
       <div className="hidden md:grid md:grid-cols-2 md:gap-6">
         <DriverPanel />
         <BucketPanel />
