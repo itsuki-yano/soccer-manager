@@ -127,20 +127,31 @@ function DutyRosterInner() {
 
   useEffect(() => { load(); }, [load]);
 
-  // URL パラメータ ?matchId= があれば最初の空きスロットに自動リンク
+  // URL パラメータ ?matchId= / ?practiceId= があれば最初の空きスロットに自動リンク
   useEffect(() => {
     const matchId = searchParams.get("matchId");
-    if (!matchId) return;
-    setSlotMatchIds((prev) => {
-      // 既にこの matchId がリンク済みなら何もしない
-      if (prev.includes(matchId)) return prev;
-      // 最初の null スロットにセット
-      const idx = prev.findIndex((v) => v === null);
-      if (idx < 0) return prev;
-      const next = [...prev];
-      next[idx] = matchId;
-      return next;
-    });
+    if (matchId) {
+      setSlotMatchIds((prev) => {
+        if (prev.includes(matchId)) return prev;
+        const idx = prev.findIndex((v) => v === null);
+        if (idx < 0) return prev;
+        const next = [...prev];
+        next[idx] = matchId;
+        return next;
+      });
+    }
+    const practiceId = searchParams.get("practiceId");
+    if (practiceId) {
+      setSlotBucketPracticeIds((prev) => {
+        if (prev.includes(practiceId)) return prev;
+        const idx = prev.findIndex((v) => v === null);
+        if (idx < 0) return prev;
+        const next = [...prev];
+        next[idx] = practiceId;
+        return next;
+      });
+      setMobileTab("bucket");
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 

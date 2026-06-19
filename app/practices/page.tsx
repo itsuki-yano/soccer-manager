@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
-import type { Practice, BucketDuty, Parent, Settings } from "@/lib/types";
+import type { Practice, BucketDuty, Settings } from "@/lib/types";
 
 type View = "list" | "cal";
 
@@ -32,72 +33,26 @@ function isBucketActive(practice: Practice, start: string, end: string): boolean
 function BucketDutyCard({
   practice,
   duty,
-  parents,
   bucketActive,
-  onSave,
 }: {
   practice: Practice;
   duty: BucketDuty | null;
-  parents: Parent[];
   bucketActive: boolean;
-  onSave: (practiceId: string, bring: string, ret: string) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [bring, setBring] = useState(duty?.bringPersonName ?? "");
-  const [ret, setRet] = useState(duty?.returnPersonName ?? "");
-
-  useEffect(() => {
-    setBring(duty?.bringPersonName ?? "");
-    setRet(duty?.returnPersonName ?? "");
-  }, [duty]);
-
   if (!bucketActive) return null;
-
-  const names = parents.map((p) => p.playerName);
 
   return (
     <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-semibold text-yellow-800">🪣 バケツ当番</span>
-        <button
-          onClick={() => setEditing((v) => !v)}
-          className="text-xs text-yellow-700 border border-yellow-300 px-2 py-0.5 rounded-lg"
+        <Link
+          href={`/duty-roster?practiceId=${practice.id}`}
+          className="text-xs text-blue-700 bg-blue-100 border border-blue-300 px-2.5 py-1 rounded-lg font-medium"
         >
-          {editing ? "キャンセル" : duty ? "変更" : "設定"}
-        </button>
+          当番一覧で設定 →
+        </Link>
       </div>
-      {editing ? (
-        <div className="grid gap-2">
-          <div>
-            <label className="text-xs text-yellow-700 mb-0.5 block">持っていく</label>
-            <select
-              value={bring}
-              onChange={(e) => setBring(e.target.value)}
-              className="w-full border border-yellow-200 rounded-lg px-3 py-2 text-sm bg-white"
-            >
-              <option value="">選択してください</option>
-              {names.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-yellow-700 mb-0.5 block">持って帰る</label>
-            <select
-              value={ret}
-              onChange={(e) => setRet(e.target.value)}
-              className="w-full border border-yellow-200 rounded-lg px-3 py-2 text-sm bg-white"
-            >
-              <option value="">選択してください</option>
-              {names.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <button
-            onClick={() => { onSave(practice.id, bring, ret); setEditing(false); }}
-            className="w-full bg-yellow-500 text-white py-2 rounded-lg text-sm font-semibold"
-          >
-            保存
-          </button>
-        </div>
-      ) : duty ? (
+      {duty ? (
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
             <div className="text-xs text-blue-500 mb-0.5">持っていく</div>
@@ -118,7 +73,6 @@ function BucketDutyCard({
 export default function PracticesPage() {
   const [practices, setPractices] = useState<Practice[]>([]);
   const [duties, setDuties] = useState<BucketDuty[]>([]);
-  const [parents, setParents] = useState<Parent[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("list");
@@ -134,15 +88,13 @@ export default function PracticesPage() {
   const [form, setForm] = useState({ date: "", type: "通常練習", venue: "", startTime: "", endTime: "" });
 
   const load = useCallback(async () => {
-    const [ps, ds, prts, st] = await Promise.all([
+    const [ps, ds, st] = await Promise.all([
       fetch("/api/practices").then((r) => r.json()),
       fetch("/api/bucket-duties").then((r) => r.json()),
-      fetch("/api/parents").then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()),
     ]);
     setPractices(Array.isArray(ps) ? ps : []);
     setDuties(Array.isArray(ds) ? ds : []);
-    setParents(Array.isArray(prts) ? prts : []);
     setSettings(st);
     setLoading(false);
   }, []);
@@ -217,27 +169,6 @@ export default function PracticesPage() {
     setDeleteConfirm(null);
   }
 
-  async function saveBucketDuty(practiceId: string, bringPersonName: string, returnPersonName: string) {
-    const res = await fetch("/api/bucket-duties", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ practiceId, bringPersonName, returnPersonName }),
-    });
-    const { id } = await res.json();
-    setDuties((prev) => {
-      const filtered = prev.filter((d) => d.practiceId !== practiceId);
-      return [...filtered, { id, practiceId, bringPersonName, returnPersonName }];
-    });
-  }
-
-  // バケツ当番の引継ぎ提案: 前回の持帰りを今回の持込に
-  function getSuggestedBring(practice: Practice, sortedPractices: Practice[]): string {
-    const idx = sortedPractices.findIndex((p) => p.id === practice.id);
-    if (idx <= 0) return "";
-    const prevPractice = sortedPractices[idx - 1];
-    const prevDuty = duties.find((d) => d.practiceId === prevPractice.id);
-    return prevDuty?.returnPersonName ?? "";
-  }
 
   if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
@@ -381,7 +312,6 @@ export default function PracticesPage() {
               {upcoming.map((p) => {
                 const duty = duties.find((d) => d.practiceId === p.id) ?? null;
                 const active = isBucketActive(p, bucketStart, bucketEnd);
-                const suggested = active ? getSuggestedBring(p, sorted) : "";
                 return (
                   <div key={p.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3">
                     <div className="flex items-start justify-between">
@@ -397,17 +327,10 @@ export default function PracticesPage() {
                         {p.startTime && <span className="ml-2">🕐 {p.startTime}{p.endTime ? `〜${p.endTime}` : ""}</span>}
                       </div>
                     )}
-                    {active && suggested && !duty?.bringPersonName && (
-                      <div className="mt-2 text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5">
-                        💡 前回持帰り: <strong>{suggested}</strong> → 今回の持込候補
-                      </div>
-                    )}
                     <BucketDutyCard
                       practice={p}
                       duty={duty}
-                      parents={parents}
                       bucketActive={active}
-                      onSave={saveBucketDuty}
                     />
                   </div>
                 );
@@ -438,9 +361,7 @@ export default function PracticesPage() {
                     <BucketDutyCard
                       practice={p}
                       duty={duty}
-                      parents={parents}
                       bucketActive={active}
-                      onSave={saveBucketDuty}
                     />
                   </div>
                 );
