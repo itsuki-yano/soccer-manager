@@ -139,6 +139,7 @@ async function loadData() {
     needsSettlement: r[9]?.toLowerCase() === "true" || r[9] === "1",
     bandUid: r[10] ?? "", equipmentBringIn: r[11] ?? "", equipmentBringOut: r[12] ?? "",
     settlementStatus: r[13] ?? "",
+    skippedDrivers: r[14] ?? "",
   })).sort((a, b) => a.date.localeCompare(b.date));
 
   const drivers: Driver[] = driverRows.slice(1).filter((r) => r[0]).map((r) => ({

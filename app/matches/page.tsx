@@ -94,6 +94,7 @@ export default function MatchesPage() {
         equipmentBringIn: data.equipmentBringIn ?? "",
         equipmentBringOut: "",
         settlementStatus: "",
+        skippedDrivers: "",
       };
       setMatches((prev) => [...prev, newMatch]);
       setImportedUids((prev) => new Set(prev).add(ev.bandUid));

@@ -62,6 +62,7 @@ export default function DutyRosterPage() {
   const [editMatchId, setEditMatchId] = useState<string | null>(null);
   const [editDriverNames, setEditDriverNames] = useState<string[]>([]);
   const [editEquipOut, setEditEquipOut] = useState<string[]>([]);
+  const [editSkipped, setEditSkipped] = useState<string[]>([]);
   const [inheritDriver, setInheritDriver] = useState<{ date: string; names: string[] } | null>(null);
   const [inheritEquip, setInheritEquip] = useState<{ date: string; names: string[] } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -99,6 +100,7 @@ export default function DutyRosterPage() {
 
     const currentDrivers = drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName);
     setEditDriverNames(currentDrivers);
+    setEditSkipped(m.skippedDrivers ? m.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : []);
 
     const currentEquip = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
     setEditEquipOut(currentEquip);
@@ -137,6 +139,7 @@ export default function DutyRosterPage() {
           ...m,
           carCount: editDriverNames.length,
           equipmentBringOut: editEquipOut.join(", "),
+          skippedDrivers: editSkipped.join(", "),
         }),
       }),
     ]);
@@ -147,7 +150,7 @@ export default function DutyRosterPage() {
     setMatches((prev) =>
       prev.map((x) =>
         x.id === m.id
-          ? { ...x, carCount: editDriverNames.length, equipmentBringOut: editEquipOut.join(", ") }
+          ? { ...x, carCount: editDriverNames.length, equipmentBringOut: editEquipOut.join(", "), skippedDrivers: editSkipped.join(", ") }
           : x
       )
     );
@@ -211,6 +214,7 @@ export default function DutyRosterPage() {
           const isNext = !isPast && i === 0;
           const matchDrivers = drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName);
           const equipOut = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
+          const skipped = m.skippedDrivers ? m.skippedDrivers.split(",").map((s) => s.trim()).filter(Boolean) : [];
           const isEditing = editMatchId === m.id;
 
           return (
@@ -284,6 +288,11 @@ export default function DutyRosterPage() {
                     <p className="text-xs font-semibold text-gray-500 mb-1">🎒 備品持帰り</p>
                     <MultiSelect names={parentNames} selected={editEquipOut} onChange={setEditEquipOut} />
                   </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">⏭️ スキップ（今回免除）</p>
+                    <p className="text-xs text-gray-400 mb-1">次回ローテーションに影響しません</p>
+                    <MultiSelect names={parentNames} selected={editSkipped} onChange={setEditSkipped} />
+                  </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => saveMatchDuty(m)}
@@ -312,6 +321,13 @@ export default function DutyRosterPage() {
                       </div>
                     ) : (
                       <span className="text-xs text-gray-300">未設定</span>
+                    )}
+                    {skipped.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {skipped.map((n) => (
+                          <span key={n} className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full line-through">⏭️{n}</span>
+                        ))}
+                      </div>
                     )}
                   </div>
                   <div className={`rounded-lg p-2 ${isPast ? "bg-gray-50" : "bg-orange-50 border border-orange-100"}`}>

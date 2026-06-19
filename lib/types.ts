@@ -13,6 +13,7 @@ export interface Match {
   equipmentBringIn: string;
   equipmentBringOut: string;
   settlementStatus: string; // "" | "請求中" | "精算済み"
+  skippedDrivers: string; // スキップした配車当番（カンマ区切り）
 }
 
 export interface Driver {
