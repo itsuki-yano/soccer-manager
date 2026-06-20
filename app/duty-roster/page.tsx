@@ -446,15 +446,15 @@ function DutyRosterInner() {
             <MultiSelect names={parentNames} selected={editDriverNames} onChange={setEditDriverNames} />
           </div>
           {inheritEquip && editEquipOut.length === 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
-              <div className="text-xs text-amber-800 min-w-0">
+            <div className="bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+              <div className="text-xs text-stone-700 min-w-0">
                 <span className="font-semibold">前回({fmtDate(inheritEquip.date)})の配車当番</span>を引継ぎますか？
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {inheritEquip.names.map((n) => <span key={n} className="bg-amber-100 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                  {inheritEquip.names.map((n) => <span key={n} className="bg-stone-200 px-1.5 py-0.5 rounded-full">{n}</span>)}
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">
-                <button onClick={() => { setEditEquipOut(inheritEquip.names); setInheritEquip(null); }} className="text-xs bg-amber-600 text-white px-2 py-1 rounded-lg">引継ぐ</button>
+                <button onClick={() => { setEditEquipOut(inheritEquip.names); setInheritEquip(null); }} className="text-xs bg-stone-600 text-white px-2 py-1 rounded-lg">引継ぐ</button>
                 <button onClick={() => setInheritEquip(null)} className="text-xs text-gray-400 px-1">✕</button>
               </div>
             </div>
@@ -664,11 +664,11 @@ function DutyRosterInner() {
                         {slotDrivers.map((n) => <span key={n} className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
                       </div>
                     </div>
-                    <div className="rounded-lg p-2 bg-amber-50 border border-amber-100">
+                    <div className="rounded-lg p-2 bg-stone-50 border border-stone-200">
                       <p className="text-xs text-gray-400 mb-1">🎒 備品持帰り</p>
                       {slotEquipOut.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {slotEquipOut.map((n) => <span key={n} className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                          {slotEquipOut.map((n) => <span key={n} className="text-xs bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
                         </div>
                       ) : <span className="text-xs text-gray-400">−</span>}
                     </div>
@@ -733,7 +733,7 @@ function DutyRosterInner() {
                           <p className="text-xs text-gray-400 mb-1">🎒 備品持帰り</p>
                           {equipOut.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {equipOut.map((n) => <span key={n} className="text-xs bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                              {equipOut.map((n) => <span key={n} className="text-xs bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
                             </div>
                           ) : <span className="text-xs text-gray-300">未設定</span>}
                         </div>

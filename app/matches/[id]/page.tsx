@@ -234,7 +234,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         {equipOutNames.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {equipOutNames.map((n) => (
-              <span key={n} className="text-sm bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
+              <span key={n} className="text-sm bg-stone-200 text-stone-700 px-3 py-1 rounded-full">
                 {n}
               </span>
             ))}
