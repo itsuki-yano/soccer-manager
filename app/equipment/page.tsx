@@ -168,7 +168,7 @@ export default function EquipmentPage() {
         <button
           onClick={() => editMode ? exitEditMode() : setEditMode(true)}
           className={`text-sm px-4 py-2 rounded-lg font-medium border transition-colors ${
-            editMode ? "bg-gray-800 text-white border-gray-800" : "bg-white text-blue-600 border-blue-300"
+            editMode ? "bg-gray-800 text-white border-gray-800" : "bg-white text-stone-700 border-stone-300"
           }`}
         >
           {editMode ? "完了" : "編集"}
@@ -183,12 +183,12 @@ export default function EquipmentPage() {
               <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)}
                 onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&addItem("", newItemName)}
                 placeholder="備品名（例: テント大）" className="input flex-1" autoFocus />
-              <button onClick={() => addItem("", newItemName)} className="bg-blue-500 text-white px-4 rounded-lg text-sm font-semibold">追加</button>
+              <button onClick={() => addItem("", newItemName)} className="bg-stone-700 text-white px-4 rounded-lg text-sm font-semibold">追加</button>
               <button onClick={() => { setShowAddTop(false); setNewItemName(""); }} className="text-gray-400 px-2">✕</button>
             </div>
           ) : (
             <button onClick={() => { setShowAddTop(true); setAddingParentId(null); }}
-              className="block w-full bg-blue-500 text-white text-center py-3 rounded-xl font-semibold">
+              className="block w-full bg-stone-700 text-white text-center py-3 rounded-xl font-semibold">
               ＋ 備品を登録
             </button>
           )}
@@ -224,7 +224,7 @@ export default function EquipmentPage() {
                         <input type="text" value={nameText} onChange={(e) => setNameText(e.target.value)}
                           onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveName(item.id)}
                           className="input flex-1" autoFocus />
-                        <button onClick={() => saveName(item.id)} className="bg-blue-500 text-white px-3 rounded-lg text-sm">保存</button>
+                        <button onClick={() => saveName(item.id)} className="bg-stone-700 text-white px-3 rounded-lg text-sm">保存</button>
                         <button onClick={() => setEditNameId(null)} className="bg-gray-100 text-gray-600 px-2 rounded-lg text-sm">✕</button>
                       </div>
                     ) : (
@@ -233,7 +233,7 @@ export default function EquipmentPage() {
                         {isSaving && <span className="text-xs text-gray-300">保存中…</span>}
                         {editMode && (
                           <button onClick={() => { setEditNameId(item.id); setNameText(item.name); setEditMemoId(null); }}
-                            className="text-xs text-blue-500 border border-blue-200 px-2 py-0.5 rounded">名前変更</button>
+                            className="text-xs text-stone-700 border border-stone-200 px-2 py-0.5 rounded">名前変更</button>
                         )}
                       </div>
                     )}
@@ -246,7 +246,7 @@ export default function EquipmentPage() {
                           <input type="number" value={qtyText} onChange={(e) => setQtyText(e.target.value)} min={0}
                             onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveQty(item.id)}
                             className="input w-20 text-sm" autoFocus />
-                          <button onClick={() => saveQty(item.id)} className="bg-blue-500 text-white px-2 rounded text-xs">保存</button>
+                          <button onClick={() => saveQty(item.id)} className="bg-stone-700 text-white px-2 rounded text-xs">保存</button>
                           <button onClick={() => setEditQtyId(null)} className="text-gray-400 text-xs">✕</button>
                         </div>
                       ) : (
@@ -263,18 +263,18 @@ export default function EquipmentPage() {
                         <input type="text" value={memoText} onChange={(e) => setMemoText(e.target.value)}
                           onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveMemo(item.id)}
                           placeholder="メモ（例: 修理中）" className="input flex-1 text-sm" autoFocus />
-                        <button onClick={() => saveMemo(item.id)} className="bg-blue-500 text-white px-2 rounded text-xs">保存</button>
+                        <button onClick={() => saveMemo(item.id)} className="bg-stone-700 text-white px-2 rounded text-xs">保存</button>
                         <button onClick={() => setEditMemoId(null)} className="bg-gray-100 text-gray-600 px-2 rounded text-xs">✕</button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 flex-wrap">
                         {item.memo && (
-                          <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full">{item.memo}</span>
+                          <span className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">{item.memo}</span>
                         )}
                         {editMode && (
                           <>
                             <button onClick={() => { setEditMemoId(item.id); setMemoText(item.memo); setEditNameId(null); }}
-                              className={`text-xs px-2 py-0.5 rounded-full border ${item.memo ? "text-yellow-600 border-yellow-200" : "text-gray-400 border-gray-200 border-dashed"}`}>
+                              className={`text-xs px-2 py-0.5 rounded-full border ${item.memo ? "text-amber-700 border-amber-200" : "text-gray-400 border-gray-200 border-dashed"}`}>
                               {item.memo ? "メモ変更" : "＋ メモ"}
                             </button>
                             <button onClick={() => triggerUpload(item.id)} disabled={uploadingId === item.id}
@@ -312,7 +312,7 @@ export default function EquipmentPage() {
                               <input type="text" value={nameText} onChange={(e) => setNameText(e.target.value)}
                                 onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveName(child.id)}
                                 className="input flex-1 text-sm" autoFocus />
-                              <button onClick={() => saveName(child.id)} className="bg-blue-500 text-white px-2 rounded text-xs">保存</button>
+                              <button onClick={() => saveName(child.id)} className="bg-stone-700 text-white px-2 rounded text-xs">保存</button>
                               <button onClick={() => setEditNameId(null)} className="bg-gray-100 text-gray-600 px-2 rounded text-xs">✕</button>
                             </div>
                           ) : (
@@ -321,27 +321,27 @@ export default function EquipmentPage() {
                               {saving[child.id] && <span className="text-xs text-gray-300">…</span>}
                               {editMode && (
                                 <button onClick={() => { setEditNameId(child.id); setNameText(child.name); setEditMemoId(null); }}
-                                  className="text-xs text-blue-500 border border-blue-200 px-2 py-0.5 rounded">変更</button>
+                                  className="text-xs text-stone-700 border border-stone-200 px-2 py-0.5 rounded">変更</button>
                               )}
                             </div>
                           )}
 
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             {child.memo && (
-                              <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full">{child.memo}</span>
+                              <span className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">{child.memo}</span>
                             )}
                             {editMode && editMemoId === child.id ? (
                               <div className="flex gap-2 flex-1">
                                 <input type="text" value={memoText} onChange={(e) => setMemoText(e.target.value)}
                                   onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveMemo(child.id)}
                                   placeholder="メモ" className="input flex-1 text-xs" autoFocus />
-                                <button onClick={() => saveMemo(child.id)} className="bg-blue-500 text-white px-2 rounded text-xs">保存</button>
+                                <button onClick={() => saveMemo(child.id)} className="bg-stone-700 text-white px-2 rounded text-xs">保存</button>
                                 <button onClick={() => setEditMemoId(null)} className="bg-gray-100 px-2 rounded text-xs">✕</button>
                               </div>
                             ) : editMode && (
                               <>
                                 <button onClick={() => { setEditMemoId(child.id); setMemoText(child.memo); setEditNameId(null); }}
-                                  className={`text-xs px-2 py-0.5 rounded-full border ${child.memo ? "text-yellow-600 border-yellow-200" : "text-gray-400 border-gray-200 border-dashed"}`}>
+                                  className={`text-xs px-2 py-0.5 rounded-full border ${child.memo ? "text-amber-700 border-amber-200" : "text-gray-400 border-gray-200 border-dashed"}`}>
                                   {child.memo ? "メモ変更" : "＋ メモ"}
                                 </button>
                                 <button onClick={() => triggerUpload(child.id)} disabled={uploadingId === child.id}
@@ -359,7 +359,7 @@ export default function EquipmentPage() {
                                 <input type="number" value={qtyText} onChange={(e) => setQtyText(e.target.value)} min={0}
                                   onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&saveQty(child.id)}
                                   className="input w-20 text-sm" autoFocus />
-                                <button onClick={() => saveQty(child.id)} className="bg-blue-500 text-white px-2 rounded text-xs">保存</button>
+                                <button onClick={() => saveQty(child.id)} className="bg-stone-700 text-white px-2 rounded text-xs">保存</button>
                                 <button onClick={() => setEditQtyId(null)} className="text-gray-400 text-xs">✕</button>
                               </div>
                             ) : (
@@ -400,12 +400,12 @@ export default function EquipmentPage() {
                         <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)}
                           onKeyDown={(e) => !e.nativeEvent.isComposing && e.key === "Enter" &&addItem(item.id, newItemName)}
                           placeholder="アイテム名を入力" className="input flex-1 text-sm" autoFocus />
-                        <button onClick={() => addItem(item.id, newItemName)} className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded">追加</button>
+                        <button onClick={() => addItem(item.id, newItemName)} className="text-xs bg-stone-700 text-white px-3 py-1.5 rounded">追加</button>
                         <button onClick={() => setAddingParentId(null)} className="text-xs text-gray-400">✕</button>
                       </div>
                     ) : (
                       <button onClick={() => { setAddingParentId(item.id); setNewItemName(""); setShowAddTop(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-blue-500 active:bg-gray-100">
+                        className="w-full text-left px-4 py-2.5 text-sm text-stone-700 active:bg-gray-100">
                         ＋ {item.name}の中身を登録
                       </button>
                     )
@@ -416,7 +416,7 @@ export default function EquipmentPage() {
               {/* 子なし・編集モード */}
               {children.length === 0 && editMode && addingParentId !== item.id && (
                 <button onClick={() => { setAddingParentId(item.id); setNewItemName(""); setShowAddTop(false); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-blue-500 border-t border-gray-50 active:bg-gray-50">
+                  className="w-full text-left px-4 py-2.5 text-sm text-stone-700 border-t border-gray-50 active:bg-gray-50">
                   ＋ 中身を登録
                 </button>
               )}
@@ -428,7 +428,7 @@ export default function EquipmentPage() {
           <div className="text-center py-12">
             <p className="text-gray-400 mb-4">備品が登録されていません</p>
             {!editMode && (
-              <button onClick={() => setEditMode(true)} className="bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold">
+              <button onClick={() => setEditMode(true)} className="bg-stone-700 text-white px-6 py-3 rounded-xl font-semibold">
                 備品を登録する
               </button>
             )}

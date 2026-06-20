@@ -52,14 +52,14 @@ function Sidebar({ onClose, logoUrl, teamName }: { onClose?: () => void; logoUrl
               onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-sm font-medium transition-colors ${
                 active
-                  ? "bg-blue-50 text-blue-700"
+                  ? "bg-stone-100 text-stone-800"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
               }`}
             >
               <span className="text-xl w-7 text-center flex-shrink-0">{item.icon}</span>
               <span className="flex-1">{item.label}</span>
               {active && (
-                <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                <span className="w-2 h-2 bg-stone-700 rounded-full flex-shrink-0" />
               )}
             </Link>
           );

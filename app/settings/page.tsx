@@ -86,7 +86,7 @@ export default function SettingsPage() {
             <button
               onClick={() => logoInputRef.current?.click()}
               disabled={uploadingLogo}
-              className="w-full bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+              className="w-full bg-stone-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
             >
               {uploadingLogo ? "アップロード中..." : settings.logoUrl ? "ロゴを変更" : "ロゴを設定"}
             </button>
@@ -140,7 +140,7 @@ export default function SettingsPage() {
         <button
           onClick={save}
           disabled={saving}
-          className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50 mt-2"
+          className="w-full bg-stone-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50 mt-2"
         >
           {saved ? "✓ 保存しました" : saving ? "保存中..." : "保存"}
         </button>
@@ -172,15 +172,15 @@ export default function SettingsPage() {
         <button
           onClick={save}
           disabled={saving}
-          className="w-full bg-blue-500 text-white py-2.5 rounded-xl font-semibold disabled:opacity-50 text-sm"
+          className="w-full bg-stone-700 text-white py-2.5 rounded-xl font-semibold disabled:opacity-50 text-sm"
         >
           {saved ? "✓ 保存しました" : saving ? "保存中..." : "保存"}
         </button>
       </div>
 
-      <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-        <h3 className="font-semibold text-yellow-800 mb-2">Googleスプレッドシート連携</h3>
-        <p className="text-sm text-yellow-700">
+      <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <h3 className="font-semibold text-amber-800 mb-2">Googleスプレッドシート連携</h3>
+        <p className="text-sm text-amber-800">
           データはGoogleスプレッドシートに保存されます。<br />
           サービスアカウントの設定が必要です（.env.local）。
         </p>
@@ -188,7 +188,7 @@ export default function SettingsPage() {
           href="https://docs.google.com/spreadsheets/d/1X7qM1JvYT2RT16a8enu2agzEOMFRxwCexSga33p6H2k"
           target="_blank"
           rel="noopener noreferrer"
-          className="block mt-2 text-sm text-blue-500 underline"
+          className="block mt-2 text-sm text-stone-700 underline"
         >
           スプレッドシートを開く →
         </a>

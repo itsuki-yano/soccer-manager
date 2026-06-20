@@ -5,9 +5,9 @@ import BackHeader from "@/components/BackHeader";
 import type { Fee, FeePayment, Parent } from "@/lib/types";
 
 const CAT_COLORS: Record<string, string> = {
-  "合宿費用": "bg-purple-100 text-purple-700",
-  "クラブ費": "bg-blue-100 text-blue-700",
-  "イベント費用": "bg-orange-100 text-orange-700",
+  "合宿費用": "bg-amber-100 text-amber-800",
+  "クラブ費": "bg-stone-100 text-stone-700",
+  "イベント費用": "bg-amber-100 text-amber-800",
   "その他": "bg-gray-100 text-gray-600",
 };
 
@@ -44,7 +44,7 @@ export default function FeesPage() {
     <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="費用徴収管理" />
       <Link href="/fees/new"
-        className="block w-full bg-blue-500 text-white text-center py-3 rounded-xl font-semibold mb-4 active:bg-blue-600">
+        className="block w-full bg-stone-700 text-white text-center py-3 rounded-xl font-semibold mb-4 active:bg-stone-800">
         ＋ 費用を登録
       </Link>
 
@@ -90,12 +90,12 @@ export default function FeesPage() {
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full transition-all ${pct === 100 ? "bg-green-500" : "bg-blue-400"}`}
+                    className={`h-2 rounded-full transition-all ${pct === 100 ? "bg-emerald-700" : "bg-stone-600"}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
                 {pct === 100 && (
-                  <div className="text-xs text-green-600 font-medium mt-1 text-right">✓ 徴収完了</div>
+                  <div className="text-xs text-emerald-700 font-medium mt-1 text-right">✓ 徴収完了</div>
                 )}
               </div>
             </Link>

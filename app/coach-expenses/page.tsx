@@ -81,14 +81,14 @@ export default function CoachExpensesPage() {
         />
       )}
 
-      <div className="bg-blue-50 rounded-xl p-4 mb-4 flex justify-between items-center">
+      <div className="bg-stone-50 rounded-xl p-4 mb-4 flex justify-between items-center">
         <span className="text-gray-600 font-medium">合計</span>
-        <span className="text-2xl font-bold text-blue-600">{total.toLocaleString()}円</span>
+        <span className="text-2xl font-bold text-stone-800">{total.toLocaleString()}円</span>
       </div>
 
       <button
         onClick={() => { resetForm(); setShowForm((v) => !v); }}
-        className="block w-full bg-blue-500 text-white text-center py-3 rounded-xl font-semibold mb-4"
+        className="block w-full bg-stone-700 text-white text-center py-3 rounded-xl font-semibold mb-4"
       >
         {showForm && !editingId ? "✕ キャンセル" : "＋ 費用を追加"}
       </button>
@@ -108,7 +108,7 @@ export default function CoachExpensesPage() {
             <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} placeholder="例: 672" className="input" />
           </div>
           <div className="flex gap-2">
-            <button onClick={save} disabled={saving} className="flex-1 bg-blue-500 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50">
+            <button onClick={save} disabled={saving} className="flex-1 bg-stone-700 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50">
               {saving ? "保存中..." : editingId ? "更新" : "保存"}
             </button>
             <button onClick={() => { setShowForm(false); resetForm(); }} className="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-lg font-semibold">

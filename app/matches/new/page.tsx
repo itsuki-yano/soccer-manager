@@ -76,7 +76,7 @@ export default function NewMatchPage() {
             {MATCH_TYPES.map((t) => (
               <button key={t} type="button" onClick={() => setMatchType(t)}
                 className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
-                  matchType === t ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-600 border-gray-200"
+                  matchType === t ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"
                 }`}>{t}</button>
             ))}
           </div>
@@ -87,7 +87,7 @@ export default function NewMatchPage() {
             type="button"
             onClick={() => setNeedsSettlement((v) => !v)}
             className={`w-full py-2.5 rounded-lg text-sm font-medium border transition-colors ${
-              needsSettlement ? "bg-orange-500 text-white border-orange-500" : "bg-gray-50 text-gray-500 border-gray-200"
+              needsSettlement ? "bg-amber-600 text-white border-amber-600" : "bg-gray-50 text-gray-500 border-gray-200"
             }`}
           >
             {needsSettlement ? "💴 精算あり（交通費発生）" : "精算なし"}
@@ -139,7 +139,7 @@ export default function NewMatchPage() {
         </Field>
 
         <button onClick={save} disabled={saving}
-          className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold mt-2 disabled:opacity-50">
+          className="w-full bg-stone-700 text-white py-3 rounded-xl font-semibold mt-2 disabled:opacity-50">
           {saving ? "保存中..." : "保存"}
         </button>
       </div>

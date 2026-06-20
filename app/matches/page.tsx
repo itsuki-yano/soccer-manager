@@ -5,15 +5,15 @@ import BackHeader from "@/components/BackHeader";
 import type { Match, Driver } from "@/lib/types";
 
 const TYPE_COLORS: Record<string, string> = {
-  "公式戦": "bg-blue-100 text-blue-700",
-  "合宿": "bg-purple-100 text-purple-700",
-  "TM": "bg-green-100 text-green-700",
+  "公式戦": "bg-stone-100 text-stone-700",
+  "合宿": "bg-amber-100 text-amber-800",
+  "TM": "bg-emerald-100 text-emerald-800",
   "その他": "bg-gray-100 text-gray-600",
 };
 const TYPE_DOT: Record<string, string> = {
-  "公式戦": "bg-blue-500",
-  "合宿": "bg-purple-500",
-  "TM": "bg-green-500",
+  "公式戦": "bg-stone-700",
+  "合宿": "bg-amber-600",
+  "TM": "bg-emerald-700",
   "その他": "bg-gray-400",
 };
 
@@ -161,7 +161,7 @@ export default function MatchesPage() {
             <div className="grid gap-2">
               <a
                 href={`/matches/${zeroDistanceAlert.matchId}`}
-                className="block w-full text-center bg-orange-500 text-white py-3 rounded-xl font-semibold"
+                className="block w-full text-center bg-amber-600 text-white py-3 rounded-xl font-semibold"
                 onClick={() => setZeroDistanceAlert(null)}
               >
                 編集画面を開く
@@ -180,30 +180,30 @@ export default function MatchesPage() {
       {/* 追加 + BANDボタン */}
       <div className="flex gap-2 mb-4">
         <Link href="/matches/new"
-          className="flex-1 bg-blue-500 text-white text-center py-3 rounded-xl font-semibold active:bg-blue-600">
+          className="flex-1 bg-stone-700 text-white text-center py-3 rounded-xl font-semibold active:bg-stone-800">
           ＋ 追加
         </Link>
         <button onClick={syncBand} disabled={bandLoading}
-          className="bg-green-500 text-white px-4 py-3 rounded-xl font-semibold disabled:opacity-60 whitespace-nowrap">
+          className="bg-emerald-700 text-white px-4 py-3 rounded-xl font-semibold disabled:opacity-60 whitespace-nowrap">
           {bandLoading ? "取得中…" : "BAND同期"}
         </button>
       </div>
 
       {/* BAND新着イベント */}
       {newBandEvents.length > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-green-800">
+            <span className="text-sm font-semibold text-emerald-800">
               BANDに{newBandEvents.length}件の未インポートイベント
             </span>
             <button onClick={importAll}
-              className="text-xs bg-green-500 text-white px-3 py-1.5 rounded-lg font-semibold">
+              className="text-xs bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-semibold">
               全てインポート
             </button>
           </div>
           <div className="grid gap-2">
             {newBandEvents.map((ev) => (
-              <div key={ev.bandUid} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-green-100">
+              <div key={ev.bandUid} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-emerald-100">
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-gray-500">{ev.date} · <span className={`px-1.5 py-0.5 rounded text-xs ${TYPE_COLORS[ev.matchType] ?? "bg-gray-100 text-gray-600"}`}>{ev.matchType}</span></div>
                   <div className="text-sm font-medium text-gray-800 truncate">{ev.matchName}</div>
@@ -211,14 +211,14 @@ export default function MatchesPage() {
                   {ev.distanceKm > 0
                     ? <div className="text-xs text-gray-400">{ev.distanceKm}km</div>
                     : !ev.isHome && (
-                      <div className="text-xs text-orange-500 font-medium flex items-center gap-1">
+                      <div className="text-xs text-amber-700 font-medium flex items-center gap-1">
                         ⚠️ 距離0km・住所要確認
                       </div>
                     )
                   }
                 </div>
                 <button onClick={() => importEvent(ev)} disabled={importing.has(ev.bandUid)}
-                  className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                  className="text-xs bg-stone-700 text-white px-3 py-1.5 rounded-lg disabled:opacity-50 whitespace-nowrap">
                   {importing.has(ev.bandUid) ? "…" : "追加"}
                 </button>
               </div>
@@ -246,14 +246,14 @@ export default function MatchesPage() {
             {["すべて", "公式戦", "合宿", "TM", "その他"].map((t) => (
               <button key={t} onClick={() => setFilterType(t)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                  filterType === t ? "bg-blue-500 text-white border-blue-500" : "bg-white text-gray-600 border-gray-200"
+                  filterType === t ? "bg-stone-700 text-white border-stone-700" : "bg-white text-gray-600 border-gray-200"
                 }`}>{t}</button>
             ))}
           </div>
           <div className="mb-4">
             <button onClick={() => setFilterSettlement((v) => !v)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                filterSettlement ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200"
+                filterSettlement ? "bg-amber-600 text-white border-amber-600" : "bg-white text-gray-600 border-gray-200"
               }`}>
               💴 精算あり のみ
             </button>
@@ -279,9 +279,9 @@ export default function MatchesPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeColor}`}>{m.matchType}</span>
-                        {m.needsSettlement && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">精算あり</span>}
+                        {m.needsSettlement && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">精算あり</span>}
                         {isHome && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム</span>}
-                        {m.bandUid && <span className="text-xs text-green-500">BAND</span>}
+                        {m.bandUid && <span className="text-xs text-emerald-700">BAND</span>}
                       </div>
                       <div className={`font-bold ${isPast ? "text-gray-500" : "text-gray-800"}`}>
                         {fmtDate(m.date)}{m.opponent ? ` vs ${m.opponent}` : ` ${m.matchName}`}
@@ -293,7 +293,7 @@ export default function MatchesPage() {
                     </div>
                     <div className="text-right ml-2 flex-shrink-0">
                       {!isHome && matchDrivers.length > 0 && (
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full">
                           配車当番 {matchDrivers.length}名
                         </span>
                       )}
@@ -304,7 +304,7 @@ export default function MatchesPage() {
                       <div className="text-xs text-gray-400 mb-1">配車当番:</div>
                       <div className="flex flex-wrap gap-1">
                         {matchDrivers.map((d, i) => (
-                          <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{d.parentName}</span>
+                          <span key={i} className="text-xs bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full">{d.parentName}</span>
                         ))}
                       </div>
                     </div>
@@ -314,7 +314,7 @@ export default function MatchesPage() {
                       <div className="text-xs text-gray-400 mb-1">持ち帰り当番:</div>
                       <div className="flex flex-wrap gap-1">
                         {m.equipmentBringOut.split(",").map((n, i) => (
-                          <span key={i} className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">{n.trim()}</span>
+                          <span key={i} className="text-xs bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full">{n.trim()}</span>
                         ))}
                       </div>
                     </div>
@@ -328,7 +328,7 @@ export default function MatchesPage() {
                 {upcoming.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-bold text-blue-600">今後の予定</span>
+                      <span className="text-sm font-bold text-stone-700">今後の予定</span>
                       <span className="text-xs text-gray-400">{upcoming.length}件</span>
                     </div>
                     <div className="grid gap-3">
@@ -365,7 +365,7 @@ export default function MatchesPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4">
             <div className="grid grid-cols-7 border-b border-gray-100">
               {["日", "月", "火", "水", "木", "金", "土"].map((w, i) => (
-                <div key={w} className={`text-center text-xs py-2 font-medium ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-gray-500"}`}>{w}</div>
+                <div key={w} className={`text-center text-xs py-2 font-medium ${i === 0 ? "text-red-400" : i === 6 ? "text-stone-500" : "text-gray-500"}`}>{w}</div>
               ))}
             </div>
             <div className="grid grid-cols-7">
@@ -379,9 +379,9 @@ export default function MatchesPage() {
                 const weekday = (startWeekday + i) % 7;
                 return (
                   <button key={day} onClick={() => setSelectedDay(isSelected ? null : dateStr)}
-                    className={`min-h-[52px] p-1 border-t border-gray-50 text-center transition-colors ${isSelected ? "bg-blue-50" : "active:bg-gray-50"}`}>
+                    className={`min-h-[52px] p-1 border-t border-gray-50 text-center transition-colors ${isSelected ? "bg-stone-50" : "active:bg-gray-50"}`}>
                     <div className={`text-sm font-medium mb-0.5 w-7 h-7 flex items-center justify-center mx-auto rounded-full ${
-                      isToday ? "bg-blue-500 text-white" : weekday === 0 ? "text-red-400" : weekday === 6 ? "text-blue-400" : "text-gray-700"
+                      isToday ? "bg-stone-700 text-white" : weekday === 0 ? "text-red-400" : weekday === 6 ? "text-stone-500" : "text-gray-700"
                     }`}>{day}</div>
                     <div className="flex flex-wrap gap-0.5 justify-center">
                       {dayMatches.map((m) => (
@@ -426,7 +426,7 @@ export default function MatchesPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeColor}`}>{m.matchType}</span>
-                              {m.needsSettlement && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">精算あり</span>}
+                              {m.needsSettlement && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">精算あり</span>}
                               {isPast && <span className="text-xs text-gray-400">終了</span>}
                             </div>
                             <div className={`font-bold text-sm ${isPast ? "text-gray-500" : "text-gray-800"}`}>
@@ -435,7 +435,7 @@ export default function MatchesPage() {
                             <div className="text-xs text-gray-500 mt-0.5">{m.venue}</div>
                           </div>
                           {matchDrivers.length > 0 && (
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                            <span className="text-xs bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full flex-shrink-0">
                               配車 {matchDrivers.length}名
                             </span>
                           )}
@@ -443,7 +443,7 @@ export default function MatchesPage() {
                         {matchDrivers.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {matchDrivers.map((d, i) => (
-                              <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{d.parentName}</span>
+                              <span key={i} className="text-xs bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full">{d.parentName}</span>
                             ))}
                           </div>
                         )}
@@ -451,7 +451,7 @@ export default function MatchesPage() {
                           <div className="mt-1.5">
                             <span className="text-xs text-gray-400">持ち帰り: </span>
                             {m.equipmentBringOut.split(",").map((n, i) => (
-                              <span key={i} className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full mr-1">{n.trim()}</span>
+                              <span key={i} className="text-xs bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full mr-1">{n.trim()}</span>
                             ))}
                           </div>
                         )}

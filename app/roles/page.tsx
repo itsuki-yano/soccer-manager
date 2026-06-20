@@ -114,10 +114,10 @@ export default function RolesPage() {
   });
 
   const kindColor = (kind: string) => {
-    if (kind === "driver")       return { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", badge: "bg-purple-100 text-purple-700" };
-    if (kind === "bucket_bring") return { bg: "bg-blue-50",   border: "border-blue-200",   text: "text-blue-700",   badge: "bg-blue-100 text-blue-700" };
-    if (kind === "bucket_return")return { bg: "bg-pink-50",   border: "border-pink-200",   text: "text-pink-700",   badge: "bg-pink-100 text-pink-700" };
-    return { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", badge: "bg-orange-100 text-orange-700" };
+    if (kind === "driver")       return { bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-800",  badge: "bg-amber-100 text-amber-800" };
+    if (kind === "bucket_bring") return { bg: "bg-stone-50",  border: "border-stone-200",  text: "text-stone-700",  badge: "bg-stone-100 text-stone-700" };
+    if (kind === "bucket_return")return { bg: "bg-stone-50",  border: "border-stone-200",  text: "text-stone-700",  badge: "bg-stone-100 text-stone-700" };
+    return { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-800", badge: "bg-amber-100 text-amber-800" };
   };
 
   if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
@@ -133,7 +133,7 @@ export default function RolesPage() {
           <select
             value={selectedName}
             onChange={(e) => setSelectedName(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-stone-300"
           >
             <option value="">選手を選択...</option>
             {sortedParents.map((p) => (
@@ -198,7 +198,7 @@ export default function RolesPage() {
           </div>
           <div className="grid grid-cols-7 gap-1 mb-2">
             {["日", "月", "火", "水", "木", "金", "土"].map((d, i) => (
-              <div key={d} className={`text-center text-xs py-1 font-medium ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-gray-400"}`}>{d}</div>
+              <div key={d} className={`text-center text-xs py-1 font-medium ${i === 0 ? "text-red-400" : i === 6 ? "text-stone-500" : "text-gray-400"}`}>{d}</div>
             ))}
           </div>
           <div className="grid grid-cols-7 gap-1">
@@ -210,12 +210,12 @@ export default function RolesPage() {
               const isToday = dateStr === today;
               const dow = new Date(dateStr + "T00:00:00").getDay();
               return (
-                <div key={day} className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative ${isToday ? "bg-blue-100 font-bold text-blue-700" : dow === 0 ? "text-red-400" : dow === 6 ? "text-blue-400" : "text-gray-700"}`}>
+                <div key={day} className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative ${isToday ? "bg-stone-100 font-bold text-stone-800" : dow === 0 ? "text-red-400" : dow === 6 ? "text-stone-500" : "text-gray-700"}`}>
                   {day}
                   {dayRoles.length > 0 && (
                     <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
                       {dayRoles.slice(0, 2).map((r, ri) => {
-                        const dotColor = r.kind === "driver" ? "bg-purple-400" : r.kind === "bucket_bring" ? "bg-blue-400" : r.kind === "bucket_return" ? "bg-pink-400" : "bg-orange-400";
+                        const dotColor = r.kind === "driver" ? "bg-amber-600" : r.kind === "bucket_bring" ? "bg-stone-500" : r.kind === "bucket_return" ? "bg-stone-400" : "bg-amber-500";
                         return <span key={ri} className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />;
                       })}
                     </div>
@@ -225,10 +225,10 @@ export default function RolesPage() {
             })}
           </div>
           <div className="flex gap-3 mt-3 justify-center flex-wrap">
-            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />配車当番</div>
-            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />バケツ持込</div>
-            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-pink-400 inline-block" />バケツ持帰</div>
-            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />荷物担当</div>
+            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-amber-600 inline-block" />配車当番</div>
+            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-stone-500 inline-block" />バケツ持込</div>
+            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-stone-400 inline-block" />バケツ持帰</div>
+            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />荷物担当</div>
           </div>
           {/* 当月の役割一覧 */}
           {(() => {

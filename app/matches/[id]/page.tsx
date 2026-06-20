@@ -123,7 +123,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                 {MATCH_TYPES.map((t) => (
                   <button key={t} type="button" onClick={() => setMatchType(t)}
                     className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
-                      matchType === t ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-600 border-gray-200"
+                      matchType === t ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"
                     }`}>{t}</button>
                 ))}
               </div>
@@ -162,7 +162,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
             <div className="flex gap-2 mt-2">
-              <button onClick={saveMatch} disabled={saving} className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
+              <button onClick={saveMatch} disabled={saving} className="flex-1 bg-stone-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
                 {saving ? "保存中..." : "保存"}
               </button>
               <button onClick={() => setEditing(false)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm font-semibold">
@@ -175,12 +175,12 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
             <div className="flex justify-between items-start mb-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{match.matchType}</span>
-                  {match.needsSettlement && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">精算あり</span>}
+                  <span className="text-xs bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full">{match.matchType}</span>
+                  {match.needsSettlement && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">精算あり</span>}
                   {isHomeVenue && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム</span>}
                 </div>
                 <div className="font-bold text-gray-800 text-lg">{fmtDate(match.date)}</div>
-                {match.opponent && <div className="text-blue-600 font-semibold">vs {match.opponent}</div>}
+                {match.opponent && <div className="text-stone-700 font-semibold">vs {match.opponent}</div>}
               </div>
               <button onClick={() => setEditing(true)} className="text-sm text-gray-400 border border-gray-200 px-3 py-1 rounded-lg">編集</button>
             </div>
@@ -202,17 +202,17 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <h2 className="font-bold text-gray-700">配車当番</h2>
-            {match.needsSettlement && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">💴 精算あり</span>}
+            {match.needsSettlement && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">💴 精算あり</span>}
           </div>
           <Link href={`/duty-roster?matchId=${id}`}
-            className="text-sm text-blue-500 border border-blue-200 px-3 py-1 rounded-lg">
+            className="text-sm text-stone-700 border border-stone-200 px-3 py-1 rounded-lg">
             当番一覧で設定 →
           </Link>
         </div>
         {drivers.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {drivers.map((d) => (
-              <span key={d.parentName} className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+              <span key={d.parentName} className="text-sm bg-stone-100 text-stone-700 px-3 py-1 rounded-full">
                 {d.parentName}
               </span>
             ))}
@@ -227,14 +227,14 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-gray-700">備品持帰り当番</h2>
           <Link href={`/duty-roster?matchId=${id}`}
-            className="text-sm text-blue-500 border border-blue-200 px-3 py-1 rounded-lg">
+            className="text-sm text-stone-700 border border-stone-200 px-3 py-1 rounded-lg">
             当番一覧で設定 →
           </Link>
         </div>
         {equipOutNames.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {equipOutNames.map((n) => (
-              <span key={n} className="text-sm bg-orange-100 text-orange-700 px-3 py-1 rounded-full">
+              <span key={n} className="text-sm bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
                 {n}
               </span>
             ))}

@@ -32,7 +32,7 @@ function MultiSelect({
             key={n}
             type="button"
             onClick={() => onChange(on ? selected.filter((x) => x !== n) : [...selected, n])}
-            className={`text-xs px-2 py-1.5 rounded-lg border text-left transition-colors ${on ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-600 border-gray-200"}`}
+            className={`text-xs px-2 py-1.5 rounded-lg border text-left transition-colors ${on ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"}`}
           >
             {n}
           </button>
@@ -412,10 +412,10 @@ function DutyRosterInner() {
     }
 
     const GROUP_COLORS: Record<string, { bg: string; text: string }> = {
-      "1班": { bg: "bg-blue-100", text: "text-blue-700" },
-      "2班": { bg: "bg-green-100", text: "text-green-700" },
-      "3班": { bg: "bg-orange-100", text: "text-orange-700" },
-      "4班": { bg: "bg-purple-100", text: "text-purple-700" },
+      "1班": { bg: "bg-stone-100", text: "text-stone-700" },
+      "2班": { bg: "bg-emerald-100", text: "text-emerald-800" },
+      "3班": { bg: "bg-amber-100", text: "text-amber-800" },
+      "4班": { bg: "bg-amber-100", text: "text-amber-800" },
     };
     function groupBadge(g: string) {
       const label = normalizeGroup(g);
@@ -428,15 +428,15 @@ function DutyRosterInner() {
       return (
         <div className="space-y-3">
           {inheritDriver && editDriverNames.length === 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
-              <div className="text-xs text-blue-700 min-w-0">
+            <div className="bg-stone-100 border border-stone-300 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+              <div className="text-xs text-stone-800 min-w-0">
                 <span className="font-semibold">前回({fmtDate(inheritDriver.date)})の備品持帰り</span>を引継ぎますか？
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {inheritDriver.names.map((n) => <span key={n} className="bg-blue-100 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                  {inheritDriver.names.map((n) => <span key={n} className="bg-stone-200 px-1.5 py-0.5 rounded-full">{n}</span>)}
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">
-                <button onClick={() => { setEditDriverNames(inheritDriver.names); setInheritDriver(null); }} className="text-xs bg-blue-500 text-white px-2 py-1 rounded-lg">引継ぐ</button>
+                <button onClick={() => { setEditDriverNames(inheritDriver.names); setInheritDriver(null); }} className="text-xs bg-stone-700 text-white px-2 py-1 rounded-lg">引継ぐ</button>
                 <button onClick={() => setInheritDriver(null)} className="text-xs text-gray-400 px-1">✕</button>
               </div>
             </div>
@@ -446,15 +446,15 @@ function DutyRosterInner() {
             <MultiSelect names={parentNames} selected={editDriverNames} onChange={setEditDriverNames} />
           </div>
           {inheritEquip && editEquipOut.length === 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
-              <div className="text-xs text-orange-700 min-w-0">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+              <div className="text-xs text-amber-800 min-w-0">
                 <span className="font-semibold">前回({fmtDate(inheritEquip.date)})の配車当番</span>を引継ぎますか？
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {inheritEquip.names.map((n) => <span key={n} className="bg-orange-100 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                  {inheritEquip.names.map((n) => <span key={n} className="bg-amber-100 px-1.5 py-0.5 rounded-full">{n}</span>)}
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">
-                <button onClick={() => { setEditEquipOut(inheritEquip.names); setInheritEquip(null); }} className="text-xs bg-orange-500 text-white px-2 py-1 rounded-lg">引継ぐ</button>
+                <button onClick={() => { setEditEquipOut(inheritEquip.names); setInheritEquip(null); }} className="text-xs bg-amber-600 text-white px-2 py-1 rounded-lg">引継ぐ</button>
                 <button onClick={() => setInheritEquip(null)} className="text-xs text-gray-400 px-1">✕</button>
               </div>
             </div>
@@ -464,7 +464,7 @@ function DutyRosterInner() {
             <MultiSelect names={parentNames} selected={editEquipOut} onChange={setEditEquipOut} />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => saveMatchDuty(m)} disabled={saving} className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
+            <button onClick={() => saveMatchDuty(m)} disabled={saving} className="flex-1 bg-emerald-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
               {saving ? "保存中..." : "保存"}
             </button>
             <button onClick={() => setEditMatchId(null)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm">キャンセル</button>
@@ -495,8 +495,8 @@ function DutyRosterInner() {
         </h2>
 
         {swaps.length > 0 && (
-          <div className="mb-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
-            <p className="text-xs font-semibold text-yellow-700 mb-2">現在の個人交代</p>
+          <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <p className="text-xs font-semibold text-amber-800 mb-2">現在の個人交代</p>
             <div className="space-y-1">
               {swaps.map((s) => (
                 <div key={s.id} className="flex items-center justify-between gap-2">
@@ -528,10 +528,10 @@ function DutyRosterInner() {
             const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
 
             return (
-              <div key={i} className={`bg-white rounded-xl border p-3 ${i === 0 ? "border-blue-300 shadow-md" : "border-gray-100 shadow-sm"}`}>
+              <div key={i} className={`bg-white rounded-xl border p-3 ${i === 0 ? "border-amber-300 shadow-md" : "border-gray-100 shadow-sm"}`}>
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 flex-wrap min-w-0">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold shrink-0 ${i === 0 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-600"}`}>{slotLabel}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold shrink-0 ${i === 0 ? "bg-stone-700 text-white" : "bg-gray-200 text-gray-600"}`}>{slotLabel}</span>
                     {group && <span className={groupBadge(group)}>{groupDisplay(group)}</span>}
                     {linkedMatch && (
                       <span className="text-xs text-gray-500 truncate">{fmtDate(linkedMatch.date)}　{linkedMatch.matchName || linkedMatch.matchType}</span>
@@ -541,18 +541,18 @@ function DutyRosterInner() {
                     <div className="flex gap-1.5 shrink-0">
                       <button
                         onClick={() => { setSwapSlot(i); setSwapFrom(""); setSwapTo(""); }}
-                        className="text-xs text-yellow-700 bg-yellow-100 border border-yellow-300 px-2.5 py-1 rounded-lg font-medium"
+                        className="text-xs text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-lg font-medium"
                       >交代</button>
                       <button
                         onClick={() => setPickingSlot(i)}
-                        className="text-xs text-blue-700 bg-blue-100 border border-blue-300 px-2.5 py-1 rounded-lg font-medium"
+                        className="text-xs text-stone-700 bg-stone-100 border border-stone-300 px-2.5 py-1 rounded-lg font-medium"
                       >
                         {linkedMatch ? "試合変更" : "試合選択"}
                       </button>
                       {linkedMatch && (
                         <button
                           onClick={() => { setSkipOnlyMatchId(null); startEditMatch(linkedMatch, group, equipGroup); }}
-                          className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg"
+                          className="text-xs text-stone-700 border border-stone-200 px-2 py-1 rounded-lg"
                         >変更</button>
                       )}
                     </div>
@@ -561,8 +561,8 @@ function DutyRosterInner() {
 
                 {/* 個人交代フォーム */}
                 {swapSlot === i && (
-                  <div className="space-y-2 mb-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <p className="text-xs font-semibold text-yellow-700">個人交代（全スロットに反映）</p>
+                  <div className="space-y-2 mb-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-amber-800">個人交代（全スロットに反映）</p>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs text-gray-500 mb-0.5 block">交代する人</label>
@@ -597,7 +597,7 @@ function DutyRosterInner() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={saveSwap} disabled={savingSwap || !swapFrom || !swapTo} className="flex-1 bg-yellow-500 text-white py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50">
+                      <button onClick={saveSwap} disabled={savingSwap || !swapFrom || !swapTo} className="flex-1 bg-amber-600 text-white py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50">
                         {savingSwap ? "保存中..." : "交代を保存"}
                       </button>
                       <button onClick={() => setSwapSlot(null)} className="flex-1 bg-gray-100 text-gray-600 py-1.5 rounded-lg text-xs">キャンセル</button>
@@ -644,7 +644,7 @@ function DutyRosterInner() {
                             setPickingSlot(null);
                             startEditMatch(fm, group, equipGroup);
                           }}
-                          className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedMatchId === fm.id ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                          className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedMatchId === fm.id ? "border-stone-600 bg-stone-100 text-stone-800" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
                         >
                           {fmtDate(fm.date)}　{fm.matchName || fm.matchType}{fm.venue ? ` @ ${fm.venue}` : ""}
                         </button>
@@ -658,17 +658,17 @@ function DutyRosterInner() {
                   <EditForm m={linkedMatch} groupLabel={group} />
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-lg p-2 bg-purple-50 border border-purple-100">
+                    <div className="rounded-lg p-2 bg-amber-50 border border-amber-100">
                       <p className="text-xs text-gray-400 mb-1">🚗 配車当番</p>
                       <div className="flex flex-wrap gap-1">
-                        {slotDrivers.map((n) => <span key={n} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                        {slotDrivers.map((n) => <span key={n} className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
                       </div>
                     </div>
-                    <div className="rounded-lg p-2 bg-orange-50 border border-orange-100">
+                    <div className="rounded-lg p-2 bg-amber-50 border border-amber-100">
                       <p className="text-xs text-gray-400 mb-1">🎒 備品持帰り</p>
                       {slotEquipOut.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {slotEquipOut.map((n) => <span key={n} className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                          {slotEquipOut.map((n) => <span key={n} className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
                         </div>
                       ) : <span className="text-xs text-gray-400">−</span>}
                     </div>
@@ -704,7 +704,7 @@ function DutyRosterInner() {
                       {!isEditing && !isSkipping && (
                         <div className="flex gap-1.5 shrink-0">
                           <button onClick={() => { setSkipOnlyMatchId(m.id); setSkipOnlyNames(skipped); setEditMatchId(null); }} className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg">スキップ</button>
-                          <button onClick={() => { setSkipOnlyMatchId(null); startEditMatch(m); }} className="text-xs text-blue-500 border border-blue-200 px-2 py-1 rounded-lg">変更</button>
+                          <button onClick={() => { setSkipOnlyMatchId(null); startEditMatch(m); }} className="text-xs text-stone-700 border border-stone-200 px-2 py-1 rounded-lg">変更</button>
                           <Link href={`/matches/${m.id}`} className="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded-lg">詳細 ›</Link>
                         </div>
                       )}
@@ -720,7 +720,7 @@ function DutyRosterInner() {
                           <p className="text-xs text-gray-400 mb-1">🚗 配車当番</p>
                           {matchDrivers.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {matchDrivers.map((n) => <span key={n} className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                              {matchDrivers.map((n) => <span key={n} className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
                             </div>
                           ) : <span className="text-xs text-gray-300">未設定</span>}
                           {skipped.length > 0 && (
@@ -733,7 +733,7 @@ function DutyRosterInner() {
                           <p className="text-xs text-gray-400 mb-1">🎒 備品持帰り</p>
                           {equipOut.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {equipOut.map((n) => <span key={n} className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                              {equipOut.map((n) => <span key={n} className="text-xs bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
                             </div>
                           ) : <span className="text-xs text-gray-300">未設定</span>}
                         </div>
@@ -825,10 +825,10 @@ function DutyRosterInner() {
                 const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
 
                 return (
-                  <div key={i} className={`bg-white rounded-xl border p-3 ${i === 0 ? "border-yellow-300 shadow-md" : "border-gray-100 shadow-sm"}`}>
+                  <div key={i} className={`bg-white rounded-xl border p-3 ${i === 0 ? "border-amber-300 shadow-md" : "border-gray-100 shadow-sm"}`}>
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold shrink-0 ${i === 0 ? "bg-yellow-500 text-white" : "bg-gray-200 text-gray-600"}`}>{slotLabel}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold shrink-0 ${i === 0 ? "bg-amber-600 text-white" : "bg-gray-200 text-gray-600"}`}>{slotLabel}</span>
                         {linkedPractice ? (
                           <span className="text-xs text-gray-500 truncate">{fmtDate(linkedPractice.date)}　自主練習</span>
                         ) : (
@@ -843,11 +843,11 @@ function DutyRosterInner() {
                               setEditBring(displayBring);
                               setEditRet(displayReturn);
                             }}
-                            className="text-xs text-yellow-600 border border-yellow-200 px-2 py-1 rounded-lg"
+                            className="text-xs text-amber-700 border border-amber-200 px-2 py-1 rounded-lg"
                           >変更</button>
                           <button
                             onClick={() => setPickingBucketSlot(i)}
-                            className="text-xs text-blue-700 bg-blue-100 border border-blue-300 px-2.5 py-1 rounded-lg font-medium"
+                            className="text-xs text-stone-700 bg-stone-100 border border-stone-300 px-2.5 py-1 rounded-lg font-medium"
                           >
                             {linkedPractice ? "練習変更" : "練習選択"}
                           </button>
@@ -889,7 +889,7 @@ function DutyRosterInner() {
                                 setEditBring(existing?.bringPersonName || bringPerson);
                                 setEditRet(existing?.returnPersonName || returnPerson);
                               }}
-                              className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedPracticeId === pr.id ? "border-yellow-400 bg-yellow-50 text-yellow-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                              className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedPracticeId === pr.id ? "border-amber-400 bg-amber-50 text-amber-800" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
                             >
                               {fmtDate(pr.date)}　自主練習
                             </button>
@@ -938,7 +938,7 @@ function DutyRosterInner() {
                           <button
                             onClick={() => saveBucketSlot(i, linkedPracticeId)}
                             disabled={savingBucket || !linkedPracticeId}
-                            className="flex-1 bg-yellow-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+                            className="flex-1 bg-amber-600 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
                           >
                             {savingBucket ? "保存中..." : "保存"}
                           </button>
@@ -949,13 +949,13 @@ function DutyRosterInner() {
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-lg p-2 bg-blue-50 border border-blue-100">
+                        <div className="rounded-lg p-2 bg-stone-50 border border-stone-100">
                           <p className="text-xs text-gray-400 mb-0.5">持っていく</p>
-                          <p className="text-sm font-semibold text-blue-800">{displayBring || "−"}</p>
+                          <p className="text-sm font-semibold text-stone-800">{displayBring || "−"}</p>
                         </div>
-                        <div className="rounded-lg p-2 bg-pink-50 border border-pink-100">
+                        <div className="rounded-lg p-2 bg-stone-50 border border-stone-100">
                           <p className="text-xs text-gray-400 mb-0.5">持って帰る</p>
-                          <p className="text-sm font-semibold text-pink-800">{displayReturn || "−"}</p>
+                          <p className="text-sm font-semibold text-stone-800">{displayReturn || "−"}</p>
                         </div>
                       </div>
                     )}

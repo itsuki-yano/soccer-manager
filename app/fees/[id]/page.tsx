@@ -7,9 +7,9 @@ import type { Fee, FeePayment, Parent } from "@/lib/types";
 
 const CATEGORIES = ["合宿費用", "クラブ費", "イベント費用", "その他"];
 const CAT_COLORS: Record<string, string> = {
-  "合宿費用": "bg-purple-100 text-purple-700",
-  "クラブ費": "bg-blue-100 text-blue-700",
-  "イベント費用": "bg-orange-100 text-orange-700",
+  "合宿費用": "bg-amber-100 text-amber-800",
+  "クラブ費": "bg-stone-100 text-stone-700",
+  "イベント費用": "bg-amber-100 text-amber-800",
   "その他": "bg-gray-100 text-gray-600",
 };
 
@@ -128,7 +128,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                 {CATEGORIES.map((c) => (
                   <button key={c} type="button" onClick={() => setForm((f) => ({ ...f, category: c }))}
                     className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
-                      form.category === c ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-600 border-gray-200"
+                      form.category === c ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"
                     }`}>{c}</button>
                 ))}
               </div>
@@ -148,10 +148,10 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             <div>
               <label className="block text-xs text-gray-500 mb-0.5">メモ</label>
               <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                rows={2} className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                rows={2} className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-stone-300" />
             </div>
             <div className="flex gap-2">
-              <button onClick={saveFee} disabled={saving} className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
+              <button onClick={saveFee} disabled={saving} className="flex-1 bg-stone-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
                 {saving ? "保存中..." : "保存"}
               </button>
               <button onClick={() => setEditing(false)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm">キャンセル</button>
@@ -181,16 +181,16 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                 <span className="font-bold text-gray-800">¥{collected.toLocaleString()} / ¥{total.toLocaleString()}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div className={`h-2.5 rounded-full transition-all ${pct === 100 ? "bg-green-500" : "bg-blue-400"}`}
+                <div className={`h-2.5 rounded-full transition-all ${pct === 100 ? "bg-emerald-700" : "bg-stone-600"}`}
                   style={{ width: `${pct}%` }} />
               </div>
-              {pct === 100 && <div className="text-xs text-green-600 font-medium mt-1 text-center">✓ 全員徴収完了！</div>}
+              {pct === 100 && <div className="text-xs text-emerald-700 font-medium mt-1 text-center">✓ 全員徴収完了！</div>}
             </div>
 
             <div className="flex gap-2">
               <button onClick={() => setEditing(true)} className="flex-1 text-sm text-gray-500 border border-gray-200 py-2 rounded-lg">編集</button>
               {pct < 100 && (
-                <button onClick={markAllPaid} className="flex-1 text-sm bg-green-500 text-white py-2 rounded-lg font-medium">全員徴収済みにする</button>
+                <button onClick={markAllPaid} className="flex-1 text-sm bg-emerald-700 text-white py-2 rounded-lg font-medium">全員徴収済みにする</button>
               )}
             </div>
             <button onClick={() => setShowDeleteConfirm(true)} className="mt-2 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
@@ -209,7 +209,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
           {["全員", ...groups.map((g) => `${g}班`)].map((g) => (
             <button key={g} onClick={() => setFilterGroup(g)}
               className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                filterGroup === g ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-600 border-gray-200"
+                filterGroup === g ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"
               }`}>{g}</button>
           ))}
         </div>
@@ -247,7 +247,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                     disabled={isToggling}
                     className={`min-w-[72px] px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors disabled:opacity-50 ${
                       paid
-                        ? "bg-green-500 text-white border-green-500"
+                        ? "bg-emerald-700 text-white border-emerald-700"
                         : "bg-white text-gray-500 border-gray-300"
                     }`}
                   >

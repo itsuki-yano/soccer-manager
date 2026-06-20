@@ -110,13 +110,13 @@ export default function MemoPage() {
           onChange={(e) => setNewText(e.target.value)}
           placeholder="メモを入力..."
           rows={3}
-          className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-stone-300"
         />
         {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
         <button
           onClick={addMemo}
           disabled={saving || !newText.trim()}
-          className="mt-2 w-full bg-blue-500 text-white py-2.5 rounded-lg font-semibold text-sm disabled:opacity-50"
+          className="mt-2 w-full bg-stone-700 text-white py-2.5 rounded-lg font-semibold text-sm disabled:opacity-50"
         >
           {saving ? "保存中..." : "追加"}
         </button>
@@ -132,12 +132,12 @@ export default function MemoPage() {
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
                   rows={3}
-                  className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 mb-2"
+                  className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-stone-300 mb-2"
                   autoFocus
                 />
                 <div className="flex gap-2">
                   <button onClick={() => saveEdit(memo.id)} disabled={saving}
-                    className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
+                    className="flex-1 bg-stone-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
                     {saving ? "保存中..." : "保存"}
                   </button>
                   <button onClick={() => setEditId(null)}
@@ -152,7 +152,7 @@ export default function MemoPage() {
                   {memo.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
                     /^https?:\/\//.test(part) ? (
                       <a key={i} href={part} target="_blank" rel="noopener noreferrer"
-                        className="text-blue-500 underline break-all">
+                        className="text-stone-700 underline break-all">
                         {part}
                       </a>
                     ) : part
@@ -162,12 +162,12 @@ export default function MemoPage() {
                   <div className="text-xs text-gray-400 space-y-0.5">
                     <div>作成: {fmtDateTime(memo.createdAt)}</div>
                     {memo.updatedAt && memo.updatedAt !== memo.createdAt && (
-                      <div className="text-blue-400">更新: {fmtDateTime(memo.updatedAt)}</div>
+                      <div className="text-stone-500">更新: {fmtDateTime(memo.updatedAt)}</div>
                     )}
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => startEdit(memo)}
-                      className="text-xs text-blue-500 border border-blue-200 px-3 py-1.5 rounded-lg">
+                      className="text-xs text-stone-700 border border-stone-200 px-3 py-1.5 rounded-lg">
                       修正
                     </button>
                     <button onClick={() => setDeleteConfirm(memo.id)}

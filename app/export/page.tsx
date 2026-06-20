@@ -30,13 +30,13 @@ const STATUS_OPTIONS = ["", "請求中", "精算済み"] as const;
 const STATUS_LABEL: Record<string, string> = { "": "未請求", "請求中": "請求中", "精算済み": "精算済み" };
 const STATUS_COLOR: Record<string, string> = {
   "": "bg-gray-100 text-gray-500",
-  "請求中": "bg-yellow-100 text-yellow-700",
-  "精算済み": "bg-green-100 text-green-700",
+  "請求中": "bg-amber-100 text-amber-800",
+  "精算済み": "bg-emerald-100 text-emerald-800",
 };
 const STATUS_BORDER: Record<string, string> = {
   "": "border-gray-200",
-  "請求中": "border-yellow-300",
-  "精算済み": "border-green-300",
+  "請求中": "border-amber-300",
+  "精算済み": "border-emerald-300",
 };
 
 // 日付範囲モーダル
@@ -62,7 +62,7 @@ function DateRangeModal({ title, onConfirm, onCancel }: {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => onConfirm(from, to)} className="flex-1 bg-blue-500 text-white py-2.5 rounded-xl font-semibold">
+          <button onClick={() => onConfirm(from, to)} className="flex-1 bg-stone-700 text-white py-2.5 rounded-xl font-semibold">
             出力
           </button>
           <button onClick={onCancel} className="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-semibold">
@@ -85,7 +85,7 @@ function ConfirmModal({ message, onConfirm, onCancel }: {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
         <p className="text-sm text-gray-700 mb-6 whitespace-pre-line">{message}</p>
         <div className="flex gap-2">
-          <button onClick={onConfirm} className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl font-semibold">
+          <button onClick={onConfirm} className="flex-1 bg-amber-600 text-white py-2.5 rounded-xl font-semibold">
             OK
           </button>
           <button onClick={onCancel} className="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-semibold">
@@ -104,7 +104,7 @@ function DoneModal({ message, onClose }: { message: string; onClose: () => void 
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
         <div className="text-4xl mb-3">✅</div>
         <p className="text-sm text-gray-700 mb-6 whitespace-pre-line">{message}</p>
-        <button onClick={onClose} className="w-full bg-blue-500 text-white py-2.5 rounded-xl font-semibold">
+        <button onClick={onClose} className="w-full bg-stone-700 text-white py-2.5 rounded-xl font-semibold">
           閉じる
         </button>
       </div>
@@ -214,7 +214,7 @@ export default function ExportPage() {
         <button
           onClick={() => doExport("billing")}
           disabled={!!loadingType}
-          className="w-full bg-yellow-500 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
+          className="w-full bg-amber-600 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
         >
           <span>📋 請求中作成</span>
           <span className="text-xs font-normal opacity-80">請求中の試合を出力</span>
@@ -223,7 +223,7 @@ export default function ExportPage() {
         <button
           onClick={() => setModal({ type: "confirm-issue" })}
           disabled={!!loadingType || unbilledCount === 0}
-          className="w-full bg-orange-500 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
+          className="w-full bg-amber-600 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
         >
           <span>📤 未請求発行</span>
           <span className="text-xs font-normal opacity-80">未請求 {unbilledCount}件 → 請求中に変更して出力</span>
@@ -232,7 +232,7 @@ export default function ExportPage() {
         <button
           onClick={() => setModal({ type: "date-range", exportType: "settled" })}
           disabled={!!loadingType}
-          className="w-full bg-green-500 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
+          className="w-full bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
         >
           <span>✅ 精算済発行</span>
           <span className="text-xs font-normal opacity-80">期間指定して精算済みを出力</span>
@@ -241,7 +241,7 @@ export default function ExportPage() {
         <button
           onClick={() => setModal({ type: "date-range", exportType: "all" })}
           disabled={!!loadingType}
-          className="w-full bg-blue-500 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
+          className="w-full bg-stone-700 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
         >
           <span>📊 全て出力</span>
           <span className="text-xs font-normal opacity-80">期間指定して全ステータスを出力</span>
@@ -266,25 +266,25 @@ export default function ExportPage() {
                 <div className="text-xs text-gray-300">{preview.matches.filter((m) => !m.settlementStatus).length}件</div>
               </div>
               <div className="p-3 text-center">
-                <div className="text-xs text-yellow-600 mb-0.5">請求中</div>
-                <div className="text-base font-bold text-yellow-600">{billingTotal.toLocaleString()}円</div>
+                <div className="text-xs text-amber-800 mb-0.5">請求中</div>
+                <div className="text-base font-bold text-amber-800">{billingTotal.toLocaleString()}円</div>
                 <div className="text-xs text-gray-300">{preview.matches.filter((m) => m.settlementStatus === "請求中").length}件</div>
               </div>
               <div className="p-3 text-center">
-                <div className="text-xs text-green-600 mb-0.5">精算済み</div>
-                <div className="text-base font-bold text-green-600">{settledTotal.toLocaleString()}円</div>
+                <div className="text-xs text-emerald-700 mb-0.5">精算済み</div>
+                <div className="text-base font-bold text-emerald-700">{settledTotal.toLocaleString()}円</div>
                 <div className="text-xs text-gray-300">{preview.matches.filter((m) => m.settlementStatus === "精算済み").length}件</div>
               </div>
             </div>
           </div>
-          <div className="bg-blue-50 rounded-xl p-3 grid grid-cols-2 gap-3 text-center">
+          <div className="bg-stone-50 rounded-xl p-3 grid grid-cols-2 gap-3 text-center">
             <div>
               <div className="text-xs text-gray-500 mb-0.5">コーチ飲食費</div>
-              <div className="text-base font-bold text-orange-500">{preview.coachExpenseTotal.toLocaleString()}円</div>
+              <div className="text-base font-bold text-amber-700">{preview.coachExpenseTotal.toLocaleString()}円</div>
             </div>
             <div>
               <div className="text-xs text-gray-500 mb-0.5">総合計</div>
-              <div className="text-base font-bold text-blue-600">{(transportTotal + preview.coachExpenseTotal).toLocaleString()}円</div>
+              <div className="text-base font-bold text-stone-800">{(transportTotal + preview.coachExpenseTotal).toLocaleString()}円</div>
             </div>
           </div>
 
@@ -328,7 +328,7 @@ export default function ExportPage() {
                       </div>
                     </div>
                     {m.drivers.length > 0 && (
-                      <div className="mt-2 text-xs text-blue-600">当番: {m.drivers.join("・")}</div>
+                      <div className="mt-2 text-xs text-stone-700">当番: {m.drivers.join("・")}</div>
                     )}
                   </div>
                 ))}
@@ -340,7 +340,7 @@ export default function ExportPage() {
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">🧃 コーチ飲食費</span>
-              <span className="text-xs font-bold text-orange-500">{preview.coachExpenseTotal.toLocaleString()}円</span>
+              <span className="text-xs font-bold text-amber-700">{preview.coachExpenseTotal.toLocaleString()}円</span>
             </div>
             {preview.coachExpenses.length === 0 ? (
               <div className="px-4 py-6 text-center text-gray-400 text-sm">費用が登録されていません</div>

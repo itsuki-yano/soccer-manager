@@ -108,7 +108,7 @@ export default function Home() {
           <Link
             key={item.href}
             href={item.href}
-            className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 hover:bg-blue-50 hover:border-blue-200 active:bg-gray-50 transition-colors"
+            className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 hover:bg-stone-50 hover:border-stone-200 active:bg-gray-50 transition-colors"
           >
             <span className="text-3xl">{item.icon}</span>
             <div>
@@ -129,7 +129,7 @@ export default function Home() {
           </div>
           <button
             onClick={() => { setShowLinkForm((v) => !v); setEditLinkId(null); setLinkForm({ name: "", url: "" }); }}
-            className="text-xs text-blue-500 border border-blue-200 px-3 py-1.5 rounded-lg"
+            className="text-xs text-stone-700 border border-stone-200 px-3 py-1.5 rounded-lg"
           >
             {showLinkForm ? "キャンセル" : "＋ 追加"}
           </button>
@@ -154,7 +154,7 @@ export default function Home() {
             <button
               onClick={addLink}
               disabled={savingLink || !linkForm.name.trim() || !linkForm.url.trim()}
-              className="w-full bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+              className="w-full bg-stone-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
             >
               {savingLink ? "保存中..." : "保存"}
             </button>
@@ -174,7 +174,7 @@ export default function Home() {
                   <input type="url" value={linkForm.url} onChange={(e) => setLinkForm((f) => ({ ...f, url: e.target.value }))} className="input text-sm" />
                   <div className="flex gap-2">
                     <button onClick={() => saveEditLink(l.id)} disabled={savingLink}
-                      className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
+                      className="flex-1 bg-stone-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
                       {savingLink ? "保存中..." : "保存"}
                     </button>
                     <button onClick={() => setEditLinkId(null)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm">
@@ -188,11 +188,11 @@ export default function Home() {
                     href={l.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2.5 active:bg-green-100"
+                    className="flex-1 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 active:bg-emerald-100"
                   >
                     <span className="text-lg">💬</span>
-                    <span className="text-sm font-medium text-green-800">{l.name}</span>
-                    <span className="ml-auto text-green-400 text-xs">開く ›</span>
+                    <span className="text-sm font-medium text-emerald-800">{l.name}</span>
+                    <span className="ml-auto text-emerald-700 text-xs">開く ›</span>
                   </a>
                   <button onClick={() => startEditLink(l)} className="text-xs text-gray-400 border border-gray-200 px-2 py-2 rounded-lg">
                     編集

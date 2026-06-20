@@ -40,7 +40,7 @@ export default function NewFeePage() {
             {CATEGORIES.map((c) => (
               <button key={c} type="button" onClick={() => setCategory(c)}
                 className={`py-2.5 rounded-lg text-sm font-medium border transition-colors ${
-                  category === c ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-600 border-gray-200"
+                  category === c ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"
                 }`}>{c}</button>
             ))}
           </div>
@@ -70,11 +70,11 @@ export default function NewFeePage() {
           <label className="block text-sm font-medium text-gray-600 mb-1">メモ</label>
           <textarea value={form.description} onChange={set("description")}
             placeholder="例: 振込先: ○○銀行 ○○支店 普通 1234567"
-            rows={3} className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300" />
+            rows={3} className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-stone-300" />
         </div>
 
         <button onClick={save} disabled={saving}
-          className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
+          className="w-full bg-stone-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
           {saving ? "保存中..." : "登録する"}
         </button>
       </div>

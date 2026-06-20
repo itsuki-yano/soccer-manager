@@ -8,8 +8,8 @@ import type { Practice, BucketDuty, Settings } from "@/lib/types";
 type View = "list" | "cal";
 
 const TYPE_COLORS: Record<string, string> = {
-  "通常練習": "bg-blue-100 text-blue-700",
-  "自主練習": "bg-green-100 text-green-700",
+  "通常練習": "bg-stone-100 text-stone-700",
+  "自主練習": "bg-emerald-100 text-emerald-800",
 };
 
 const PRACTICE_TYPES = ["通常練習", "自主練習"];
@@ -42,29 +42,29 @@ function BucketDutyCard({
   if (!bucketActive) return null;
 
   return (
-    <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+    <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold text-yellow-800">🪣 バケツ当番</span>
+        <span className="text-xs font-semibold text-amber-800">🪣 バケツ当番</span>
         <Link
           href={`/duty-roster?practiceId=${practice.id}`}
-          className="text-xs text-blue-700 bg-blue-100 border border-blue-300 px-2.5 py-1 rounded-lg font-medium"
+          className="text-xs text-stone-700 bg-stone-100 border border-stone-300 px-2.5 py-1 rounded-lg font-medium"
         >
           当番一覧で設定 →
         </Link>
       </div>
       {duty ? (
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
-            <div className="text-xs text-blue-500 mb-0.5">持っていく</div>
-            <div className="text-sm font-semibold text-blue-800">{duty.bringPersonName || "未設定"}</div>
+          <div className="bg-stone-50 border border-stone-200 rounded-lg p-2 text-center">
+            <div className="text-xs text-stone-500 mb-0.5">持っていく</div>
+            <div className="text-sm font-semibold text-stone-800">{duty.bringPersonName || "未設定"}</div>
           </div>
-          <div className="bg-pink-50 border border-pink-200 rounded-lg p-2 text-center">
-            <div className="text-xs text-pink-500 mb-0.5">持って帰る</div>
-            <div className="text-sm font-semibold text-pink-800">{duty.returnPersonName || "未設定"}</div>
+          <div className="bg-stone-50 border border-stone-200 rounded-lg p-2 text-center">
+            <div className="text-xs text-stone-500 mb-0.5">持って帰る</div>
+            <div className="text-sm font-semibold text-stone-800">{duty.returnPersonName || "未設定"}</div>
           </div>
         </div>
       ) : (
-        <p className="text-xs text-yellow-600 text-center py-1">バケツ当番が未設定です</p>
+        <p className="text-xs text-amber-700 text-center py-1">バケツ当番が未設定です</p>
       )}
     </div>
   );
@@ -205,13 +205,13 @@ export default function PracticesPage() {
         <button
           onClick={syncBand}
           disabled={syncing}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-green-500 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
         >
           {syncing ? "同期中..." : "🎵 BAND同期"}
         </button>
         <button
           onClick={() => { setShowForm((v) => !v); setShowBand(false); }}
-          className="flex-1 bg-blue-500 text-white py-2.5 rounded-xl text-sm font-semibold"
+          className="flex-1 bg-stone-700 text-white py-2.5 rounded-xl text-sm font-semibold"
         >
           {showForm ? "✕ キャンセル" : "＋ 手動追加"}
         </button>
@@ -234,7 +234,7 @@ export default function PracticesPage() {
           <div className="grid grid-cols-2 gap-2">
             {PRACTICE_TYPES.map((t) => (
               <button key={t} type="button" onClick={() => setForm((f) => ({ ...f, type: t }))}
-                className={`py-2 rounded-lg text-sm font-medium border transition-colors ${form.type === t ? "bg-blue-500 text-white border-blue-500" : "bg-gray-50 text-gray-600 border-gray-200"}`}>{t}</button>
+                className={`py-2 rounded-lg text-sm font-medium border transition-colors ${form.type === t ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"}`}>{t}</button>
             ))}
           </div>
           <div>
@@ -255,7 +255,7 @@ export default function PracticesPage() {
               <input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className="input" />
             </div>
           </div>
-          <button onClick={addPractice} disabled={saving || !form.date} className="w-full bg-blue-500 text-white py-2.5 rounded-xl font-semibold disabled:opacity-50">
+          <button onClick={addPractice} disabled={saving || !form.date} className="w-full bg-stone-700 text-white py-2.5 rounded-xl font-semibold disabled:opacity-50">
             {saving ? "保存中..." : "追加"}
           </button>
         </div>
@@ -263,26 +263,26 @@ export default function PracticesPage() {
 
       {/* BAND取得結果 */}
       {showBand && bandEvents.length > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-green-800">BANDから {bandEvents.length}件 取得</p>
+            <p className="text-sm font-semibold text-emerald-800">BANDから {bandEvents.length}件 取得</p>
             <button
               onClick={importAll}
               disabled={importingAll}
-              className="text-xs bg-green-600 text-white px-4 py-1.5 rounded-lg font-semibold disabled:opacity-50"
+              className="text-xs bg-emerald-700 text-white px-4 py-1.5 rounded-lg font-semibold disabled:opacity-50"
             >
               {importingAll ? "登録中..." : "一括登録"}
             </button>
           </div>
           <div className="grid gap-2">
             {bandEvents.map((ev, i) => (
-              <div key={i} className="bg-white rounded-lg p-3 border border-green-100">
+              <div key={i} className="bg-white rounded-lg p-3 border border-emerald-100">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[ev.type] ?? "bg-gray-100 text-gray-600"}`}>{ev.type}</span>
                     <span className="text-sm font-medium text-gray-800">{fmtDate(ev.date)}</span>
                   </div>
-                  <button onClick={() => importEvent(ev)} disabled={importingAll} className="text-xs bg-green-500 text-white px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40">登録</button>
+                  <button onClick={() => importEvent(ev)} disabled={importingAll} className="text-xs bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-semibold disabled:opacity-40">登録</button>
                 </div>
                 <input
                   type="text"
@@ -297,7 +297,7 @@ export default function PracticesPage() {
         </div>
       )}
       {showBand && bandEvents.length === 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4 text-sm text-green-700 text-center">新しい練習はありません</div>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 text-sm text-emerald-800 text-center">新しい練習はありません</div>
       )}
 
       {/* リスト表示 */}
@@ -381,7 +381,7 @@ export default function PracticesPage() {
           </div>
           <div className="grid grid-cols-7 gap-1 mb-2">
             {["日", "月", "火", "水", "木", "金", "土"].map((d, i) => (
-              <div key={d} className={`text-center text-xs py-1 font-medium ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-gray-400"}`}>{d}</div>
+              <div key={d} className={`text-center text-xs py-1 font-medium ${i === 0 ? "text-red-400" : i === 6 ? "text-stone-500" : "text-gray-400"}`}>{d}</div>
             ))}
           </div>
           <div className="grid grid-cols-7 gap-1">
@@ -393,12 +393,12 @@ export default function PracticesPage() {
               const isToday = dateStr === today;
               const dow = new Date(dateStr + "T00:00:00").getDay();
               return (
-                <div key={day} className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative ${isToday ? "bg-blue-100 font-bold text-blue-700" : dow === 0 ? "text-red-400" : dow === 6 ? "text-blue-400" : "text-gray-700"}`}>
+                <div key={day} className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs relative ${isToday ? "bg-stone-100 font-bold text-stone-800" : dow === 0 ? "text-red-400" : dow === 6 ? "text-stone-500" : "text-gray-700"}`}>
                   {day}
                   {dayPractices.length > 0 && (
                     <div className="flex gap-0.5 mt-0.5">
                       {dayPractices.map((p, pi) => (
-                        <span key={pi} className={`w-1.5 h-1.5 rounded-full ${p.type === "自主練習" ? "bg-green-400" : "bg-blue-400"}`} />
+                        <span key={pi} className={`w-1.5 h-1.5 rounded-full ${p.type === "自主練習" ? "bg-emerald-500" : "bg-stone-500"}`} />
                       ))}
                     </div>
                   )}
@@ -407,8 +407,8 @@ export default function PracticesPage() {
             })}
           </div>
           <div className="flex gap-3 mt-3 justify-center">
-            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />通常練習</div>
-            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-green-400 inline-block" />自主練習</div>
+            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-stone-500 inline-block" />通常練習</div>
+            <div className="flex items-center gap-1 text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />自主練習</div>
           </div>
           {/* 当月の練習一覧 */}
           <div className="mt-4 border-t border-gray-100 pt-3">
@@ -426,7 +426,7 @@ export default function PracticesPage() {
                       <span className="text-sm text-gray-700">{fmtDate(p.date)}</span>
                     </div>
                     {active && duty && (
-                      <div className="text-xs text-yellow-700 bg-yellow-50 px-2 py-0.5 rounded-full border border-yellow-200">
+                      <div className="text-xs text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                         🪣 {duty.bringPersonName || "−"} / {duty.returnPersonName || "−"}
                       </div>
                     )}
