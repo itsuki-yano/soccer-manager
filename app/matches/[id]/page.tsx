@@ -129,6 +129,17 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
             <div>
+              <label className="block text-xs text-gray-500 mb-1">精算</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[{ label: "精算あり", value: true }, { label: "精算なし", value: false }].map(({ label, value }) => (
+                  <button key={label} type="button" onClick={() => setNeedsSettlement(value)}
+                    className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      needsSettlement === value ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"
+                    }`}>{label}</button>
+                ))}
+              </div>
+            </div>
+            <div>
               <label className="block text-xs text-gray-500 mb-0.5">試合日</label>
               <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="input" />
             </div>

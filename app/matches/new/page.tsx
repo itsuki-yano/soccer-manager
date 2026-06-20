@@ -120,7 +120,7 @@ export default function NewMatchPage() {
           <p className="text-xs text-gray-400 mt-1">出発地: かりがね小学校（刈谷市）</p>
         </Field>
 
-        <Field label={`片道距離 (km)${calcLoading ? " ⏳ 計算中..." : ""}`}>
+        <Field label={`往復距離 (km)${calcLoading ? " ⏳ 計算中..." : ""}`}>
           <div className="flex gap-2">
             <input type="number" step="0.01" value={form.distanceKm}
               onChange={(e) => setForm((f) => ({ ...f, distanceKm: e.target.value }))}
