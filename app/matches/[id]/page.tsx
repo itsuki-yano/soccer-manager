@@ -152,7 +152,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-xs text-gray-400 mt-1">出発地: かりがね小学校（刈谷市）</p>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-0.5">{`片道距離(km)${calcLoading ? " ⏳ 計算中..." : ""}`}</label>
+              <label className="block text-xs text-gray-500 mb-0.5">{`往復距離(km)${calcLoading ? " ⏳ 計算中..." : ""}`}</label>
               <div className="flex gap-2">
                 <input type="number" step="0.01" value={form.distanceKm} onChange={(e) => setForm((f) => ({ ...f, distanceKm: Number(e.target.value) }))} className="input flex-1" />
                 {form.address && (
@@ -188,7 +188,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               {match.matchName && <div>🏆 {match.matchName}</div>}
               <div>📍 {match.venue}</div>
               {match.address && <div className="text-gray-400 text-xs pl-4">{match.address}</div>}
-              {match.distanceKm > 0 && <div>🚗 片道 {match.distanceKm}km × {drivers.length}台</div>}
+              {match.distanceKm > 0 && <div>🚗 往復 {match.distanceKm}km × {drivers.length}台</div>}
             </div>
             <button onClick={() => setShowDeleteConfirm(true)} className="mt-4 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
               この試合を削除

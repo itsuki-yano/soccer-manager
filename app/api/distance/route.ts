@@ -65,8 +65,8 @@ export async function GET(req: Request) {
     }
 
     const oneWayKmRounded = Math.round(oneWayKm * 100) / 100;
-    // 片道のみ精算のため roundTripKm も片道値を返す（後方互換のためフィールドは残す）
-    return NextResponse.json({ roundTripKm: oneWayKmRounded, oneWayKm: oneWayKmRounded });
+    const roundTripKmRounded = Math.round(oneWayKm * 2 * 100) / 100;
+    return NextResponse.json({ roundTripKm: roundTripKmRounded, oneWayKm: oneWayKmRounded });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
