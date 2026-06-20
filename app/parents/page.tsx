@@ -4,8 +4,15 @@ import BackHeader from "@/components/BackHeader";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Parent } from "@/lib/types";
 
-type EditForm = { playerName: string; furigana: string; jerseyNumber: string; group: string; carCapacity: string; bucketOrder: string };
-const EMPTY_FORM: EditForm = { playerName: "", furigana: "", jerseyNumber: "", group: "", carCapacity: "", bucketOrder: "" };
+type EditForm = {
+  playerName: string; furigana: string;
+  jerseyNumber: string; uniformNumber: string;
+  group: string; carCapacity: string; bucketOrder: string;
+};
+const EMPTY_FORM: EditForm = {
+  playerName: "", furigana: "", jerseyNumber: "", uniformNumber: "",
+  group: "", carCapacity: "", bucketOrder: "",
+};
 
 function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void }) {
   const setF = (k: keyof EditForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -22,11 +29,17 @@ function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void 
           <input type="text" value={f.furigana} onChange={setF("furigana")} placeholder="例: やのけいた" className="input" />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-gray-500 mb-0.5">背番号</label>
-          <input type="text" value={f.jerseyNumber} onChange={setF("jerseyNumber")} placeholder="例: 10" className="input" />
+          <label className="block text-xs text-gray-500 mb-0.5">ユニフォーム番号</label>
+          <input type="text" value={f.uniformNumber} onChange={setF("uniformNumber")} placeholder="例: 10" className="input" />
         </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">練習着番号</label>
+          <input type="text" value={f.jerseyNumber} onChange={setF("jerseyNumber")} placeholder="例: 51" className="input" />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="block text-xs text-gray-500 mb-0.5">班</label>
           <select value={f.group} onChange={setF("group")} className="input">
@@ -38,11 +51,10 @@ function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void 
           <label className="block text-xs text-gray-500 mb-0.5">乗車人数</label>
           <input type="number" min="0" max="9" value={f.carCapacity} onChange={setF("carCapacity")} placeholder="例: 5" className="input" />
         </div>
-      </div>
-      <div>
-        <label className="block text-xs text-gray-500 mb-0.5">🪣 バケツ当番の順番</label>
-        <input type="number" min="0" value={f.bucketOrder} onChange={setF("bucketOrder")} placeholder="例: 1（数字が小さい順に当番）" className="input" />
-        <p className="text-xs text-gray-400 mt-0.5">0または未入力 = 未設定。班順・背番号順とは別の独自順番。</p>
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">🪣 当番順</label>
+          <input type="number" min="0" value={f.bucketOrder} onChange={setF("bucketOrder")} placeholder="例: 1" className="input" />
+        </div>
       </div>
     </>
   );
@@ -69,7 +81,8 @@ export default function ParentsPage() {
 
   function toParentBody(f: EditForm) {
     return {
-      playerName: f.playerName, furigana: f.furigana, jerseyNumber: f.jerseyNumber,
+      playerName: f.playerName, furigana: f.furigana,
+      jerseyNumber: f.jerseyNumber, uniformNumber: f.uniformNumber,
       group: f.group, carCapacity: Number(f.carCapacity) || 0,
       bucketOrder: Number(f.bucketOrder) || 0,
     };
@@ -93,7 +106,8 @@ export default function ParentsPage() {
   function startEdit(p: Parent) {
     setEditId(p.id);
     setEditForm({
-      playerName: p.playerName, furigana: p.furigana, jerseyNumber: p.jerseyNumber,
+      playerName: p.playerName, furigana: p.furigana,
+      jerseyNumber: p.jerseyNumber, uniformNumber: p.uniformNumber ?? "",
       group: p.group, carCapacity: p.carCapacity ? String(p.carCapacity) : "",
       bucketOrder: p.bucketOrder ? String(p.bucketOrder) : "",
     });
@@ -128,7 +142,8 @@ export default function ParentsPage() {
 
   const sorted = [...filtered].sort((a, b) => {
     if (sortMode === "背番号") {
-      const na = Number(a.jerseyNumber) || 999, nb = Number(b.jerseyNumber) || 999;
+      const na = Number(a.uniformNumber || a.jerseyNumber) || 999;
+      const nb = Number(b.uniformNumber || b.jerseyNumber) || 999;
       return na - nb;
     }
     if (sortMode === "バケツ当番") {
@@ -136,7 +151,6 @@ export default function ParentsPage() {
       if (oa !== ob) return oa - ob;
       return (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName);
     }
-    // 班順（デフォルト）
     const ga = a.group || "9", gb = b.group || "9";
     if (ga !== gb) return ga.localeCompare(gb);
     return (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName);
@@ -154,26 +168,26 @@ export default function ParentsPage() {
       )}
       <button
         onClick={() => { setShowForm((v) => !v); setEditId(null); }}
-        className="block w-full bg-blue-500 text-white text-center py-3 rounded-xl font-semibold mb-4"
+        className="block w-full bg-stone-700 text-white text-center py-3 rounded-xl font-semibold mb-4"
       >
         {showForm ? "✕ キャンセル" : "＋ 選手を追加"}
       </button>
 
       {showForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 grid gap-3">
+        <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-4 mb-4 grid gap-3">
           <FormFields f={form} setter={setForm} />
-          <button onClick={save} disabled={saving} className="w-full bg-blue-500 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50">
+          <button onClick={save} disabled={saving} className="w-full bg-stone-700 text-white py-2.5 rounded-lg font-semibold disabled:opacity-50">
             {saving ? "保存中..." : "保存"}
           </button>
         </div>
       )}
 
-      {/* 並び順選択 */}
+      {/* 並び順 */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="text-xs text-gray-500 shrink-0">並び順:</span>
+        <span className="text-xs text-stone-500 shrink-0">並び順:</span>
         {(["班", "背番号", "バケツ当番"] as const).map((mode) => (
           <button key={mode} onClick={() => setSortMode(mode)}
-            className={`text-xs px-3 py-1 rounded-full border transition-colors ${sortMode === mode ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-600 border-gray-200"}`}>
+            className={`text-xs px-3 py-1 rounded-full border transition-colors ${sortMode === mode ? "bg-stone-700 text-white border-stone-700" : "bg-white text-stone-600 border-stone-300"}`}>
             {mode === "班" ? "🏠 班順" : mode === "背番号" ? "🔢 背番号順" : "🪣 バケツ当番順"}
           </button>
         ))}
@@ -184,64 +198,79 @@ export default function ParentsPage() {
         {["全員", "1班", "2班", "3班", "4班"].map((g) => (
           <button key={g} onClick={() => setFilterGroup(g)}
             className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-              filterGroup === g ? "bg-blue-500 text-white border-blue-500" : "bg-white text-gray-600 border-gray-200"
+              filterGroup === g ? "bg-amber-700 text-white border-amber-700" : "bg-white text-stone-600 border-stone-300"
             }`}>{g}</button>
         ))}
       </div>
 
       <div className="grid gap-2">
         {sorted.map((p, idx) => (
-          <div key={p.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div key={p.id} className="bg-white rounded-xl shadow-sm border border-stone-100 p-3">
             {editId === p.id ? (
               <div className="grid gap-3">
                 <FormFields f={editForm} setter={setEditForm} />
                 <div className="flex gap-2">
                   <button onClick={() => saveEdit(p.id)} disabled={saving}
-                    className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
+                    className="flex-1 bg-stone-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
                     {saving ? "保存中..." : "保存"}
                   </button>
-                  <button onClick={() => setEditId(null)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm font-semibold">
+                  <button onClick={() => setEditId(null)} className="flex-1 bg-stone-100 text-stone-600 py-2 rounded-lg text-sm font-semibold">
                     キャンセル
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  {/* 順番インジケーター */}
-                  <div className="flex flex-col items-center gap-1 shrink-0">
-                    {p.group && (
-                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
-                        {p.group.endsWith("班") ? p.group : `${p.group}班`}
-                      </span>
+              <div className="flex items-center gap-2">
+                {/* 班・バケツバッジ */}
+                <div className="flex flex-col items-center gap-1 shrink-0 w-10">
+                  {p.group && (
+                    <span className="text-xs bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded-md font-semibold border border-amber-200 w-full text-center">
+                      {p.group.endsWith("班") ? p.group : `${p.group}班`}
+                    </span>
+                  )}
+                  {p.bucketOrder > 0 && (
+                    <span className="text-xs bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-md font-semibold border border-stone-300 w-full text-center">
+                      🪣{p.bucketOrder}
+                    </span>
+                  )}
+                </div>
+
+                {/* 番号・選手情報 */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xs text-stone-400 font-mono shrink-0">{idx + 1}.</span>
+                    {p.uniformNumber && (
+                      <span className="text-lg font-bold text-stone-800 shrink-0">#{p.uniformNumber}</span>
                     )}
-                    {p.bucketOrder > 0 && (
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
-                        🪣{p.bucketOrder}
-                      </span>
-                    )}
+                    <span className="font-bold text-stone-800 text-base whitespace-nowrap overflow-hidden text-ellipsis">
+                      {p.playerName}
+                    </span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 font-mono w-5 text-right">{idx + 1}.</span>
-                      <span className="font-medium text-gray-800">{p.playerName}</span>
-                      {p.jerseyNumber && <span className="text-xs text-gray-400">#{p.jerseyNumber}</span>}
-                      {p.carCapacity > 0 && (
-                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">🚗{p.carCapacity}人</span>
-                      )}
-                    </div>
-                    {p.furigana && <div className="text-xs text-gray-400">{p.furigana}</div>}
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    {p.furigana && <span className="text-xs text-stone-400">{p.furigana}</span>}
+                    {p.jerseyNumber && (
+                      <span className="text-xs bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded border border-stone-200">
+                        練習着#{p.jerseyNumber}
+                      </span>
+                    )}
+                    {p.carCapacity > 0 && (
+                      <span className="text-xs bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">
+                        🚗{p.carCapacity}人
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => startEdit(p)} className="text-xs text-blue-500 border border-blue-200 px-3 py-1.5 rounded-lg">修正</button>
-                  <button onClick={() => setDeleteConfirm({ id: p.id, name: p.playerName })} className="text-xs text-red-400 border border-red-100 px-3 py-1.5 rounded-lg">削除</button>
+
+                {/* アクションボタン */}
+                <div className="flex gap-1.5 shrink-0">
+                  <button onClick={() => startEdit(p)} className="text-xs text-stone-600 border border-stone-300 px-2.5 py-1.5 rounded-lg">修正</button>
+                  <button onClick={() => setDeleteConfirm({ id: p.id, name: p.playerName })} className="text-xs text-red-400 border border-red-100 px-2.5 py-1.5 rounded-lg">削除</button>
                 </div>
               </div>
             )}
           </div>
         ))}
-        {sorted.length === 0 && <p className="text-center text-gray-400 py-8">該当する選手がいません</p>}
+        {sorted.length === 0 && <p className="text-center text-stone-400 py-8">該当する選手がいません</p>}
       </div>
     </main>
   );

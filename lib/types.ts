@@ -25,7 +25,8 @@ export interface Parent {
   id: string;
   playerName: string;
   furigana: string;
-  jerseyNumber: string;
+  jerseyNumber: string;      // 練習着番号
+  uniformNumber: string;     // ユニフォーム番号
   carCapacity: number;
   group: string;
   bucketOrder: number;
