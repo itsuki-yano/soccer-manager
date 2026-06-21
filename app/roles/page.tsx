@@ -73,10 +73,9 @@ export default function RolesPage() {
       const eventName = m.matchName || `${m.matchType} ${m.venue}`;
       const matchDrivers = drivers.filter((d) => d.matchId === m.id);
 
-      // 配車当番: driversテーブル + equipmentBringIn（荷物持込＝配車当番）の両方を確認
+      // 配車当番: driversテーブルのみ参照（荷物持込も配車当番と同義のため重複しない）
       const isDriver = matchDrivers.some((d) => normName(applySwapsToName(d.parentName)) === normN);
-      const inIn = m.equipmentBringIn?.split(",").map((s) => normName(applySwapsToName(s.trim()))).filter(Boolean) ?? [];
-      if (isDriver || inIn.includes(normN)) {
+      if (isDriver) {
         roles.push({ kind: "driver", date: m.date, label: "配車当番", eventName });
       }
 
