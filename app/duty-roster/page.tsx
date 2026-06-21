@@ -486,7 +486,17 @@ function DutyRosterInner() {
             </div>
           )}
           <div>
-            <p className="text-xs font-semibold text-gray-500 mb-1">🚗 配車当番{groupLabel ? `（${groupLabel}）` : ""}</p>
+            <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+              <p className="text-xs font-semibold text-gray-500">🚗 配車当番{groupLabel ? `（${groupLabel}）` : ""}</p>
+              <div className="flex gap-1">
+                {sortedGroups.map((g) => (
+                  <button key={g} type="button"
+                    onClick={() => setEditDriverNames(applySwaps(parents.filter((p) => normalizeGroup(p.group) === g).sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName)))}
+                    className="text-xs px-2 py-0.5 rounded-lg border bg-amber-50 text-amber-800 border-amber-200 font-medium"
+                  >{g}</button>
+                ))}
+              </div>
+            </div>
             <MultiSelect names={parentNames} selected={editDriverNames} onChange={setEditDriverNames} />
           </div>
           {inheritEquip && editEquipOut.length === 0 && (
@@ -504,7 +514,17 @@ function DutyRosterInner() {
             </div>
           )}
           <div>
-            <p className="text-xs font-semibold text-gray-500 mb-1">🎒 備品持帰り</p>
+            <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+              <p className="text-xs font-semibold text-gray-500">🎒 備品持帰り</p>
+              <div className="flex gap-1">
+                {sortedGroups.map((g) => (
+                  <button key={g} type="button"
+                    onClick={() => setEditEquipOut(applySwaps(parents.filter((p) => normalizeGroup(p.group) === g).sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName)))}
+                    className="text-xs px-2 py-0.5 rounded-lg border bg-stone-50 text-stone-700 border-stone-200 font-medium"
+                  >{g}</button>
+                ))}
+              </div>
+            </div>
             <MultiSelect names={parentNames} selected={editEquipOut} onChange={setEditEquipOut} />
           </div>
           <div className="flex gap-2">
@@ -605,12 +625,17 @@ function DutyRosterInner() {
                       >
                         {linkedMatch ? "試合変更" : "試合選択"}
                       </button>
-                      {linkedMatch && (
-                        <button
-                          onClick={() => { setSkipOnlyMatchId(null); startEditMatch(linkedMatch, group, equipGroup); }}
-                          className="text-xs text-stone-700 border border-stone-200 px-2 py-1 rounded-lg"
-                        >変更</button>
-                      )}
+                      <button
+                        onClick={() => {
+                          setSkipOnlyMatchId(null);
+                          if (linkedMatch) {
+                            startEditMatch(linkedMatch, group, equipGroup);
+                          } else {
+                            setPickingSlot(i);
+                          }
+                        }}
+                        className="text-xs text-stone-700 border border-stone-200 px-2 py-1 rounded-lg"
+                      >変更</button>
                     </div>
                   )}
                 </div>
