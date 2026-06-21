@@ -341,34 +341,38 @@ function DutyRosterInner() {
       return override;
     });
 
-    function getGroupMembers(g: string): string[] {
+    function getGroupMembers(g: string, slotIndex: number): string[] {
       const normGVal = normalizeGroup(g);
       const base = parents
         .filter((p) => normalizeGroup(p.group) === normGVal)
         .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
         .map((p) => p.playerName);
+      // 当該スロット以降に適用されるスワップのみ反映
+      const applicableSwaps = swaps.filter((s) => s.appliedFromSlotIndex <= slotIndex);
       return base.map((name) => {
-        const sw = swaps.find((s) => s.personA === name || s.personB === name);
+        const sw = applicableSwaps.find((s) => s.personA === name || s.personB === name);
         if (!sw) return name;
         return sw.personA === name ? sw.personB : sw.personA;
       });
     }
 
     async function saveSwap() {
-      if (!swapFrom || !swapTo) return;
+      if (!swapFrom || !swapTo || swapSlot === null) return;
       setSavingSwap(true);
+      const appliedFromSlotIndex = swapSlot;
       const res = await fetch("/api/duty-swaps", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ personA: swapFrom, personB: swapTo }),
+        body: JSON.stringify({ personA: swapFrom, personB: swapTo, appliedFromSlotIndex }),
       });
       const data = await res.json();
-      setSwaps((prev) => [...prev, { id: data.id, personA: swapFrom, personB: swapTo }]);
+      setSwaps((prev) => [...prev, { id: data.id, personA: swapFrom, personB: swapTo, appliedFromSlotIndex }]);
 
       function applyOneSwap(names: string[]): string[] {
         return names.map((n) => n === swapFrom ? swapTo : n === swapTo ? swapFrom : n);
       }
-      for (let si = 0; si < 4; si++) {
+      // swapSlot以降のスロットのDB済みデータも更新
+      for (let si = appliedFromSlotIndex; si < 4; si++) {
         const lid = effectiveSlotMatchIds[si];
         if (!lid) continue;
         const lm = matches.find((m) => m.id === lid);
@@ -496,14 +500,26 @@ function DutyRosterInner() {
 
         {swaps.length > 0 && (
           <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <p className="text-xs font-semibold text-amber-800 mb-2">現在の個人交代</p>
-            <div className="space-y-1">
-              {swaps.map((s) => (
-                <div key={s.id} className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-gray-700">{s.personA} ↔ {s.personB}</span>
-                  <button onClick={() => deleteSwap(s.id)} className="text-xs text-red-400 hover:text-red-600">解除</button>
-                </div>
-              ))}
+            <p className="text-xs font-semibold text-amber-800 mb-2">当番変更一覧（削除すると元に戻ります）</p>
+            <div className="space-y-1.5">
+              {swaps.map((s) => {
+                const slotLabel = s.appliedFromSlotIndex === 0 ? "次回" : `${s.appliedFromSlotIndex + 1}回後`;
+                const linkedMatch = effectiveSlotMatchIds[s.appliedFromSlotIndex]
+                  ? matches.find((m) => m.id === effectiveSlotMatchIds[s.appliedFromSlotIndex])
+                  : null;
+                const fromLabel = linkedMatch
+                  ? `${fmtDate(linkedMatch.date)}（${slotLabel}）`
+                  : slotLabel;
+                return (
+                  <div key={s.id} className="flex items-center justify-between gap-2 bg-white border border-amber-100 rounded-lg px-2.5 py-1.5">
+                    <div className="min-w-0">
+                      <span className="text-xs font-semibold text-amber-900">{s.personA} ↔ {s.personB}</span>
+                      <span className="text-xs text-gray-400 ml-1.5">{fromLabel}から適用</span>
+                    </div>
+                    <button onClick={() => deleteSwap(s.id)} className="text-xs text-red-400 hover:text-red-600 shrink-0 px-1">削除</button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -513,7 +529,7 @@ function DutyRosterInner() {
           {futureGroups.slice(0, 4).map((group, i) => {
             const linkedMatchId = effectiveSlotMatchIds[i];
             const linkedMatch = linkedMatchId ? matches.find((m) => m.id === linkedMatchId) : null;
-            const groupMembers = getGroupMembers(group);
+            const groupMembers = getGroupMembers(group, i);
             const rawLinkedDrivers = linkedMatchId
               ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName)
               : [];
@@ -522,7 +538,7 @@ function DutyRosterInner() {
             const rawLinkedEquip = linkedMatch?.equipmentBringOut
               ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean)
               : [];
-            const slotEquipOut = rawLinkedEquip.length > 0 ? rawLinkedEquip : getGroupMembers(equipGroup);
+            const slotEquipOut = rawLinkedEquip.length > 0 ? rawLinkedEquip : getGroupMembers(equipGroup, i);
             const isEditing = Boolean(linkedMatchId && editMatchId === linkedMatchId);
             const isPicking = pickingSlot === i;
             const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
@@ -542,7 +558,7 @@ function DutyRosterInner() {
                       <button
                         onClick={() => { setSwapSlot(i); setSwapFrom(""); setSwapTo(""); }}
                         className="text-xs text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-lg font-medium"
-                      >交代</button>
+                      >当番変更</button>
                       <button
                         onClick={() => setPickingSlot(i)}
                         className="text-xs text-stone-700 bg-stone-100 border border-stone-300 px-2.5 py-1 rounded-lg font-medium"
@@ -559,10 +575,10 @@ function DutyRosterInner() {
                   )}
                 </div>
 
-                {/* 個人交代フォーム */}
+                {/* 当番変更フォーム */}
                 {swapSlot === i && (
                   <div className="space-y-2 mb-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <p className="text-xs font-semibold text-amber-800">個人交代（全スロットに反映）</p>
+                    <p className="text-xs font-semibold text-amber-800">当番変更（{i === 0 ? "次回" : `${i + 1}回後`}以降のすべてのスロットに反映）</p>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs text-gray-500 mb-0.5 block">交代する人</label>
@@ -598,7 +614,7 @@ function DutyRosterInner() {
                     </div>
                     <div className="flex gap-2">
                       <button onClick={saveSwap} disabled={savingSwap || !swapFrom || !swapTo} className="flex-1 bg-amber-600 text-white py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50">
-                        {savingSwap ? "保存中..." : "交代を保存"}
+                        {savingSwap ? "保存中..." : "当番変更を保存"}
                       </button>
                       <button onClick={() => setSwapSlot(null)} className="flex-1 bg-gray-100 text-gray-600 py-1.5 rounded-lg text-xs">キャンセル</button>
                     </div>

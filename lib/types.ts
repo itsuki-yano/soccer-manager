@@ -64,6 +64,7 @@ export interface DutySwap {
   id: string;
   personA: string;
   personB: string;
+  appliedFromSlotIndex: number; // 何番目のスロット以降に適用するか（0=次回）
 }
 
 export interface BucketDuty {
