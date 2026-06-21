@@ -49,8 +49,9 @@ export async function GET() {
 
     const matchPreviews = settlementMatches.map((m) => {
       const matchDrivers = drivers.filter((d) => d.matchId === m.id);
+      const effectiveCarCount = matchDrivers.length > 0 ? matchDrivers.length : m.carCount;
       const feePerCar = calcFee(m.distanceKm, settings.gasPricePerKm);
-      const totalFee = feePerCar * m.carCount;
+      const totalFee = feePerCar * effectiveCarCount;
       return {
         id: m.id,
         date: m.date,
@@ -58,7 +59,7 @@ export async function GET() {
         matchType: m.matchType,
         venue: m.venue,
         distanceKm: m.distanceKm,
-        carCount: m.carCount,
+        carCount: effectiveCarCount,
         gasPricePerKm: settings.gasPricePerKm,
         feePerCar,
         totalFee,

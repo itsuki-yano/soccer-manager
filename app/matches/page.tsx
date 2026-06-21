@@ -209,7 +209,7 @@ export default function MatchesPage() {
                   <div className="text-sm font-medium text-gray-800 truncate">{ev.matchName}</div>
                   {ev.venue && <div className="text-xs text-gray-400 truncate">{ev.venue}</div>}
                   {ev.distanceKm > 0
-                    ? <div className="text-xs text-gray-400">{ev.distanceKm}km</div>
+                    ? <div className="text-xs text-gray-400">{ev.distanceKm}km（往復）</div>
                     : !ev.isHome && (
                       <div className="text-xs text-amber-700 font-medium flex items-center gap-1">
                         ⚠️ 距離0km・住所要確認
