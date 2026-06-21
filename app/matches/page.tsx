@@ -288,7 +288,7 @@ export default function MatchesPage() {
                       </div>
                       <div className="text-sm text-gray-500 mt-1">{m.venue}</div>
                       {m.distanceKm > 0 && (
-                        <div className="text-sm text-gray-500">片道 {m.distanceKm}km × {m.carCount}台</div>
+                        <div className="text-sm text-gray-500">往復 {m.distanceKm}km × {m.carCount}台</div>
                       )}
                     </div>
                     <div className="text-right ml-2 flex-shrink-0">
