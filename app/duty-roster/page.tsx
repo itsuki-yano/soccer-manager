@@ -411,6 +411,46 @@ function DutyRosterInner() {
     }
 
     async function deleteSwap(id: string) {
+      const target = swaps.find((s) => s.id === id);
+      if (!target) return;
+      const { personA, personB, appliedFromSlotIndex: fromSlot } = target;
+
+      // DBに保存済みのデータを元に戻す（スワップの逆適用 = 同じ操作で双方向なので同じ関数）
+      function revertName(names: string[]): string[] {
+        return names.map((n) => n === personA ? personB : n === personB ? personA : n);
+      }
+      for (let si = fromSlot; si < 4; si++) {
+        const lid = effectiveSlotMatchIds[si];
+        if (!lid) continue;
+        const lm = matches.find((m) => m.id === lid);
+        if (!lm) continue;
+
+        const curDrv = drivers.filter((d) => d.matchId === lid).map((d) => d.parentName);
+        const newDrv = revertName(curDrv);
+        if (curDrv.join() !== newDrv.join()) {
+          await fetch("/api/drivers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ matchId: lid, parentNames: newDrv }),
+          });
+          setDrivers((prev) => [
+            ...prev.filter((d) => d.matchId !== lid),
+            ...newDrv.map((name) => ({ matchId: lid, parentName: name })),
+          ]);
+        }
+
+        const curEq = lm.equipmentBringOut ? lm.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
+        const newEq = revertName(curEq);
+        if (curEq.join() !== newEq.join()) {
+          await fetch(`/api/matches/${lid}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...lm, equipmentBringOut: newEq.join(", ") }),
+          });
+          setMatches((prev) => prev.map((m) => m.id === lid ? { ...m, equipmentBringOut: newEq.join(", ") } : m));
+        }
+      }
+
       await fetch(`/api/duty-swaps/${id}`, { method: "DELETE" });
       setSwaps((prev) => prev.filter((s) => s.id !== id));
     }
