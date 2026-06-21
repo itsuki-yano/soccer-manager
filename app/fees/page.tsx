@@ -55,10 +55,12 @@ export default function FeesPage() {
       <div className="grid gap-3">
         {sorted.map((fee) => {
           const feePayments = payments.filter((p) => p.feeId === fee.id);
-          const paidCount = feePayments.filter((p) => p.paid).length;
-          const total = fee.amount * totalParents;
+          const notJoiningIds = new Set(feePayments.filter((p) => p.paidAt === "不参加").map((p) => p.parentId));
+          const activeCount = totalParents - notJoiningIds.size;
+          const paidCount = feePayments.filter((p) => p.paid && !notJoiningIds.has(p.parentId)).length;
+          const total = fee.amount * activeCount;
           const collected = fee.amount * paidCount;
-          const pct = totalParents > 0 ? Math.round((paidCount / totalParents) * 100) : 0;
+          const pct = activeCount > 0 ? Math.round((paidCount / activeCount) * 100) : 0;
 
           return (
             <Link key={fee.id} href={`/fees/${fee.id}`}
@@ -83,7 +85,7 @@ export default function FeesPage() {
               {/* 徴収進捗 */}
               <div className="mt-2">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>{paidCount}/{totalParents}名 徴収済み</span>
+                  <span>{paidCount}/{activeCount}名 徴収済み{notJoiningIds.size > 0 ? `（不参加${notJoiningIds.size}名除く）` : ""}</span>
                   <span className="font-medium text-gray-700">
                     ¥{collected.toLocaleString()} / ¥{total.toLocaleString()}
                   </span>

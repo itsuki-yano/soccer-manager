@@ -6,7 +6,7 @@ function rowToPayment(r: string[]): FeePayment {
   return {
     feeId: r[0] ?? "",
     parentId: r[1] ?? "",
-    paid: r[2] === "true",
+    paid: r[2]?.toLowerCase() === "true",
     paidAt: r[3] ?? "",
   };
 }

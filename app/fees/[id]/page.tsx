@@ -281,33 +281,32 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             const isToggling = toggling.has(p.id);
             return (
               <div key={p.id} className={`flex items-center justify-between py-2 border-b border-gray-50 last:border-0 ${notJoiningIds.has(p.id) ? "opacity-40" : ""}`}>
-                <div className="flex items-center gap-2">
-                  {p.group && <span className="text-xs text-gray-400 w-8">{p.group}班</span>}
-                  <div>
-                    <span className="text-sm font-medium text-gray-800">{p.playerName}</span>
-                    <span className="text-xs text-gray-400 ml-1">{p.furigana}</span>
-                  </div>
-                  {notJoiningIds.has(p.id) && <span className="text-xs text-gray-400 border border-gray-200 rounded px-1">不参加</span>}
+                <div className="flex items-center gap-2 min-w-0">
+                  {p.group && <span className="text-xs text-gray-400 w-8 shrink-0">{p.group}班</span>}
+                  <span className="text-sm font-medium text-gray-800 whitespace-nowrap">{p.playerName}</span>
+                  <span className="text-xs text-gray-400 whitespace-nowrap">{p.furigana}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {paid && payment?.paidAt && payment.paidAt !== "不参加" && (
                     <span className="text-xs text-gray-400">{payment.paidAt.slice(0, 10).replace(/-/g, "/")}</span>
                   )}
                   {!notJoiningIds.has(p.id) && (
                     <button
                       onClick={() => togglePaid(p)}
-                      disabled={isToggling}
-                      className={`min-w-[72px] px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors disabled:opacity-50 ${
+                      className={`min-w-[72px] px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                         paid ? "bg-emerald-700 text-white border-emerald-700" : "bg-white text-gray-500 border-gray-300"
                       }`}
                     >
-                      {isToggling ? "…" : paid ? "✓ 徴収済" : "未徴収"}
+                      {paid ? "✓ 徴収済" : "未徴収"}
                     </button>
                   )}
                   <button
                     onClick={() => toggleNotJoining(p)}
-                    disabled={isToggling}
-                    className="text-xs text-gray-400 border border-gray-200 px-2 py-1.5 rounded-full disabled:opacity-50"
+                    className={`text-xs px-2 py-1.5 rounded-full border transition-colors ${
+                      notJoiningIds.has(p.id)
+                        ? "text-stone-700 bg-stone-100 border-stone-300 font-medium"
+                        : "text-gray-400 border-gray-200"
+                    }`}
                   >
                     {notJoiningIds.has(p.id) ? "復帰" : "不参加"}
                   </button>
