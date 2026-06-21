@@ -25,6 +25,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   const [toggling, setToggling] = useState<Set<string>>(new Set());
   const [filterGroup, setFilterGroup] = useState("全員");
   const [filterPaid, setFilterPaid] = useState<"all" | "paid" | "unpaid">("all");
+  const [sortMode, setSortMode] = useState<"班" | "背番号">("班");
   const [form, setForm] = useState({ name: "", category: "クラブ費", amount: "", date: "", description: "" });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -67,23 +68,54 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
     const key = parent.id;
     setToggling((prev) => new Set(prev).add(key));
     const current = payments.find((p) => p.parentId === parent.id);
+    const isNotJoining = current?.paidAt === "不参加";
+    if (isNotJoining) { setToggling((prev) => { const s = new Set(prev); s.delete(key); return s; }); return; }
     const newPaid = !(current?.paid ?? false);
-    const res = await fetch("/api/fee-payments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feeId: id, parentId: parent.id, paid: newPaid, paidAt: "" }),
-    });
-    const data = await res.json();
-    setPayments((prev) => {
-      const filtered = prev.filter((p) => !(p.feeId === id && p.parentId === parent.id));
-      return [...filtered, { feeId: id, parentId: parent.id, paid: newPaid, paidAt: data.paidAt ?? "" }];
-    });
+    try {
+      const res = await fetch("/api/fee-payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feeId: id, parentId: parent.id, paid: newPaid, paidAt: "" }),
+      });
+      if (!res.ok) throw new Error("保存失敗");
+      const data = await res.json();
+      setPayments((prev) => {
+        const filtered = prev.filter((p) => !(p.feeId === id && p.parentId === parent.id));
+        return [...filtered, { feeId: id, parentId: parent.id, paid: newPaid, paidAt: data.paidAt ?? "" }];
+      });
+    } catch {
+      alert("保存に失敗しました。再度お試しください。");
+    }
+    setToggling((prev) => { const s = new Set(prev); s.delete(key); return s; });
+  }
+
+  async function toggleNotJoining(parent: Parent) {
+    const key = parent.id;
+    setToggling((prev) => new Set(prev).add(key));
+    const current = payments.find((p) => p.parentId === parent.id);
+    const isNotJoining = current?.paidAt === "不参加";
+    const newPaidAt = isNotJoining ? "" : "不参加";
+    try {
+      const res = await fetch("/api/fee-payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feeId: id, parentId: parent.id, paid: false, paidAt: newPaidAt }),
+      });
+      if (!res.ok) throw new Error("保存失敗");
+      setPayments((prev) => {
+        const filtered = prev.filter((p) => !(p.feeId === id && p.parentId === parent.id));
+        if (isNotJoining) return filtered;
+        return [...filtered, { feeId: id, parentId: parent.id, paid: false, paidAt: "不参加" }];
+      });
+    } catch {
+      alert("保存に失敗しました。再度お試しください。");
+    }
     setToggling((prev) => { const s = new Set(prev); s.delete(key); return s; });
   }
 
   async function markAllPaid() {
     if (!confirm("全員を徴収済みにしますか？")) return;
-    for (const p of parents) {
+    for (const p of activeParents) {
       const current = payments.find((x) => x.parentId === p.id);
       if (!current?.paid) await togglePaid(p);
     }
@@ -92,8 +124,10 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
   if (!fee) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-red-400">費用が見つかりません</div>;
 
-  const paidCount = payments.filter((p) => p.paid).length;
-  const totalParents = parents.length;
+  const notJoiningIds = new Set(payments.filter((p) => p.paidAt === "不参加").map((p) => p.parentId));
+  const activeParents = parents.filter((p) => !notJoiningIds.has(p.id));
+  const paidCount = payments.filter((p) => p.paid && !notJoiningIds.has(p.parentId)).length;
+  const totalParents = activeParents.length;
   const pct = totalParents > 0 ? Math.round((paidCount / totalParents) * 100) : 0;
   const collected = fee.amount * paidCount;
   const total = fee.amount * totalParents;
@@ -103,9 +137,16 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
   const filteredParents = parents.filter((p) => {
     if (filterGroup !== "全員" && p.group !== filterGroup.replace("班", "")) return false;
     if (filterPaid === "paid" && !payments.find((x) => x.parentId === p.id && x.paid)) return false;
-    if (filterPaid === "unpaid" && payments.find((x) => x.parentId === p.id && x.paid)) return false;
+    if (filterPaid === "unpaid" && (payments.find((x) => x.parentId === p.id && x.paid) || notJoiningIds.has(p.id))) return false;
     return true;
-  }).sort((a, b) => (a.group ?? "").localeCompare(b.group ?? "") || a.furigana.localeCompare(b.furigana));
+  }).sort((a, b) => {
+    if (sortMode === "背番号") {
+      const na = Number(a.uniformNumber || a.jerseyNumber) || 999;
+      const nb = Number(b.uniformNumber || b.jerseyNumber) || 999;
+      return na - nb;
+    }
+    return (a.group ?? "").localeCompare(b.group ?? "") || a.furigana.localeCompare(b.furigana);
+  });
 
   return (
     <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
@@ -213,7 +254,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
               }`}>{g}</button>
           ))}
         </div>
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-3">
           {(["all", "unpaid", "paid"] as const).map((v) => (
             <button key={v} onClick={() => setFilterPaid(v)}
               className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
@@ -223,6 +264,15 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             </button>
           ))}
         </div>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xs text-gray-400">並び順:</span>
+          {(["班", "背番号"] as const).map((m) => (
+            <button key={m} onClick={() => setSortMode(m)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                sortMode === m ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-white text-gray-600 border-gray-200"
+              }`}>{m}</button>
+          ))}
+        </div>
 
         <div className="grid gap-2">
           {filteredParents.map((p) => {
@@ -230,28 +280,36 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
             const paid = payment?.paid ?? false;
             const isToggling = toggling.has(p.id);
             return (
-              <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+              <div key={p.id} className={`flex items-center justify-between py-2 border-b border-gray-50 last:border-0 ${notJoiningIds.has(p.id) ? "opacity-40" : ""}`}>
                 <div className="flex items-center gap-2">
                   {p.group && <span className="text-xs text-gray-400 w-8">{p.group}班</span>}
                   <div>
                     <span className="text-sm font-medium text-gray-800">{p.playerName}</span>
                     <span className="text-xs text-gray-400 ml-1">{p.furigana}</span>
                   </div>
+                  {notJoiningIds.has(p.id) && <span className="text-xs text-gray-400 border border-gray-200 rounded px-1">不参加</span>}
                 </div>
-                <div className="flex items-center gap-2">
-                  {paid && payment?.paidAt && (
+                <div className="flex items-center gap-1.5">
+                  {paid && payment?.paidAt && payment.paidAt !== "不参加" && (
                     <span className="text-xs text-gray-400">{payment.paidAt.slice(0, 10).replace(/-/g, "/")}</span>
                   )}
+                  {!notJoiningIds.has(p.id) && (
+                    <button
+                      onClick={() => togglePaid(p)}
+                      disabled={isToggling}
+                      className={`min-w-[72px] px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors disabled:opacity-50 ${
+                        paid ? "bg-emerald-700 text-white border-emerald-700" : "bg-white text-gray-500 border-gray-300"
+                      }`}
+                    >
+                      {isToggling ? "…" : paid ? "✓ 徴収済" : "未徴収"}
+                    </button>
+                  )}
                   <button
-                    onClick={() => togglePaid(p)}
+                    onClick={() => toggleNotJoining(p)}
                     disabled={isToggling}
-                    className={`min-w-[72px] px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors disabled:opacity-50 ${
-                      paid
-                        ? "bg-emerald-700 text-white border-emerald-700"
-                        : "bg-white text-gray-500 border-gray-300"
-                    }`}
+                    className="text-xs text-gray-400 border border-gray-200 px-2 py-1.5 rounded-full disabled:opacity-50"
                   >
-                    {isToggling ? "…" : paid ? "✓ 徴収済" : "未徴収"}
+                    {notJoiningIds.has(p.id) ? "復帰" : "不参加"}
                   </button>
                 </div>
               </div>
