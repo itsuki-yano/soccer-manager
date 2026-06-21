@@ -32,9 +32,13 @@ export async function POST(req: Request) {
     const body: FeePayment = await req.json();
     const rows = await getSheetData("fee_payments!A:D");
     const idx = rows.findIndex((r) => r[0] === body.feeId && r[1] === body.parentId);
-    const paidAt = body.paid ? (body.paidAt || new Date().toISOString()) : "";
+    // 不参加マーカーはそのまま保持。通常は paid=true 時に日時を付与
+    const paidAt = body.paidAt === "不参加"
+      ? "不参加"
+      : body.paid ? (body.paidAt || new Date().toISOString()) : "";
     const row = [body.feeId, body.parentId, body.paid ? "true" : "false", paidAt];
-    if (idx >= 1) {
+    if (idx !== -1) {
+      // ヘッダー有無に関わらず見つかった行を更新（シートは1始まり）
       await updateRow("fee_payments", idx + 1, row);
     } else {
       await appendRow("fee_payments", row);
@@ -43,6 +47,7 @@ export async function POST(req: Request) {
   } catch (e) {
     if (String(e).includes("Unable to parse range")) {
       await ensureSheets();
+      return NextResponse.json({ ok: true, paidAt: "" });
     }
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
