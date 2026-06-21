@@ -179,14 +179,14 @@ export default function MatchesPage() {
 
       {/* 追加 + BANDボタン */}
       <div className="flex gap-2 mb-4">
-        <Link href="/matches/new"
-          className="flex-1 bg-stone-700 text-white text-center py-3 rounded-xl font-semibold active:bg-stone-800">
-          ＋ 追加
-        </Link>
         <button onClick={syncBand} disabled={bandLoading}
-          className="bg-emerald-700 text-white px-4 py-3 rounded-xl font-semibold disabled:opacity-60 whitespace-nowrap">
-          {bandLoading ? "取得中…" : "BAND同期"}
+          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50">
+          {bandLoading ? "取得中…" : "🎵 BAND同期"}
         </button>
+        <Link href="/matches/new"
+          className="flex-1 bg-stone-700 text-white text-center py-2.5 rounded-xl text-sm font-semibold active:bg-stone-800 flex items-center justify-center">
+          ＋ 手動追加
+        </Link>
       </div>
 
       {/* BAND新着イベント */}

@@ -222,7 +222,7 @@ export default function PracticesPage() {
               onClick={() => setView(v)}
               className={`px-3 py-2.5 text-sm font-medium transition-colors ${view === v ? "bg-white text-gray-800 shadow-sm" : "text-gray-500"}`}
             >
-              {v === "list" ? "≡" : "📅"}
+              {v === "list" ? "一覧" : "カレンダー"}
             </button>
           ))}
         </div>
