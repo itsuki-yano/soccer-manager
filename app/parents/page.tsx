@@ -60,6 +60,41 @@ function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void 
   );
 }
 
+const MASTER_PASSWORD = "0404";
+
+function PasswordModal({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+  const [pw, setPw] = useState("");
+  const [error, setError] = useState(false);
+  function attempt() {
+    if (pw === MASTER_PASSWORD) { onSuccess(); }
+    else { setError(true); setPw(""); }
+  }
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h3 className="text-base font-bold text-gray-800 mb-2">編集パスワード</h3>
+        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+          マスタ修正は諒ママで代行いたします。ご連絡ください。
+        </p>
+        <input
+          type="password"
+          value={pw}
+          onChange={(e) => { setPw(e.target.value); setError(false); }}
+          onKeyDown={(e) => e.key === "Enter" && attempt()}
+          placeholder="パスワードを入力"
+          className="input w-full mb-2"
+          autoFocus
+        />
+        {error && <p className="text-xs text-red-500 mb-2">パスワードが違います</p>}
+        <div className="flex gap-2 mt-3">
+          <button onClick={attempt} className="flex-1 bg-stone-700 text-white py-2.5 rounded-xl font-semibold text-sm">確認</button>
+          <button onClick={onCancel} className="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-semibold text-sm">キャンセル</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ParentsPage() {
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +106,7 @@ export default function ParentsPage() {
   const [editForm, setEditForm] = useState<EditForm>(EMPTY_FORM);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [sortMode, setSortMode] = useState<"班" | "背番号" | "バケツ当番">("班");
+  const [pwModal, setPwModal] = useState<null | (() => void)>(null);
 
   useEffect(() => {
     fetch("/api/parents").then((r) => r.json()).then((d) => {
@@ -156,9 +192,19 @@ export default function ParentsPage() {
     return (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName);
   });
 
+  function withPassword(action: () => void) {
+    setPwModal(() => action);
+  }
+
   return (
     <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="選手マスタ" />
+      {pwModal && (
+        <PasswordModal
+          onSuccess={() => { const fn = pwModal; setPwModal(null); fn(); }}
+          onCancel={() => setPwModal(null)}
+        />
+      )}
       {deleteConfirm && (
         <DeleteConfirmModal
           message={`「${deleteConfirm.name}」を削除しますか？`}
@@ -167,7 +213,7 @@ export default function ParentsPage() {
         />
       )}
       <button
-        onClick={() => { setShowForm((v) => !v); setEditId(null); }}
+        onClick={() => withPassword(() => { setShowForm((v) => !v); setEditId(null); })}
         className="block w-full bg-stone-700 text-white text-center py-3 rounded-xl font-semibold mb-4"
       >
         {showForm ? "✕ キャンセル" : "＋ 選手を追加"}
@@ -263,8 +309,8 @@ export default function ParentsPage() {
 
                 {/* アクションボタン */}
                 <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => startEdit(p)} className="text-xs text-stone-600 border border-stone-300 px-2.5 py-1.5 rounded-lg">修正</button>
-                  <button onClick={() => setDeleteConfirm({ id: p.id, name: p.playerName })} className="text-xs text-red-400 border border-red-100 px-2.5 py-1.5 rounded-lg">削除</button>
+                  <button onClick={() => withPassword(() => startEdit(p))} className="text-xs text-stone-600 border border-stone-300 px-2.5 py-1.5 rounded-lg">修正</button>
+                  <button onClick={() => withPassword(() => setDeleteConfirm({ id: p.id, name: p.playerName }))} className="text-xs text-red-400 border border-red-100 px-2.5 py-1.5 rounded-lg">削除</button>
                 </div>
               </div>
             )}
