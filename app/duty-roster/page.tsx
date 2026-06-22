@@ -75,6 +75,8 @@ function DutyRosterInner() {
     } catch { return [null, null, null, null]; }
   });
   const [pickingSlot, setPickingSlot] = useState<number | null>(null);
+  // 編集しようとして未紐付けだったため試合選択を促している状態
+  const [pickerNoticeSlot, setPickerNoticeSlot] = useState<number | null>(null);
 
   // 個人スワップ
   const [swapSlot, setSwapSlot] = useState<number | null>(null);
@@ -652,7 +654,7 @@ function DutyRosterInner() {
                         className="text-xs text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-lg font-medium"
                       >当番変更</button>
                       <button
-                        onClick={() => setPickingSlot(i)}
+                        onClick={() => { setPickerNoticeSlot(null); setPickingSlot(i); }}
                         className="text-xs text-stone-700 bg-stone-100 border border-stone-300 px-2.5 py-1 rounded-lg font-medium"
                       >
                         {linkedMatch ? "試合変更" : "試合選択"}
@@ -663,6 +665,7 @@ function DutyRosterInner() {
                           if (linkedMatch) {
                             startEditMatch(linkedMatch, group, equipGroup);
                           } else {
+                            setPickerNoticeSlot(i);
                             setPickingSlot(i);
                           }
                         }}
@@ -721,6 +724,11 @@ function DutyRosterInner() {
                 {/* 試合選択ピッカー */}
                 {isPicking && (
                   <div className="space-y-1.5 mb-2">
+                    {pickerNoticeSlot === i && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+                        編集するには先に試合を選択してください。
+                      </div>
+                    )}
                     <p className="text-xs text-gray-500 font-semibold">紐づける試合を選択</p>
                     <div className="grid gap-1 max-h-44 overflow-y-auto">
                       {linkedMatch && (
@@ -740,7 +748,7 @@ function DutyRosterInner() {
                             setDrivers((prev) => prev.filter((d) => d.matchId !== linkedMatchId));
                             setMatches((prev) => prev.map((m) => m.id === linkedMatchId ? { ...m, equipmentBringOut: "", carCount: 0 } : m));
                             const ids = [...paddedSlotMatchIds]; ids[i] = null; setSlotMatchIds(ids);
-                            setPickingSlot(null); setEditMatchId(null);
+                            setPickingSlot(null); setEditMatchId(null); setPickerNoticeSlot(null);
                           }}
                           className="text-xs text-left px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-500 font-medium"
                         >
@@ -755,6 +763,7 @@ function DutyRosterInner() {
                             ids[i] = fm.id;
                             setSlotMatchIds(ids);
                             setPickingSlot(null);
+                            setPickerNoticeSlot(null);
                             startEditMatch(fm, group, equipGroup);
                           }}
                           className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedMatchId === fm.id ? "border-stone-600 bg-stone-100 text-stone-800" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
@@ -763,7 +772,7 @@ function DutyRosterInner() {
                         </button>
                       ))}
                     </div>
-                    <button onClick={() => setPickingSlot(null)} className="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg font-medium">キャンセル</button>
+                    <button onClick={() => { setPickingSlot(null); setPickerNoticeSlot(null); }} className="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg font-medium">キャンセル</button>
                   </div>
                 )}
 
@@ -776,7 +785,7 @@ function DutyRosterInner() {
                       onClick={() => {
                         setSkipOnlyMatchId(null);
                         if (linkedMatch) startEditMatch(linkedMatch, group, equipGroup);
-                        else setPickingSlot(i);
+                        else { setPickerNoticeSlot(i); setPickingSlot(i); }
                       }}
                       className="text-left rounded-lg p-2 bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-colors cursor-pointer"
                     >
@@ -790,7 +799,7 @@ function DutyRosterInner() {
                       onClick={() => {
                         setSkipOnlyMatchId(null);
                         if (linkedMatch) startEditMatch(linkedMatch, group, equipGroup);
-                        else setPickingSlot(i);
+                        else { setPickerNoticeSlot(i); setPickingSlot(i); }
                       }}
                       className="text-left rounded-lg p-2 bg-stone-50 border border-stone-200 hover:bg-stone-100 transition-colors cursor-pointer"
                     >
