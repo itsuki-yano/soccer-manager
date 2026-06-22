@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import BackHeader from "@/components/BackHeader";
-import type { Parent, Match, Driver, Practice, BucketDuty, DutySwap } from "@/lib/types";
+import type { Parent, Match, Driver, Practice, BucketDuty } from "@/lib/types";
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -26,7 +26,6 @@ export default function RolesPage() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [practices, setPractices] = useState<Practice[]>([]);
   const [bucketDuties, setBucketDuties] = useState<BucketDuty[]>([]);
-  const [swaps, setSwaps] = useState<DutySwap[]>([]);
   const [bucketStart, setBucketStart] = useState("");
   const [bucketEnd, setBucketEnd] = useState("");
   const [loading, setLoading] = useState(true);
@@ -43,44 +42,36 @@ export default function RolesPage() {
       fetch("/api/practices").then((r) => r.json()),
       fetch("/api/bucket-duties").then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()),
-      fetch("/api/duty-swaps").then((r) => r.json()),
-    ]).then(([prts, ms, drvs, ps, bds, st, sw]) => {
+    ]).then(([prts, ms, drvs, ps, bds, st]) => {
       setParents(Array.isArray(prts) ? prts : []);
       setMatches(Array.isArray(ms) ? ms : []);
       setDrivers(Array.isArray(drvs) ? drvs : []);
       setPractices(Array.isArray(ps) ? ps : []);
       setBucketDuties(Array.isArray(bds) ? bds : []);
-      setSwaps(Array.isArray(sw) ? sw : []);
       setBucketStart(st?.bucketDutyStartDate ?? "");
       setBucketEnd(st?.bucketDutyEndDate ?? "");
       setLoading(false);
     });
   }, []);
 
-  // スワップを名前に適用（全スワップを対象）
-  function applySwapsToName(name: string): string {
-    const sw = swaps.find((s) => s.personA === name || s.personB === name);
-    if (!sw) return name;
-    return sw.personA === name ? sw.personB : sw.personA;
-  }
-
   function getRoles(name: string): RoleItem[] {
     const roles: RoleItem[] = [];
     const normN = normName(name);
 
     // 配車当番・荷物当番（試合）
+    // 当番変更はDB（drivers / equipmentBringOut）に直接反映済みのため、ここでは生の値を参照する
     matches.forEach((m) => {
       const eventName = m.matchName || `${m.matchType} ${m.venue}`;
       const matchDrivers = drivers.filter((d) => d.matchId === m.id);
 
       // 配車当番: driversテーブルのみ参照（荷物持込も配車当番と同義のため重複しない）
-      const isDriver = matchDrivers.some((d) => normName(applySwapsToName(d.parentName)) === normN);
+      const isDriver = matchDrivers.some((d) => normName(d.parentName) === normN);
       if (isDriver) {
         roles.push({ kind: "driver", date: m.date, label: "配車当番", eventName });
       }
 
       // 荷物持帰り
-      const inOut = m.equipmentBringOut?.split(",").map((s) => normName(applySwapsToName(s.trim()))).filter(Boolean) ?? [];
+      const inOut = m.equipmentBringOut?.split(",").map((s) => normName(s.trim())).filter(Boolean) ?? [];
       if (inOut.includes(normN)) {
         roles.push({ kind: "luggage_out", date: m.date, label: "荷物持帰り", eventName });
       }

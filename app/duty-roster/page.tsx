@@ -162,23 +162,39 @@ function DutyRosterInner() {
     return g.endsWith("班") ? g : `${g}班`;
   }
 
-  function applySwaps(names: string[]): string[] {
-    // 有効期限内のスワップのみ適用
-    const active = swaps.filter((s) => {
+  // 有効期限内（自動非表示になっていない）のスワップ一覧
+  function getActiveSwaps(): DutySwap[] {
+    return swaps.filter((s) => {
       if (!s.fromDate) return true;
       const coverageCount = 4 - s.appliedFromSlotIndex;
       const past = pastMatches.filter((m) => m.date >= s.fromDate).length;
       return past < coverageCount;
     });
-    return names.map((name) => {
-      const sw = active.find((s) => s.personA === name || s.personB === name);
-      if (!sw) return name;
-      return sw.personA === name ? sw.personB : sw.personA;
-    });
+  }
+
+  // 方向性のあるスワップ適用:
+  // - 変更を行ったスロット(appliedFromSlotIndex)では personA → personB（交代する人が代役へ）
+  // - それ以降のスロットでは personB → personA のみ（代役の本来の当番を元の人が肩代わり）
+  //   ※ 元の人(personA)の本来の後の当番はそのまま維持する
+  function applyDirectionalSwap(name: string, slotIndex: number, active: DutySwap[]): string {
+    for (const s of active) {
+      if (slotIndex < s.appliedFromSlotIndex) continue;
+      if (slotIndex === s.appliedFromSlotIndex) {
+        if (name === s.personA) return s.personB;
+      } else {
+        if (name === s.personB) return s.personA;
+      }
+    }
+    return name;
+  }
+
+  function applySwaps(names: string[], slotIndex: number): string[] {
+    const active = getActiveSwaps();
+    return names.map((name) => applyDirectionalSwap(name, slotIndex, active));
   }
 
   // expectedEquipGroup: 備品持帰り班（次の班）を自動セットするために使用
-  function startEditMatch(m: Match, expectedGroup?: string, expectedEquipGroup?: string) {
+  function startEditMatch(m: Match, expectedGroup?: string, expectedEquipGroup?: string, slotIndex = 0) {
     setEditMatchId(m.id);
     setInheritDriver(null);
     setInheritEquip(null);
@@ -192,7 +208,8 @@ function DutyRosterInner() {
         parents
           .filter((p) => normalizeGroup(p.group) === normG)
           .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
-          .map((p) => p.playerName)
+          .map((p) => p.playerName),
+        slotIndex
       );
       setEditDriverNames(groupMembers);
     } else {
@@ -206,7 +223,8 @@ function DutyRosterInner() {
         parents
           .filter((p) => normalizeGroup(p.group) === normEG)
           .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
-          .map((p) => p.playerName)
+          .map((p) => p.playerName),
+        slotIndex
       );
       setEditEquipOut(equipMembers);
     } else {
@@ -376,13 +394,8 @@ function DutyRosterInner() {
         .filter((p) => normalizeGroup(p.group) === normGVal)
         .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
         .map((p) => p.playerName);
-      // 有効なスワップのうち当該スロット以降に適用されるものだけ反映
-      const applicableSwaps = activeSwaps.filter((s) => s.appliedFromSlotIndex <= slotIndex);
-      return base.map((name) => {
-        const sw = applicableSwaps.find((s) => s.personA === name || s.personB === name);
-        if (!sw) return name;
-        return sw.personA === name ? sw.personB : sw.personA;
-      });
+      // 方向性のあるスワップを適用
+      return base.map((name) => applyDirectionalSwap(name, slotIndex, activeSwaps));
     }
 
     async function saveSwap() {
@@ -402,8 +415,12 @@ function DutyRosterInner() {
       const data = await res.json();
       setSwaps((prev) => [...prev, { id: data.id, personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate }]);
 
-      function applyOneSwap(names: string[]): string[] {
-        return names.map((n) => n === swapFrom ? swapTo : n === swapTo ? swapFrom : n);
+      // 方向性のあるスワップ: 変更スロットは swapFrom→swapTo、以降のスロットは swapTo→swapFrom のみ
+      function applyDir(names: string[], si: number): string[] {
+        if (si === appliedFromSlotIndex) {
+          return names.map((n) => n === swapFrom ? swapTo : n);
+        }
+        return names.map((n) => n === swapTo ? swapFrom : n);
       }
       // swapSlot以降のスロットのDB済みデータも更新
       for (let si = appliedFromSlotIndex; si < 4; si++) {
@@ -413,7 +430,7 @@ function DutyRosterInner() {
         if (!lm) continue;
 
         const curDrv = drivers.filter((d) => d.matchId === lid).map((d) => d.parentName);
-        const newDrv = applyOneSwap(curDrv);
+        const newDrv = applyDir(curDrv, si);
         if (curDrv.join() !== newDrv.join()) {
           await fetch("/api/drivers", {
             method: "POST",
@@ -427,7 +444,7 @@ function DutyRosterInner() {
         }
 
         const curEq = lm.equipmentBringOut ? lm.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
-        const newEq = applyOneSwap(curEq);
+        const newEq = applyDir(curEq, si);
         if (curEq.join() !== newEq.join()) {
           await fetch(`/api/matches/${lid}`, {
             method: "PUT",
@@ -442,51 +459,6 @@ function DutyRosterInner() {
       setSwapFrom("");
       setSwapTo("");
       setSavingSwap(false);
-    }
-
-    async function deleteSwap(id: string) {
-      const target = swaps.find((s) => s.id === id);
-      if (!target) return;
-      const { personA, personB, appliedFromSlotIndex: fromSlot } = target;
-
-      // DBに保存済みのデータを元に戻す（スワップの逆適用 = 同じ操作で双方向なので同じ関数）
-      function revertName(names: string[]): string[] {
-        return names.map((n) => n === personA ? personB : n === personB ? personA : n);
-      }
-      for (let si = fromSlot; si < 4; si++) {
-        const lid = effectiveSlotMatchIds[si];
-        if (!lid) continue;
-        const lm = matches.find((m) => m.id === lid);
-        if (!lm) continue;
-
-        const curDrv = drivers.filter((d) => d.matchId === lid).map((d) => d.parentName);
-        const newDrv = revertName(curDrv);
-        if (curDrv.join() !== newDrv.join()) {
-          await fetch("/api/drivers", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ matchId: lid, parentNames: newDrv }),
-          });
-          setDrivers((prev) => [
-            ...prev.filter((d) => d.matchId !== lid),
-            ...newDrv.map((name) => ({ matchId: lid, parentName: name })),
-          ]);
-        }
-
-        const curEq = lm.equipmentBringOut ? lm.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
-        const newEq = revertName(curEq);
-        if (curEq.join() !== newEq.join()) {
-          await fetch(`/api/matches/${lid}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...lm, equipmentBringOut: newEq.join(", ") }),
-          });
-          setMatches((prev) => prev.map((m) => m.id === lid ? { ...m, equipmentBringOut: newEq.join(", ") } : m));
-        }
-      }
-
-      await fetch(`/api/duty-swaps/${id}`, { method: "DELETE" });
-      setSwaps((prev) => prev.filter((s) => s.id !== id));
     }
 
     const GROUP_COLORS: Record<string, { bg: string; text: string }> = {
@@ -525,7 +497,7 @@ function DutyRosterInner() {
               <div className="flex gap-1">
                 {sortedGroups.map((g) => (
                   <button key={g} type="button"
-                    onClick={() => setEditDriverNames(applySwaps(parents.filter((p) => normalizeGroup(p.group) === g).sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName)))}
+                    onClick={() => setEditDriverNames(parents.filter((p) => normalizeGroup(p.group) === g).sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName))}
                     className="text-xs px-2 py-0.5 rounded-lg border bg-amber-50 text-amber-800 border-amber-200 font-medium"
                   >{g}</button>
                 ))}
@@ -553,7 +525,7 @@ function DutyRosterInner() {
               <div className="flex gap-1">
                 {sortedGroups.map((g) => (
                   <button key={g} type="button"
-                    onClick={() => setEditEquipOut(applySwaps(parents.filter((p) => normalizeGroup(p.group) === g).sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName)))}
+                    onClick={() => setEditEquipOut(parents.filter((p) => normalizeGroup(p.group) === g).sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName))}
                     className="text-xs px-2 py-0.5 rounded-lg border bg-stone-50 text-stone-700 border-stone-200 font-medium"
                   >{g}</button>
                 ))}
@@ -663,7 +635,7 @@ function DutyRosterInner() {
                         onClick={() => {
                           setSkipOnlyMatchId(null);
                           if (linkedMatch) {
-                            startEditMatch(linkedMatch, group, equipGroup);
+                            startEditMatch(linkedMatch, group, equipGroup, i);
                           } else {
                             setPickerNoticeSlot(i);
                             setPickingSlot(i);
@@ -764,7 +736,7 @@ function DutyRosterInner() {
                             setSlotMatchIds(ids);
                             setPickingSlot(null);
                             setPickerNoticeSlot(null);
-                            startEditMatch(fm, group, equipGroup);
+                            startEditMatch(fm, group, equipGroup, i);
                           }}
                           className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedMatchId === fm.id ? "border-stone-600 bg-stone-100 text-stone-800" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
                         >
@@ -784,7 +756,7 @@ function DutyRosterInner() {
                       type="button"
                       onClick={() => {
                         setSkipOnlyMatchId(null);
-                        if (linkedMatch) startEditMatch(linkedMatch, group, equipGroup);
+                        if (linkedMatch) startEditMatch(linkedMatch, group, equipGroup, i);
                         else { setPickerNoticeSlot(i); setPickingSlot(i); }
                       }}
                       className="text-left rounded-lg p-2 bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-colors cursor-pointer"
@@ -798,7 +770,7 @@ function DutyRosterInner() {
                       type="button"
                       onClick={() => {
                         setSkipOnlyMatchId(null);
-                        if (linkedMatch) startEditMatch(linkedMatch, group, equipGroup);
+                        if (linkedMatch) startEditMatch(linkedMatch, group, equipGroup, i);
                         else { setPickerNoticeSlot(i); setPickingSlot(i); }
                       }}
                       className="text-left rounded-lg p-2 bg-stone-50 border border-stone-200 hover:bg-stone-100 transition-colors cursor-pointer"
