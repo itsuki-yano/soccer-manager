@@ -323,6 +323,9 @@ function DutyRosterInner() {
     const lastGroupMatch = pastMatches.find((m) => drivers.some((d) => d.matchId === m.id));
     const lastGroup = lastGroupMatch ? getMatchGroup(lastGroupMatch.id) : "";
 
+    // 表示するスロット数: デフォルト4回。今後の試合数が4以上ならその数だけ表示
+    const displayCount = Math.max(4, futureMatches.length);
+
     function nextInRotation(g: string): string {
       if (!sortedGroups.length) return "";
       const idx = g ? sortedGroups.indexOf(g) : -1;
@@ -331,17 +334,23 @@ function DutyRosterInner() {
     const futureGroups: string[] = [];
     if (sortedGroups.length > 0) {
       let g = lastGroup;
-      for (let i = 0; i < 5; i++) {
+      // 備品持帰り用に +1 回分多く生成（futureGroups[i+1] を参照するため）
+      for (let i = 0; i < displayCount + 1; i++) {
         g = nextInRotation(g);
         futureGroups.push(g);
       }
     } else {
-      futureGroups.push(...["", "", "", "", ""]);
+      futureGroups.push(...Array(displayCount + 1).fill(""));
     }
 
     const futureMatchesSorted = matches.filter((m) => m.date >= today).sort((a, b) => a.date.localeCompare(b.date));
 
-    const effectiveSlotMatchIds = slotMatchIds.map((override) => {
+    // slotMatchIds を displayCount 長に揃える（不足分は null）
+    const paddedSlotMatchIds: (string | null)[] = Array.from(
+      { length: displayCount },
+      (_, i) => slotMatchIds[i] ?? null
+    );
+    const effectiveSlotMatchIds = paddedSlotMatchIds.map((override) => {
       if (!override || override === "") return null;
       const m = matches.find((x) => x.id === override);
       if (!m || m.date < today) return null;
@@ -607,9 +616,9 @@ function DutyRosterInner() {
           </div>
         )}
 
-        <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">今後の当番（次4回）</p>
+        <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">今後の当番（次{displayCount}回）</p>
         <div className="grid gap-2 mb-5">
-          {futureGroups.slice(0, 4).map((group, i) => {
+          {futureGroups.slice(0, displayCount).map((group, i) => {
             const linkedMatchId = effectiveSlotMatchIds[i];
             const linkedMatch = linkedMatchId ? matches.find((m) => m.id === linkedMatchId) : null;
             const groupMembers = getGroupMembers(group, i);
@@ -730,7 +739,7 @@ function DutyRosterInner() {
                             });
                             setDrivers((prev) => prev.filter((d) => d.matchId !== linkedMatchId));
                             setMatches((prev) => prev.map((m) => m.id === linkedMatchId ? { ...m, equipmentBringOut: "", carCount: 0 } : m));
-                            const ids = [...slotMatchIds]; ids[i] = null; setSlotMatchIds(ids);
+                            const ids = [...paddedSlotMatchIds]; ids[i] = null; setSlotMatchIds(ids);
                             setPickingSlot(null); setEditMatchId(null);
                           }}
                           className="text-xs text-left px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-500 font-medium"
@@ -742,7 +751,7 @@ function DutyRosterInner() {
                         <button
                           key={fm.id}
                           onClick={() => {
-                            const ids = [...slotMatchIds];
+                            const ids = [...paddedSlotMatchIds];
                             ids[i] = fm.id;
                             setSlotMatchIds(ids);
                             setPickingSlot(null);
