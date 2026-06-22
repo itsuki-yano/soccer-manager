@@ -161,8 +161,15 @@ function DutyRosterInner() {
   }
 
   function applySwaps(names: string[]): string[] {
+    // 有効期限内のスワップのみ適用
+    const active = swaps.filter((s) => {
+      if (!s.fromDate) return true;
+      const coverageCount = 4 - s.appliedFromSlotIndex;
+      const past = pastMatches.filter((m) => m.date >= s.fromDate).length;
+      return past < coverageCount;
+    });
     return names.map((name) => {
-      const sw = swaps.find((s) => s.personA === name || s.personB === name);
+      const sw = active.find((s) => s.personA === name || s.personB === name);
       if (!sw) return name;
       return sw.personA === name ? sw.personB : sw.personA;
     });
@@ -341,14 +348,25 @@ function DutyRosterInner() {
       return override;
     });
 
+    // fromDate以降に行われた過去試合の数を数えてスワップの有効期限を判定
+    // appliedFromSlotIndex=0なら4回後まで有効、=1なら3回後まで有効
+    function isSwapExpired(s: DutySwap): boolean {
+      if (!s.fromDate) return false;
+      const coverageCount = 4 - s.appliedFromSlotIndex;
+      const pastCount = pastMatches.filter((m) => m.date >= s.fromDate).length;
+      return pastCount >= coverageCount;
+    }
+
+    const activeSwaps = swaps.filter((s) => !isSwapExpired(s));
+
     function getGroupMembers(g: string, slotIndex: number): string[] {
       const normGVal = normalizeGroup(g);
       const base = parents
         .filter((p) => normalizeGroup(p.group) === normGVal)
         .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
         .map((p) => p.playerName);
-      // 当該スロット以降に適用されるスワップのみ反映
-      const applicableSwaps = swaps.filter((s) => s.appliedFromSlotIndex <= slotIndex);
+      // 有効なスワップのうち当該スロット以降に適用されるものだけ反映
+      const applicableSwaps = activeSwaps.filter((s) => s.appliedFromSlotIndex <= slotIndex);
       return base.map((name) => {
         const sw = applicableSwaps.find((s) => s.personA === name || s.personB === name);
         if (!sw) return name;
@@ -360,13 +378,18 @@ function DutyRosterInner() {
       if (!swapFrom || !swapTo || swapSlot === null) return;
       setSavingSwap(true);
       const appliedFromSlotIndex = swapSlot;
+      // fromDate: そのスロットに紐づく試合日、なければ今日
+      const linkedMatchForSlot = effectiveSlotMatchIds[appliedFromSlotIndex]
+        ? matches.find((m) => m.id === effectiveSlotMatchIds[appliedFromSlotIndex])
+        : null;
+      const fromDate = linkedMatchForSlot?.date ?? today;
       const res = await fetch("/api/duty-swaps", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ personA: swapFrom, personB: swapTo, appliedFromSlotIndex }),
+        body: JSON.stringify({ personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate }),
       });
       const data = await res.json();
-      setSwaps((prev) => [...prev, { id: data.id, personA: swapFrom, personB: swapTo, appliedFromSlotIndex }]);
+      setSwaps((prev) => [...prev, { id: data.id, personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate }]);
 
       function applyOneSwap(names: string[]): string[] {
         return names.map((n) => n === swapFrom ? swapTo : n === swapTo ? swapFrom : n);
@@ -558,25 +581,25 @@ function DutyRosterInner() {
           <span>🚗</span> 配車・荷物当番
         </h2>
 
-        {swaps.length > 0 && (
+        {activeSwaps.length > 0 && (
           <div className="mb-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <p className="text-xs font-semibold text-amber-800 mb-2">当番変更一覧（削除すると元に戻ります）</p>
+            <p className="text-xs font-semibold text-amber-800 mb-2">当番変更中（担当試合が終わると自動で元に戻ります）</p>
             <div className="space-y-1.5">
-              {swaps.map((s) => {
+              {activeSwaps.map((s) => {
                 const slotLabel = s.appliedFromSlotIndex === 0 ? "次回" : `${s.appliedFromSlotIndex + 1}回後`;
-                const linkedMatch = effectiveSlotMatchIds[s.appliedFromSlotIndex]
-                  ? matches.find((m) => m.id === effectiveSlotMatchIds[s.appliedFromSlotIndex])
-                  : null;
-                const fromLabel = linkedMatch
-                  ? `${fmtDate(linkedMatch.date)}（${slotLabel}）`
+                const fromLabel = s.fromDate
+                  ? `${fmtDate(s.fromDate)}（${slotLabel}）`
                   : slotLabel;
+                const coverageCount = 4 - s.appliedFromSlotIndex;
+                const pastCount = s.fromDate ? pastMatches.filter((m) => m.date >= s.fromDate).length : 0;
+                const remaining = coverageCount - pastCount;
                 return (
                   <div key={s.id} className="flex items-center justify-between gap-2 bg-white border border-amber-100 rounded-lg px-2.5 py-1.5">
                     <div className="min-w-0">
                       <span className="text-xs font-semibold text-amber-900">{s.personA} ↔ {s.personB}</span>
                       <span className="text-xs text-gray-400 ml-1.5">{fromLabel}から適用</span>
+                      <span className="text-xs text-gray-300 ml-1">（残{remaining}回）</span>
                     </div>
-                    <button onClick={() => deleteSwap(s.id)} className="text-xs text-red-400 hover:text-red-600 shrink-0 px-1">削除</button>
                   </div>
                 );
               })}

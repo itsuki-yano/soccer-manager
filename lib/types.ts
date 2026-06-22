@@ -65,6 +65,7 @@ export interface DutySwap {
   personA: string;
   personB: string;
   appliedFromSlotIndex: number; // 何番目のスロット以降に適用するか（0=次回）
+  fromDate: string; // スワップ開始日（試合日またはtoday）- 有効期限計算に使用
 }
 
 export interface BucketDuty {
