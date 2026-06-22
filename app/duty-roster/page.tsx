@@ -771,20 +771,36 @@ function DutyRosterInner() {
                   <EditForm m={linkedMatch} groupLabel={group} />
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-lg p-2 bg-amber-50 border border-amber-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSkipOnlyMatchId(null);
+                        if (linkedMatch) startEditMatch(linkedMatch, group, equipGroup);
+                        else setPickingSlot(i);
+                      }}
+                      className="text-left rounded-lg p-2 bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-colors cursor-pointer"
+                    >
                       <p className="text-xs text-gray-400 mb-1">🚗 配車当番</p>
                       <div className="flex flex-wrap gap-1">
                         {slotDrivers.map((n) => <span key={n} className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
                       </div>
-                    </div>
-                    <div className="rounded-lg p-2 bg-stone-50 border border-stone-200">
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSkipOnlyMatchId(null);
+                        if (linkedMatch) startEditMatch(linkedMatch, group, equipGroup);
+                        else setPickingSlot(i);
+                      }}
+                      className="text-left rounded-lg p-2 bg-stone-50 border border-stone-200 hover:bg-stone-100 transition-colors cursor-pointer"
+                    >
                       <p className="text-xs text-gray-400 mb-1">🎒 備品持帰り</p>
                       {slotEquipOut.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {slotEquipOut.map((n) => <span key={n} className="text-xs bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
                         </div>
                       ) : <span className="text-xs text-gray-400">−</span>}
-                    </div>
+                    </button>
                   </div>
                 )}
               </div>
