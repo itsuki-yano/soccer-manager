@@ -162,35 +162,47 @@ function DutyRosterInner() {
     return g.endsWith("班") ? g : `${g}班`;
   }
 
+  // スワップが対象とするセル数（=絡む試合数）。これを過ぎたら自動非表示
+  function swapCoverage(s: DutySwap): number {
+    return s.kind === "driver" ? 3 : 2;
+  }
+
   // 有効期限内（自動非表示になっていない）のスワップ一覧
   function getActiveSwaps(): DutySwap[] {
     return swaps.filter((s) => {
       if (!s.fromDate) return true;
-      const coverageCount = 4 - s.appliedFromSlotIndex;
       const past = pastMatches.filter((m) => m.date >= s.fromDate).length;
-      return past < coverageCount;
+      return past < swapCoverage(s);
     });
   }
 
-  // 方向性のあるスワップ適用:
-  // - 変更を行ったスロット(appliedFromSlotIndex)では personA → personB（交代する人が代役へ）
-  // - それ以降のスロットでは personB → personA のみ（代役の本来の当番を元の人が肩代わり）
-  //   ※ 元の人(personA)の本来の後の当番はそのまま維持する
-  function applyDirectionalSwap(name: string, slotIndex: number, active: DutySwap[]): string {
-    for (const s of active) {
-      if (slotIndex < s.appliedFromSlotIndex) continue;
-      if (slotIndex === s.appliedFromSlotIndex) {
-        if (name === s.personA) return s.personB;
-      } else {
-        if (name === s.personB) return s.personA;
-      }
+  // 単一スワップを (スロット, フィールド種別) のセルに適用した結果の名前を返す
+  // 配車スワップ(driver): i配車 A→B, i+1備品 B→A, i+2配車 B→A
+  // 備品スワップ(equip):  i備品 A→B, i+1配車 A→B
+  function applyOneSwapToCell(name: string, slotIndex: number, field: "driver" | "equip", s: DutySwap): string {
+    const i = s.appliedFromSlotIndex;
+    if (s.kind === "driver") {
+      if (slotIndex === i && field === "driver" && name === s.personA) return s.personB;
+      if (slotIndex === i + 1 && field === "equip" && name === s.personB) return s.personA;
+      if (slotIndex === i + 2 && field === "driver" && name === s.personB) return s.personA;
+    } else {
+      if (slotIndex === i && field === "equip" && name === s.personA) return s.personB;
+      if (slotIndex === i + 1 && field === "driver" && name === s.personA) return s.personB;
     }
     return name;
   }
 
-  function applySwaps(names: string[], slotIndex: number): string[] {
+  function applySwapToCell(name: string, slotIndex: number, field: "driver" | "equip", active: DutySwap[]): string {
+    for (const s of active) {
+      const next = applyOneSwapToCell(name, slotIndex, field, s);
+      if (next !== name) return next;
+    }
+    return name;
+  }
+
+  function applySwaps(names: string[], slotIndex: number, field: "driver" | "equip"): string[] {
     const active = getActiveSwaps();
-    return names.map((name) => applyDirectionalSwap(name, slotIndex, active));
+    return names.map((name) => applySwapToCell(name, slotIndex, field, active));
   }
 
   // expectedEquipGroup: 備品持帰り班（次の班）を自動セットするために使用
@@ -209,7 +221,8 @@ function DutyRosterInner() {
           .filter((p) => normalizeGroup(p.group) === normG)
           .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
           .map((p) => p.playerName),
-        slotIndex
+        slotIndex,
+        "driver"
       );
       setEditDriverNames(groupMembers);
     } else {
@@ -224,7 +237,8 @@ function DutyRosterInner() {
           .filter((p) => normalizeGroup(p.group) === normEG)
           .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
           .map((p) => p.playerName),
-        slotIndex
+        slotIndex,
+        "equip"
       );
       setEditEquipOut(equipMembers);
     } else {
@@ -377,25 +391,16 @@ function DutyRosterInner() {
       return override;
     });
 
-    // fromDate以降に行われた過去試合の数を数えてスワップの有効期限を判定
-    // appliedFromSlotIndex=0なら4回後まで有効、=1なら3回後まで有効
-    function isSwapExpired(s: DutySwap): boolean {
-      if (!s.fromDate) return false;
-      const coverageCount = 4 - s.appliedFromSlotIndex;
-      const pastCount = pastMatches.filter((m) => m.date >= s.fromDate).length;
-      return pastCount >= coverageCount;
-    }
+    const activeSwaps = getActiveSwaps();
 
-    const activeSwaps = swaps.filter((s) => !isSwapExpired(s));
-
-    function getGroupMembers(g: string, slotIndex: number): string[] {
+    function getGroupMembers(g: string, slotIndex: number, field: "driver" | "equip"): string[] {
       const normGVal = normalizeGroup(g);
       const base = parents
         .filter((p) => normalizeGroup(p.group) === normGVal)
         .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
         .map((p) => p.playerName);
-      // 方向性のあるスワップを適用
-      return base.map((name) => applyDirectionalSwap(name, slotIndex, activeSwaps));
+      // 種別・スロットに応じたスワップを適用
+      return base.map((name) => applySwapToCell(name, slotIndex, field, activeSwaps));
     }
 
     async function saveSwap() {
@@ -407,30 +412,32 @@ function DutyRosterInner() {
         ? matches.find((m) => m.id === effectiveSlotMatchIds[appliedFromSlotIndex])
         : null;
       const fromDate = linkedMatchForSlot?.date ?? today;
+
+      // 起点スロットで swapFrom が配車当番か備品持帰りかを判定して種別を決める
+      const startDrivers = linkedMatchForSlot
+        ? drivers.filter((d) => d.matchId === linkedMatchForSlot.id).map((d) => d.parentName)
+        : getGroupMembers(futureGroups[appliedFromSlotIndex] ?? "", appliedFromSlotIndex, "driver");
+      const kind: "driver" | "equip" = startDrivers.includes(swapFrom) ? "driver" : "equip";
+
       const res = await fetch("/api/duty-swaps", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate }),
+        body: JSON.stringify({ personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate, kind }),
       });
       const data = await res.json();
-      setSwaps((prev) => [...prev, { id: data.id, personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate }]);
+      const newSwap: DutySwap = { id: data.id, personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate, kind };
+      setSwaps((prev) => [...prev, newSwap]);
 
-      // 方向性のあるスワップ: 変更スロットは swapFrom→swapTo、以降のスロットは swapTo→swapFrom のみ
-      function applyDir(names: string[], si: number): string[] {
-        if (si === appliedFromSlotIndex) {
-          return names.map((n) => n === swapFrom ? swapTo : n);
-        }
-        return names.map((n) => n === swapTo ? swapFrom : n);
-      }
-      // swapSlot以降のスロットのDB済みデータも更新
-      for (let si = appliedFromSlotIndex; si < 4; si++) {
+      // 起点〜i+2 のスロットのDB済みデータに、このスワップを種別・フィールド別に反映
+      for (let off = 0; off <= 2; off++) {
+        const si = appliedFromSlotIndex + off;
         const lid = effectiveSlotMatchIds[si];
         if (!lid) continue;
         const lm = matches.find((m) => m.id === lid);
         if (!lm) continue;
 
         const curDrv = drivers.filter((d) => d.matchId === lid).map((d) => d.parentName);
-        const newDrv = applyDir(curDrv, si);
+        const newDrv = curDrv.map((n) => applyOneSwapToCell(n, si, "driver", newSwap));
         if (curDrv.join() !== newDrv.join()) {
           await fetch("/api/drivers", {
             method: "POST",
@@ -444,7 +451,7 @@ function DutyRosterInner() {
         }
 
         const curEq = lm.equipmentBringOut ? lm.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
-        const newEq = applyDir(curEq, si);
+        const newEq = curEq.map((n) => applyOneSwapToCell(n, si, "equip", newSwap));
         if (curEq.join() !== newEq.join()) {
           await fetch(`/api/matches/${lid}`, {
             method: "PUT",
@@ -573,14 +580,14 @@ function DutyRosterInner() {
                 const fromLabel = s.fromDate
                   ? `${fmtDate(s.fromDate)}（${slotLabel}）`
                   : slotLabel;
-                const coverageCount = 4 - s.appliedFromSlotIndex;
+                const kindLabel = s.kind === "driver" ? "配車起点" : "備品起点";
                 const pastCount = s.fromDate ? pastMatches.filter((m) => m.date >= s.fromDate).length : 0;
-                const remaining = coverageCount - pastCount;
+                const remaining = swapCoverage(s) - pastCount;
                 return (
                   <div key={s.id} className="flex items-center justify-between gap-2 bg-white border border-amber-100 rounded-lg px-2.5 py-1.5">
                     <div className="min-w-0">
                       <span className="text-xs font-semibold text-amber-900">{s.personA} ↔ {s.personB}</span>
-                      <span className="text-xs text-gray-400 ml-1.5">{fromLabel}から適用</span>
+                      <span className="text-xs text-gray-400 ml-1.5">{fromLabel}・{kindLabel}</span>
                       <span className="text-xs text-gray-300 ml-1">（残{remaining}回）</span>
                     </div>
                   </div>
@@ -595,7 +602,7 @@ function DutyRosterInner() {
           {futureGroups.slice(0, displayCount).map((group, i) => {
             const linkedMatchId = effectiveSlotMatchIds[i];
             const linkedMatch = linkedMatchId ? matches.find((m) => m.id === linkedMatchId) : null;
-            const groupMembers = getGroupMembers(group, i);
+            const groupMembers = getGroupMembers(group, i, "driver");
             const rawLinkedDrivers = linkedMatchId
               ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName)
               : [];
@@ -604,7 +611,7 @@ function DutyRosterInner() {
             const rawLinkedEquip = linkedMatch?.equipmentBringOut
               ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean)
               : [];
-            const slotEquipOut = rawLinkedEquip.length > 0 ? rawLinkedEquip : getGroupMembers(equipGroup, i);
+            const slotEquipOut = rawLinkedEquip.length > 0 ? rawLinkedEquip : getGroupMembers(equipGroup, i, "equip");
             const isEditing = Boolean(linkedMatchId && editMatchId === linkedMatchId);
             const isPicking = pickingSlot === i;
             const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;

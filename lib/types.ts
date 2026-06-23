@@ -62,10 +62,11 @@ export interface Practice {
 
 export interface DutySwap {
   id: string;
-  personA: string;
-  personB: string;
-  appliedFromSlotIndex: number; // 何番目のスロット以降に適用するか（0=次回）
+  personA: string; // 交代する人（起点で外れる人）
+  personB: string; // 代わりに入る人（代役）
+  appliedFromSlotIndex: number; // 何番目のスロットを起点にするか（0=次回）
   fromDate: string; // スワップ開始日（試合日またはtoday）- 有効期限計算に使用
+  kind: "driver" | "equip"; // 起点が配車当番か備品持帰りか
 }
 
 export interface BucketDuty {
