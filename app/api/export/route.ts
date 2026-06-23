@@ -193,16 +193,33 @@ function buildWorkbook(wb: ExcelJS.Workbook, exportType: string, settlementMatch
 
   // 飲み物代
   const drinkSheet = wb.addWorksheet("飲み物代請求");
-  drinkSheet.getColumn(1).width = 12;
-  drinkSheet.getColumn(2).width = 40;
-  drinkSheet.getColumn(3).width = 10;
-  const drinkTitle = drinkSheet.addRow([null, `${settings.teamName}　コーチ飲み物代・食事代請求`]);
-  drinkTitle.font = { bold: true, size: 12 };
-  drinkSheet.addRow([]);
-  let drinkTotal = 0;
-  for (const e of expenses) { drinkSheet.addRow([e.date, e.description, e.amount]); drinkTotal += e.amount; }
-  drinkSheet.addRow([]);
-  drinkSheet.addRow(["合計", null, drinkTotal]).font = { bold: true };
+  buildDrinkSheet(drinkSheet, expenses, settings);
+}
+
+// 飲み物代・食事代シートを構築（日付・内容・購入者・金額・レシート）
+function buildDrinkSheet(sheet: ExcelJS.Worksheet, expenses: CoachExpense[], settings: Settings) {
+  sheet.getColumn(1).width = 12;
+  sheet.getColumn(2).width = 40;
+  sheet.getColumn(3).width = 14;
+  sheet.getColumn(4).width = 10;
+  sheet.getColumn(5).width = 30;
+  const title = sheet.addRow([null, `${settings.teamName}　コーチ飲み物代・食事代請求`]);
+  title.font = { bold: true, size: 12 };
+  sheet.addRow([]);
+  const header = sheet.addRow(["日付", "内容", "購入者", "金額", "レシート"]);
+  header.font = { bold: true };
+  let total = 0;
+  for (const e of expenses) {
+    const row = sheet.addRow([e.date, e.description, e.purchaserName || "（チーム）", e.amount, null]);
+    if (e.receiptUrl) {
+      const cell = row.getCell(5);
+      cell.value = { text: "画像を開く", hyperlink: e.receiptUrl };
+      cell.font = { color: { argb: "FF0563C1" }, underline: true };
+    }
+    total += e.amount;
+  }
+  sheet.addRow([]);
+  sheet.addRow(["合計", null, null, total]).font = { bold: true };
 }
 
 // GET: 旧互換（全ステータス出力）
@@ -218,11 +235,7 @@ export async function GET() {
     buildStatusSheet(wb, "請求中", settlementMatches.filter((m) => m.settlementStatus === "請求中"), settings, "FFFFF2CC");
     buildStatusSheet(wb, "精算済み", settlementMatches.filter((m) => m.settlementStatus === "精算済み"), settings, "FFD9EAD3");
     const drinkSheet = wb.addWorksheet("飲み物代請求");
-    drinkSheet.getColumn(2).width = 40; drinkSheet.getColumn(3).width = 10;
-    const dt = drinkSheet.addRow([null, `${settings.teamName}　コーチ飲み物代・食事代請求`]); dt.font = { bold: true, size: 12 };
-    drinkSheet.addRow([]);
-    let tot = 0; for (const e of expenses) { drinkSheet.addRow([e.date, e.description, e.amount]); tot += e.amount; }
-    drinkSheet.addRow([]); drinkSheet.addRow(["合計", null, tot]).font = { bold: true };
+    buildDrinkSheet(drinkSheet, expenses, settings);
     const buf = await wb.xlsx.writeBuffer();
     return new NextResponse(buf, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent("配車請求.xlsx")}` } });
   } catch (e) {
