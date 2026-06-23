@@ -2,10 +2,11 @@
 import { useEffect, useState } from "react";
 import BackHeader from "@/components/BackHeader";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
-import type { CoachExpense } from "@/lib/types";
+import type { CoachExpense, Parent } from "@/lib/types";
 
 export default function CoachExpensesPage() {
   const [expenses, setExpenses] = useState<CoachExpense[]>([]);
+  const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -35,8 +36,12 @@ export default function CoachExpensesPage() {
   }
 
   useEffect(() => {
-    fetch("/api/coach-expenses").then((r) => r.json()).then((d) => {
+    Promise.all([
+      fetch("/api/coach-expenses").then((r) => r.json()),
+      fetch("/api/parents").then((r) => r.json()),
+    ]).then(([d, p]) => {
       setExpenses(Array.isArray(d) ? d : []);
+      setParents(Array.isArray(p) ? p : []);
       setLoading(false);
     });
   }, []);
@@ -83,6 +88,9 @@ export default function CoachExpensesPage() {
 
   const total = expenses.reduce((s, e) => s + e.amount, 0);
   const sorted = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
+  const parentNames = [...parents]
+    .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
+    .map((p) => p.playerName);
 
   if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
@@ -129,8 +137,14 @@ export default function CoachExpensesPage() {
             <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} placeholder="例: 672" className="input" />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-0.5">購入者名（個人購入の場合）</label>
-            <input type="text" value={form.purchaserName} onChange={(e) => setForm((f) => ({ ...f, purchaserName: e.target.value }))} placeholder="例: 山田コーチ" className="input" />
+            <label className="block text-xs text-gray-500 mb-0.5">購入者（個人購入の場合）</label>
+            <select value={form.purchaserName} onChange={(e) => setForm((f) => ({ ...f, purchaserName: e.target.value }))} className="input">
+              <option value="">選択しない</option>
+              {form.purchaserName && !parentNames.includes(form.purchaserName) && (
+                <option value={form.purchaserName}>{form.purchaserName}</option>
+              )}
+              {parentNames.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-0.5">レシート画像</label>
