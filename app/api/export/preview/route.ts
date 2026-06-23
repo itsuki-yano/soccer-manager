@@ -11,7 +11,7 @@ export async function GET() {
     const [matchRows, driverRows, expenseRows, settingsRows] = await Promise.all([
       getSheetData("matches!A:N"),
       getSheetData("drivers!A:B"),
-      getSheetData("coach_expenses!A:E"),
+      getSheetData("coach_expenses!A:G"),
       getSheetData("settings!A:B"),
     ]);
 
@@ -42,7 +42,7 @@ export async function GET() {
     }));
 
     const expenses: CoachExpense[] = expenseRows.slice(1).filter((r) => r[0]).map((r) => ({
-      id: r[0], date: r[1], description: r[2], amount: Number(r[3]), claimed: r[4] ?? "",
+      id: r[0], date: r[1], description: r[2], amount: Number(r[3]), claimed: r[4] ?? "", purchaserName: r[5] ?? "", receiptUrl: r[6] ?? "",
     })).sort((a, b) => a.date.localeCompare(b.date));
 
     const settlementMatches = matches.filter((m) => m.needsSettlement);

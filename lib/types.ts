@@ -38,6 +38,8 @@ export interface CoachExpense {
   description: string;
   amount: number;
   claimed: string;
+  purchaserName: string; // 購入者名（個人購入の場合）
+  receiptUrl: string;    // レシート画像URL
 }
 
 export interface Settings {
