@@ -67,6 +67,7 @@ export interface DutySwap {
   appliedFromSlotIndex: number; // 何番目のスロットを起点にするか（0=次回）
   fromDate: string; // スワップ開始日（試合日またはtoday）- 有効期限計算に使用
   kind: "driver" | "equip"; // 起点が配車当番か備品持帰りか
+  returnSlotIndex: number; // 配車スワップ時、代役Bの班が次に配車を担当するスロット番号（備品は i+1 固定で未使用）
 }
 
 export interface BucketDuty {

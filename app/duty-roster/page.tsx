@@ -177,14 +177,15 @@ function DutyRosterInner() {
   }
 
   // 単一スワップを (スロット, フィールド種別) のセルに適用した結果の名前を返す
-  // 配車スワップ(driver): i配車 A→B, i+1備品 B→A, i+2配車 B→A
-  // 備品スワップ(equip):  i備品 A→B, i+1配車 A→B
+  // 配車スワップ(driver): i配車 A→B / 代役Bの班の次の当番 (j-1)備品 B→A・(j)配車 B→A
+  // 備品スワップ(equip):  i備品 A→B / (i+1)配車 A→B（代役Bがその班の配車も担当）
   function applyOneSwapToCell(name: string, slotIndex: number, field: "driver" | "equip", s: DutySwap): string {
     const i = s.appliedFromSlotIndex;
     if (s.kind === "driver") {
+      const j = s.returnSlotIndex;
       if (slotIndex === i && field === "driver" && name === s.personA) return s.personB;
-      if (slotIndex === i + 1 && field === "equip" && name === s.personB) return s.personA;
-      if (slotIndex === i + 2 && field === "driver" && name === s.personB) return s.personA;
+      if (j > i && slotIndex === j - 1 && field === "equip" && name === s.personB) return s.personA;
+      if (j > i && slotIndex === j && field === "driver" && name === s.personB) return s.personA;
     } else {
       if (slotIndex === i && field === "equip" && name === s.personA) return s.personB;
       if (slotIndex === i + 1 && field === "driver" && name === s.personA) return s.personB;
@@ -419,18 +420,27 @@ function DutyRosterInner() {
         : getGroupMembers(futureGroups[appliedFromSlotIndex] ?? "", appliedFromSlotIndex, "driver");
       const kind: "driver" | "equip" = startDrivers.includes(swapFrom) ? "driver" : "equip";
 
+      // 配車スワップ: 代役Bの班が次に配車を担当するスロット番号 j を求める
+      let returnSlotIndex = 0;
+      if (kind === "driver") {
+        const bGroup = normalizeGroup(parents.find((p) => p.playerName === swapTo)?.group ?? "");
+        for (let k = appliedFromSlotIndex + 1; k < futureGroups.length; k++) {
+          if (normalizeGroup(futureGroups[k] ?? "") === bGroup) { returnSlotIndex = k; break; }
+        }
+      }
+
       const res = await fetch("/api/duty-swaps", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate, kind }),
+        body: JSON.stringify({ personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate, kind, returnSlotIndex }),
       });
       const data = await res.json();
-      const newSwap: DutySwap = { id: data.id, personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate, kind };
+      const newSwap: DutySwap = { id: data.id, personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate, kind, returnSlotIndex };
       setSwaps((prev) => [...prev, newSwap]);
 
-      // 起点〜i+2 のスロットのDB済みデータに、このスワップを種別・フィールド別に反映
-      for (let off = 0; off <= 2; off++) {
-        const si = appliedFromSlotIndex + off;
+      // 起点〜代役の当番回までのスロットのDB済みデータに、このスワップを種別・フィールド別に反映
+      const lastSlot = kind === "driver" ? Math.max(returnSlotIndex, appliedFromSlotIndex + 1) : appliedFromSlotIndex + 1;
+      for (let si = appliedFromSlotIndex; si <= lastSlot; si++) {
         const lid = effectiveSlotMatchIds[si];
         if (!lid) continue;
         const lm = matches.find((m) => m.id === lid);

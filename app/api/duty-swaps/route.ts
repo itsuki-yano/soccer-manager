@@ -10,12 +10,13 @@ function rowToSwap(r: string[]): DutySwap {
     appliedFromSlotIndex: parseInt(r[3] ?? "0", 10) || 0,
     fromDate: r[4] ?? "",
     kind: r[5] === "equip" ? "equip" : "driver",
+    returnSlotIndex: parseInt(r[6] ?? "0", 10) || 0,
   };
 }
 
 export async function GET() {
   try {
-    const rows = await getSheetData("duty_swaps!A:F");
+    const rows = await getSheetData("duty_swaps!A:G");
     return NextResponse.json(rows.slice(1).filter((r) => r[0]).map(rowToSwap));
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
@@ -24,9 +25,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { personA, personB, appliedFromSlotIndex = 0, fromDate = "", kind = "driver" }: { personA: string; personB: string; appliedFromSlotIndex?: number; fromDate?: string; kind?: "driver" | "equip" } = await req.json();
+    const { personA, personB, appliedFromSlotIndex = 0, fromDate = "", kind = "driver", returnSlotIndex = 0 }: { personA: string; personB: string; appliedFromSlotIndex?: number; fromDate?: string; kind?: "driver" | "equip"; returnSlotIndex?: number } = await req.json();
     const id = crypto.randomUUID();
-    await appendRow("duty_swaps", [id, personA, personB, String(appliedFromSlotIndex), fromDate, kind]);
+    await appendRow("duty_swaps", [id, personA, personB, String(appliedFromSlotIndex), fromDate, kind, String(returnSlotIndex)]);
     return NextResponse.json({ id });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
