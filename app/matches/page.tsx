@@ -47,6 +47,9 @@ export default function MatchesPage() {
   const [importing, setImporting] = useState<Set<string>>(new Set());
   const [importedUids, setImportedUids] = useState<Set<string>>(new Set());
   const [zeroDistanceAlert, setZeroDistanceAlert] = useState<{ matchId: string; matchName: string } | null>(null);
+  // BANDで削除された予定（アプリからも削除する候補）
+  const [pendingDeletes, setPendingDeletes] = useState<Match[]>([]);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -68,8 +71,16 @@ export default function MatchesPage() {
     try {
       const res = await fetch("/api/band-calendar");
       const data = await res.json();
-      if (Array.isArray(data)) setBandEvents(data);
-      else alert("取得に失敗しました: " + (data.error ?? ""));
+      if (Array.isArray(data)) {
+        setBandEvents(data);
+        // BAND側で削除された予定を検出（BAND由来かつ未来の予定で、最新フィードに存在しないもの）
+        const feedUids = new Set<string>(data.map((e: BandEvent) => e.bandUid));
+        const today = new Date().toISOString().slice(0, 10);
+        const gone = matches.filter((m) => m.bandUid && m.date >= today && !feedUids.has(m.bandUid));
+        setPendingDeletes(gone);
+      } else {
+        alert("取得に失敗しました: " + (data.error ?? ""));
+      }
     } finally {
       setBandLoading(false);
     }
@@ -117,6 +128,29 @@ export default function MatchesPage() {
     }
   }
 
+  // BANDで削除された予定をアプリからも削除（紐付く配車当番も連動削除）
+  async function confirmDeletes() {
+    setDeleting(true);
+    try {
+      for (const m of pendingDeletes) {
+        // 配車当番(drivers)をクリア（備品持帰りはmatchの項目なので削除で消える）
+        await fetch("/api/drivers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ matchId: m.id, parentNames: [] }),
+        });
+        await fetch(`/api/matches/${m.id}`, { method: "DELETE" });
+      }
+      const goneIds = new Set(pendingDeletes.map((m) => m.id));
+      const goneUids = new Set(pendingDeletes.map((m) => m.bandUid).filter(Boolean));
+      setMatches((prev) => prev.filter((m) => !goneIds.has(m.id)));
+      setImportedUids((prev) => { const s = new Set(prev); goneUids.forEach((u) => s.delete(u)); return s; });
+      setPendingDeletes([]);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
   const sorted = [...matches].sort((a, b) => a.date.localeCompare(b.date));
@@ -147,6 +181,42 @@ export default function MatchesPage() {
   return (
     <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="試合・合宿管理" />
+
+      {/* BAND削除予定の連動削除モーダル */}
+      {pendingDeletes.length > 0 && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <div className="text-center mb-3">
+              <div className="text-4xl mb-2">🗑️</div>
+              <h2 className="text-lg font-bold text-gray-800">BANDで削除された予定</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                以下の{pendingDeletes.length}件はBAND側で削除されています。<br />
+                アプリからも削除しますか？<br />
+                <span className="text-xs text-gray-400">（紐付く配車当番・備品持帰りも一緒に削除されます）</span>
+              </p>
+            </div>
+            <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-lg p-2 mb-4 space-y-1">
+              {pendingDeletes.map((m) => (
+                <div key={m.id} className="text-sm text-gray-700">
+                  <span className="text-gray-400">{fmtDate(m.date)}</span>　{m.matchName || m.matchType}{m.opponent ? ` vs ${m.opponent}` : ""}
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-2">
+              <button
+                onClick={confirmDeletes}
+                disabled={deleting}
+                className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
+              >
+                {deleting ? "削除中..." : `${pendingDeletes.length}件を削除する`}
+              </button>
+              <button onClick={() => setPendingDeletes([])} disabled={deleting} className="w-full text-gray-500 py-2 text-sm">
+                削除しない（残す）
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 距離0km警告モーダル */}
       {zeroDistanceAlert && (

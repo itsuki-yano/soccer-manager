@@ -83,6 +83,9 @@ export default function PracticesPage() {
   const [saving, setSaving] = useState(false);
   const [importingAll, setImportingAll] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; date: string } | null>(null);
+  // BANDで削除された練習（アプリからも削除する候補）
+  const [pendingDeletes, setPendingDeletes] = useState<Practice[]>([]);
+  const [deletingBand, setDeletingBand] = useState(false);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [form, setForm] = useState({ date: "", type: "通常練習", venue: "", startTime: "", endTime: "" });
@@ -109,8 +112,30 @@ export default function PracticesPage() {
       const existing = practices.map((p) => p.bandUid).filter(Boolean);
       setBandEvents(data.filter((e: Practice) => !existing.includes(e.bandUid)));
       setShowBand(true);
+      // BAND側で削除された練習を検出（BAND由来かつ未来で、最新フィードに存在しないもの）
+      const feedUids = new Set<string>(data.map((e: Practice) => e.bandUid));
+      const t = new Date().toISOString().slice(0, 10);
+      const gone = practices.filter((p) => p.bandUid && p.date >= t && !feedUids.has(p.bandUid));
+      setPendingDeletes(gone);
     }
     setSyncing(false);
+  }
+
+  // BANDで削除された練習をアプリからも削除（紐付くバケツ当番も連動削除）
+  async function confirmBandDeletes() {
+    setDeletingBand(true);
+    try {
+      for (const p of pendingDeletes) {
+        await fetch(`/api/bucket-duties?practiceId=${encodeURIComponent(p.id)}`, { method: "DELETE" });
+        await fetch(`/api/practices/${p.id}`, { method: "DELETE" });
+      }
+      const goneIds = new Set(pendingDeletes.map((p) => p.id));
+      setPractices((prev) => prev.filter((p) => !goneIds.has(p.id)));
+      setDuties((prev) => prev.filter((d) => !goneIds.has(d.practiceId)));
+      setPendingDeletes([]);
+    } finally {
+      setDeletingBand(false);
+    }
   }
 
   async function importEvent(ev: Omit<Practice, "id">) {
@@ -191,6 +216,38 @@ export default function PracticesPage() {
   return (
     <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
       <BackHeader title="通常練習" />
+
+      {/* BAND削除予定の連動削除モーダル */}
+      {pendingDeletes.length > 0 && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <div className="text-center mb-3">
+              <div className="text-4xl mb-2">🗑️</div>
+              <h2 className="text-lg font-bold text-gray-800">BANDで削除された練習</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                以下の{pendingDeletes.length}件はBAND側で削除されています。<br />
+                アプリからも削除しますか？<br />
+                <span className="text-xs text-gray-400">（紐付くバケツ当番も一緒に削除されます）</span>
+              </p>
+            </div>
+            <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-lg p-2 mb-4 space-y-1">
+              {pendingDeletes.map((p) => (
+                <div key={p.id} className="text-sm text-gray-700">
+                  <span className="text-gray-400">{fmtDate(p.date)}</span>　{p.type}{p.venue ? ` @ ${p.venue}` : ""}
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-2">
+              <button onClick={confirmBandDeletes} disabled={deletingBand} className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold disabled:opacity-50">
+                {deletingBand ? "削除中..." : `${pendingDeletes.length}件を削除する`}
+              </button>
+              <button onClick={() => setPendingDeletes([])} disabled={deletingBand} className="w-full text-gray-500 py-2 text-sm">
+                削除しない（残す）
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteConfirm && (
         <DeleteConfirmModal
