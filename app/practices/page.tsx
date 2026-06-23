@@ -189,8 +189,11 @@ export default function PracticesPage() {
   }
 
   async function deletePractice(id: string) {
+    // 紐付くバケツ当番(bucket-duties)も解除してから練習を削除
+    await fetch(`/api/bucket-duties?practiceId=${encodeURIComponent(id)}`, { method: "DELETE" });
     await fetch(`/api/practices/${id}`, { method: "DELETE" });
     setPractices((prev) => prev.filter((p) => p.id !== id));
+    setDuties((prev) => prev.filter((d) => d.practiceId !== id));
     setDeleteConfirm(null);
   }
 

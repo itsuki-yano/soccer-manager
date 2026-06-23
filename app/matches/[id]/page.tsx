@@ -92,6 +92,12 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function deleteMatch() {
+    // 紐付く配車当番(drivers)を解除してから試合を削除（備品持帰りはmatch項目なので削除で消える）
+    await fetch("/api/drivers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ matchId: id, parentNames: [] }),
+    });
     await fetch(`/api/matches/${id}`, { method: "DELETE" });
     router.push("/matches");
   }
