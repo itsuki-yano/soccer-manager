@@ -18,7 +18,7 @@ const menu = [
   { href: "/settings",       label: "設定",           icon: "⚙️", desc: "チーム名・ガソリン単価" },
 ];
 
-type Link_ = { id: string; name: string; url: string };
+type Link_ = { id: string; name: string; url: string; order?: number };
 
 export default function Home() {
   const [links, setLinks] = useState<Link_[]>([]);
@@ -76,6 +76,20 @@ export default function Home() {
     await fetch(`/api/links/${id}`, { method: "DELETE" });
     setLinks((prev) => prev.filter((l) => l.id !== id));
     setDeleteConfirm(null);
+  }
+
+  // 並び替え（上下移動）。即座にUI反映し、順序をサーバへ保存
+  async function moveLink(index: number, dir: -1 | 1) {
+    const target = index + dir;
+    if (target < 0 || target >= links.length) return;
+    const next = [...links];
+    [next[index], next[target]] = [next[target], next[index]];
+    setLinks(next);
+    await fetch("/api/links", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderedIds: next.map((l) => l.id) }),
+    });
   }
 
   return (
@@ -166,7 +180,7 @@ export default function Home() {
         )}
 
         <div className="grid gap-2">
-          {links.map((l) => (
+          {links.map((l, i) => (
             <div key={l.id}>
               {editLinkId === l.id ? (
                 <div className="grid gap-2 p-3 bg-gray-50 rounded-lg">
@@ -184,6 +198,12 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
+                  <div className="flex flex-col">
+                    <button onClick={() => moveLink(i, -1)} disabled={i === 0}
+                      className="text-gray-400 leading-none px-1 disabled:opacity-20 active:text-gray-600" aria-label="上へ">▲</button>
+                    <button onClick={() => moveLink(i, 1)} disabled={i === links.length - 1}
+                      className="text-gray-400 leading-none px-1 disabled:opacity-20 active:text-gray-600" aria-label="下へ">▼</button>
+                  </div>
                   <a
                     href={l.url}
                     target="_blank"

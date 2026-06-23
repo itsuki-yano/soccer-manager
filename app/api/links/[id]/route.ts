@@ -5,10 +5,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const { name, url } = await req.json();
-    const rows = await getSheetData("links!A:C");
+    const rows = await getSheetData("links!A:D");
     const idx = rows.findIndex((r) => r[0] === id);
     if (idx < 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-    await updateRow("links", idx + 1, [id, name, url]);
+    // 既存のorder(D列)は保持する
+    await updateRow("links", idx + 1, [id, name, url, rows[idx][3] ?? String(idx - 1)]);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
