@@ -508,14 +508,15 @@ function DutyRosterInner() {
               </div>
             </div>
           )}
-          <div>
-            <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
-              <p className="text-xs font-semibold text-gray-500">🚗 配車当番{groupLabel ? `（${groupLabel}）` : ""}</p>
-              <div className="flex gap-1">
+          <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-1.5">
+              <p className="text-sm font-bold text-amber-800">🚗 配車当番{groupLabel ? `（${groupLabel}）` : ""}</p>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-amber-700/70 mr-0.5">班で入力</span>
                 {sortedGroups.map((g) => (
                   <button key={g} type="button"
                     onClick={() => setEditDriverNames(parents.filter((p) => normalizeGroup(p.group) === g).sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName))}
-                    className="text-xs px-2 py-0.5 rounded-lg border bg-amber-50 text-amber-800 border-amber-200 font-medium"
+                    className="text-xs px-2 py-1 rounded-lg bg-amber-600 text-white font-semibold active:bg-amber-700"
                   >{g}</button>
                 ))}
               </div>
@@ -536,14 +537,15 @@ function DutyRosterInner() {
               </div>
             </div>
           )}
-          <div>
-            <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
-              <p className="text-xs font-semibold text-gray-500">🎒 備品持帰り</p>
-              <div className="flex gap-1">
+          <div className="bg-stone-100/70 border border-stone-300 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-1.5">
+              <p className="text-sm font-bold text-stone-700">🎒 備品持帰り</p>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-stone-500 mr-0.5">班で入力</span>
                 {sortedGroups.map((g) => (
                   <button key={g} type="button"
                     onClick={() => setEditEquipOut(parents.filter((p) => normalizeGroup(p.group) === g).sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName))}
-                    className="text-xs px-2 py-0.5 rounded-lg border bg-stone-50 text-stone-700 border-stone-200 font-medium"
+                    className="text-xs px-2 py-1 rounded-lg bg-stone-600 text-white font-semibold active:bg-stone-700"
                   >{g}</button>
                 ))}
               </div>
