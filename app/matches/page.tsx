@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
-import type { Match, Driver } from "@/lib/types";
+import type { Match, Driver, Parent } from "@/lib/types";
 
 const TYPE_COLORS: Record<string, string> = {
   "公式戦": "bg-stone-100 text-stone-700",
@@ -32,6 +32,7 @@ type BandEvent = {
 export default function MatchesPage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState("すべて");
   const [filterSettlement, setFilterSettlement] = useState(false);
@@ -51,10 +52,12 @@ export default function MatchesPage() {
     Promise.all([
       fetch("/api/matches").then((r) => r.json()),
       fetch("/api/drivers").then((r) => r.json()),
-    ]).then(([m, d]) => {
+      fetch("/api/parents").then((r) => r.json()),
+    ]).then(([m, d, p]) => {
       const ml = Array.isArray(m) ? m : [];
       setMatches(ml);
       setDrivers(Array.isArray(d) ? d : []);
+      setParents(Array.isArray(p) ? p : []);
       setImportedUids(new Set(ml.map((x: Match) => x.bandUid).filter(Boolean)));
       setLoading(false);
     });
@@ -267,8 +270,13 @@ export default function MatchesPage() {
             const upcoming = filtered.filter((m) => m.date >= today);
             const past = filtered.filter((m) => m.date < today).reverse();
 
+            const normN = (s: string) => s.replace(/[\s　]/g, "");
             function MatchCard({ m }: { m: Match }) {
               const matchDrivers = drivers.filter((d) => d.matchId === m.id);
+              const totalCapacity = matchDrivers.reduce((sum, d) => {
+                const p = parents.find((px) => normN(px.playerName) === normN(d.parentName));
+                return sum + (p?.carCapacity ?? 0);
+              }, 0);
               const typeColor = TYPE_COLORS[m.matchType] ?? "bg-gray-100 text-gray-600";
               const isHome = m.venue.includes("かりがね") || m.address.includes("かりがね");
               const isPast = m.date < today;
@@ -293,9 +301,16 @@ export default function MatchesPage() {
                     </div>
                     <div className="text-right ml-2 flex-shrink-0">
                       {!isHome && matchDrivers.length > 0 && (
-                        <span className="text-xs bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full">
-                          配車当番 {matchDrivers.length}名
-                        </span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-xs bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full">
+                            配車当番 {matchDrivers.length}名
+                          </span>
+                          {totalCapacity > 0 && (
+                            <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full whitespace-nowrap">
+                              乗車可能 {totalCapacity}名
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
