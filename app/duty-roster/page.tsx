@@ -491,7 +491,17 @@ function DutyRosterInner() {
     }
     function groupDisplay(g: string) { return normalizeGroup(g); }
 
-    function EditForm({ m, groupLabel }: { m: Match; groupLabel?: string }) {
+    function EditForm({ m, groupLabel, equipGroupLabel }: { m: Match; groupLabel?: string; equipGroupLabel?: string }) {
+      // 現在の選択がその班の標準メンバーと一致するか
+      function groupMembersOf(g: string): string[] {
+        return parents.filter((p) => normalizeGroup(p.group) === g).map((p) => p.playerName);
+      }
+      function isGroupActive(selected: string[], g: string): boolean {
+        const members = groupMembersOf(g);
+        if (members.length === 0 || members.length !== selected.length) return false;
+        const sel = new Set(selected);
+        return members.every((n) => sel.has(n));
+      }
       return (
         <div className="space-y-3">
           {inheritDriver && editDriverNames.length === 0 && (
@@ -516,7 +526,7 @@ function DutyRosterInner() {
                 {sortedGroups.map((g) => (
                   <button key={g} type="button"
                     onClick={() => setEditDriverNames(parents.filter((p) => normalizeGroup(p.group) === g).sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName))}
-                    className="text-xs px-2 py-1 rounded-lg bg-amber-600 text-white font-semibold active:bg-amber-700"
+                    className={`text-xs px-2 py-1 rounded-lg font-semibold border ${isGroupActive(editDriverNames, g) ? "bg-amber-600 text-white border-amber-600" : "bg-white text-amber-700 border-amber-300"}`}
                   >{g}</button>
                 ))}
               </div>
@@ -539,13 +549,13 @@ function DutyRosterInner() {
           )}
           <div className="bg-stone-100/70 border border-stone-300 rounded-xl p-3">
             <div className="flex items-center justify-between mb-2 flex-wrap gap-1.5">
-              <p className="text-sm font-bold text-stone-700">🎒 備品持帰り</p>
+              <p className="text-sm font-bold text-stone-700">🎒 備品持帰り{equipGroupLabel ? `（${equipGroupLabel}）` : ""}</p>
               <div className="flex items-center gap-1">
                 <span className="text-xs text-stone-500 mr-0.5">班で入力</span>
                 {sortedGroups.map((g) => (
                   <button key={g} type="button"
                     onClick={() => setEditEquipOut(parents.filter((p) => normalizeGroup(p.group) === g).sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName))}
-                    className="text-xs px-2 py-1 rounded-lg bg-stone-600 text-white font-semibold active:bg-stone-700"
+                    className={`text-xs px-2 py-1 rounded-lg font-semibold border ${isGroupActive(editEquipOut, g) ? "bg-stone-600 text-white border-stone-600" : "bg-white text-stone-600 border-stone-300"}`}
                   >{g}</button>
                 ))}
               </div>
@@ -768,7 +778,7 @@ function DutyRosterInner() {
                 )}
 
                 {isEditing && linkedMatch ? (
-                  <EditForm m={linkedMatch} groupLabel={group} />
+                  <EditForm m={linkedMatch} groupLabel={group} equipGroupLabel={normalizeGroup(equipGroup)} />
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     <button
