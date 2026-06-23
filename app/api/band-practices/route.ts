@@ -6,6 +6,8 @@ interface ICalEvent {
   dtstart: string;
   dtend: string;
   location: string;
+  rrule?: string;
+  exdates?: string[];
 }
 
 function isPractice(summary: string): boolean {
@@ -56,9 +58,100 @@ function parseIcal(text: string): ICalEvent[] {
       else if (key === "LOCATION") current.location = unescape(val);
       else if (key === "DTSTART") current.dtstart = val;
       else if (key === "DTEND") current.dtend = val;
+      else if (key === "RRULE") current.rrule = val;
+      else if (key === "EXDATE") {
+        // 複数日付（カンマ区切り）に対応し YYYY-MM-DD で蓄積
+        const dates = val.split(",").map((v) => {
+          const c = v.replace(/[TZ]/g, "").slice(0, 8);
+          return `${c.slice(0, 4)}-${c.slice(4, 6)}-${c.slice(6, 8)}`;
+        });
+        current.exdates = [...(current.exdates ?? []), ...dates];
+      }
     }
   }
   return events;
+}
+
+const WEEKDAY_MAP: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// RRULE を展開して開催日(YYYY-MM-DD)の配列を返す。FREQ=WEEKLY/DAILY/MONTHLY に対応。
+function expandRecurrence(startDate: string, rrule: string | undefined, exdates: string[] | undefined): string[] {
+  if (!rrule) return [startDate];
+
+  const rules: Record<string, string> = {};
+  rrule.split(";").forEach((part) => {
+    const [k, v] = part.split("=");
+    if (k && v) rules[k.toUpperCase()] = v;
+  });
+
+  const freq = rules.FREQ;
+  const interval = Math.max(1, parseInt(rules.INTERVAL ?? "1", 10) || 1);
+  const count = rules.COUNT ? parseInt(rules.COUNT, 10) : undefined;
+  const until = rules.UNTIL
+    ? (() => { const c = rules.UNTIL.replace(/[TZ]/g, "").slice(0, 8); return `${c.slice(0, 4)}-${c.slice(4, 6)}-${c.slice(6, 8)}`; })()
+    : undefined;
+  const byday = rules.BYDAY ? rules.BYDAY.split(",").map((d) => WEEKDAY_MAP[d.trim().slice(-2)]).filter((n) => n !== undefined) : [];
+
+  const start = new Date(startDate + "T00:00:00");
+  // 終了境界: UNTIL があればそれ、なければ開始から1年後を上限
+  const horizon = new Date(start);
+  horizon.setFullYear(horizon.getFullYear() + 1);
+  const exSet = new Set(exdates ?? []);
+  const out: string[] = [];
+  const limit = 366;
+
+  const pushDate = (d: Date) => {
+    const s = ymd(d);
+    if (until && s > until) return false;
+    if (d > horizon) return false;
+    if (!exSet.has(s)) out.push(s);
+    return true;
+  };
+
+  if (freq === "WEEKLY") {
+    const days = (byday.length > 0 ? byday : [start.getDay()]).sort((a, b) => a - b);
+    // 開始週の日曜日を基準に interval 週ごとに進める
+    const weekStart = new Date(start);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    for (let w = 0; w < limit; w++) {
+      const base = new Date(weekStart);
+      base.setDate(base.getDate() + w * interval * 7);
+      if (base > horizon) break;
+      let stop = false;
+      for (const wd of days) {
+        const d = new Date(base);
+        d.setDate(d.getDate() + wd);
+        if (d < start || d > horizon) continue;
+        const s = ymd(d);
+        if (until && s > until) { stop = true; break; }
+        if (!exSet.has(s)) out.push(s);
+        if (count && out.length >= count) { stop = true; break; }
+      }
+      if (stop) break;
+    }
+  } else if (freq === "DAILY") {
+    const d = new Date(start);
+    for (let i = 0; out.length < limit; i++) {
+      if (!pushDate(d)) break;
+      if (count && out.length >= count) break;
+      d.setDate(d.getDate() + interval);
+    }
+  } else if (freq === "MONTHLY") {
+    const d = new Date(start);
+    for (let i = 0; out.length < limit; i++) {
+      if (!pushDate(d)) break;
+      if (count && out.length >= count) break;
+      d.setMonth(d.getMonth() + interval);
+    }
+  } else {
+    return [startDate];
+  }
+
+  return [...new Set(out)].sort();
 }
 
 export async function GET() {
@@ -71,17 +164,21 @@ export async function GET() {
     const text = await res.text();
     const events = parseIcal(text).filter((e) => isPractice(e.summary));
 
-    const results = events.map((e) => {
-      const { date, time: startTime } = parseDtstart(e.dtstart);
+    const results = events.flatMap((e) => {
+      const { date: firstDate, time: startTime } = parseDtstart(e.dtstart);
       const { time: endTime } = e.dtend ? parseDtstart(e.dtend) : { time: "" };
-      return {
-        bandUid: e.uid,
+      const dates = expandRecurrence(firstDate, e.rrule, e.exdates);
+      const venue = (e.location ?? "").split(/[,、\n]/)[0].trim();
+      const type = detectPracticeType(e.summary);
+      return dates.map((date) => ({
+        // 繰り返し予定は日付ごとに一意なUIDにする（単発はそのまま）
+        bandUid: e.rrule ? `${e.uid}_${date}` : e.uid,
         date,
-        type: detectPracticeType(e.summary),
-        venue: (e.location ?? "").split(/[,、\n]/)[0].trim(),
+        type,
+        venue,
         startTime,
         endTime,
-      };
+      }));
     });
 
     results.sort((a, b) => a.date.localeCompare(b.date));
