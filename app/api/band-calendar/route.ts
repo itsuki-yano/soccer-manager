@@ -87,7 +87,7 @@ export async function GET() {
   }
 
   try {
-    const res = await fetch(icalUrl, { next: { revalidate: 0 } });
+    const res = await fetch(icalUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(`iCal fetch failed: ${res.status}`);
     const text = await res.text();
     const events = parseIcal(text);

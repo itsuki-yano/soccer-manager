@@ -159,7 +159,7 @@ export async function GET() {
   if (!icalUrl) return NextResponse.json({ error: "BAND_ICAL_URL が設定されていません" }, { status: 500 });
 
   try {
-    const res = await fetch(icalUrl, { next: { revalidate: 0 } });
+    const res = await fetch(icalUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(`iCal fetch failed: ${res.status}`);
     const text = await res.text();
     const events = parseIcal(text).filter((e) => isPractice(e.summary));

@@ -50,6 +50,7 @@ export default function MatchesPage() {
   // BANDで削除された予定（アプリからも削除する候補）
   const [pendingDeletes, setPendingDeletes] = useState<Match[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [syncSummary, setSyncSummary] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -76,8 +77,10 @@ export default function MatchesPage() {
         // BAND側で削除された予定を検出（BAND由来かつ未来の予定で、最新フィードに存在しないもの）
         const feedUids = new Set<string>(data.map((e: BandEvent) => e.bandUid));
         const today = new Date().toISOString().slice(0, 10);
-        const gone = matches.filter((m) => m.bandUid && m.date >= today && !feedUids.has(m.bandUid));
+        const bandLinkedFuture = matches.filter((m) => m.bandUid && m.date >= today);
+        const gone = bandLinkedFuture.filter((m) => !feedUids.has(m.bandUid));
         setPendingDeletes(gone);
+        setSyncSummary(`BAND取得${data.length}件／アプリのBAND予定(未来)${bandLinkedFuture.length}件／削除候補${gone.length}件`);
       } else {
         alert("取得に失敗しました: " + (data.error ?? ""));
       }
@@ -261,6 +264,12 @@ export default function MatchesPage() {
           ＋ 手動追加
         </Link>
       </div>
+
+      {syncSummary && (
+        <div className="mb-4 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+          {syncSummary}
+        </div>
+      )}
 
       {/* BAND新着イベント */}
       {newBandEvents.length > 0 && (
