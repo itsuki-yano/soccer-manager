@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSheetData, appendRow, getSheetsClient } from "@/lib/sheets";
 import ExcelJS from "exceljs";
 import type { Match, Driver, CoachExpense, Settings } from "@/lib/types";
+import { fetchRouteMapImage } from "@/lib/routeMap";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -70,6 +71,47 @@ function buildStatusSheet(
   sheet.addRow([]);
   const accRow = sheet.addRow([`会計担当者: ${accountant}`]);
   accRow.font = { bold: true };
+}
+
+// ルート地図シート（別シート）: かりがね小→各試合会場のルート画像を縦に並べる
+// GEOAPIFY_API_KEY 未設定時は画像が取得できずシートを作らない
+async function buildRouteMapSheet(wb: ExcelJS.Workbook, matchList: MatchWithDrivers[]) {
+  if (!process.env.GEOAPIFY_API_KEY) return;
+  // 住所がある試合のみ・重複住所は1回だけ
+  const seen = new Set<string>();
+  const targets = matchList.filter((m) => {
+    if (!m.address || seen.has(m.address)) return false;
+    seen.add(m.address);
+    return true;
+  });
+  if (targets.length === 0) return;
+
+  const images = await Promise.all(
+    targets.map(async (m) => ({ m, buf: await fetchRouteMapImage(m.address) }))
+  );
+  const valid = images.filter((x) => x.buf);
+  if (valid.length === 0) return;
+
+  const sheet = wb.addWorksheet("ルート地図");
+  sheet.getColumn(1).width = 100;
+  const title = sheet.addRow(["ルート地図（かりがね小学校 → 各会場）"]);
+  title.font = { bold: true, size: 14 };
+  sheet.addRow([]);
+
+  let rowIdx = sheet.rowCount; // 0始まりのanchor用に現在行
+  for (const { m, buf } of valid) {
+    const { label } = formatDate(m.date);
+    const head = sheet.addRow([`${label.replace(/（.+?）/, "")}　${m.opponent ? `vs${m.opponent}` : m.matchName}　${m.venue}　${m.address}`]);
+    head.font = { bold: true };
+    rowIdx = sheet.rowCount; // 画像はこの見出しの次行に配置
+    const imageId = wb.addImage({ buffer: new Uint8Array(buf as Buffer) as unknown as ExcelJS.Buffer, extension: "png" });
+    sheet.addImage(imageId, {
+      tl: { col: 0, row: rowIdx },
+      ext: { width: 640, height: 420 },
+    });
+    // 画像の高さ分(約420px ≒ 21行)の空行を確保
+    for (let k = 0; k < 22; k++) sheet.addRow([]);
+  }
 }
 
 // 配車担当者明細（別シート）: 試合ごとに配車担当者を一覧
@@ -168,7 +210,7 @@ async function logExport(exportType: string, dateFrom: string, dateTo: string, m
   await appendRow("export_history", [id, exportType, id, dateFrom, dateTo, matchCount]);
 }
 
-function buildWorkbook(wb: ExcelJS.Workbook, exportType: string, settlementMatches: MatchWithDrivers[], settings: Settings, expenses: CoachExpense[]) {
+async function buildWorkbook(wb: ExcelJS.Workbook, exportType: string, settlementMatches: MatchWithDrivers[], settings: Settings, expenses: CoachExpense[]) {
   if (exportType === "billing") {
     buildStatusSheet(wb, "請求中", settlementMatches, settings, "FFFFF2CC");
   } else if (exportType === "issue-unbilled") {
@@ -185,6 +227,9 @@ function buildWorkbook(wb: ExcelJS.Workbook, exportType: string, settlementMatch
 
   // 配車担当者明細（別シート）
   buildDriverDetailSheet(wb, settlementMatches);
+
+  // ルート地図（別シート・GEOAPIFY_API_KEY設定時のみ）
+  await buildRouteMapSheet(wb, settlementMatches);
 
   // 飲み物代
   const drinkSheet = wb.addWorksheet("飲み物代請求");
@@ -230,6 +275,7 @@ export async function GET() {
     buildStatusSheet(wb, "請求中", settlementMatches.filter((m) => m.settlementStatus === "請求中"), settings, "FFFFF2CC");
     buildStatusSheet(wb, "精算済み", settlementMatches.filter((m) => m.settlementStatus === "精算済み"), settings, "FFD9EAD3");
     buildDriverDetailSheet(wb, settlementMatches);
+    await buildRouteMapSheet(wb, settlementMatches);
     const drinkSheet = wb.addWorksheet("飲み物代請求");
     buildDrinkSheet(drinkSheet, expenses, settings);
     const buf = await wb.xlsx.writeBuffer();
@@ -286,7 +332,7 @@ export async function POST(req: Request) {
     await logExport(exportType, dateFrom, dateTo, settlementMatches.length).catch(() => {});
 
     const wb = new ExcelJS.Workbook();
-    buildWorkbook(wb, exportType, settlementMatches, settings, expenses);
+    await buildWorkbook(wb, exportType, settlementMatches, settings, expenses);
     const buf = await wb.xlsx.writeBuffer();
 
     const typeLabels: Record<string, string> = {
