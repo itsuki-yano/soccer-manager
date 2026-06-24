@@ -200,7 +200,8 @@ export default function ExportPage() {
 
   // コーチ飲食費の精算状況トグル（claimed: "" 未精算 / "精算済み"）
   async function toggleClaimed(e: PreviewData["coachExpenses"][number]) {
-    const next = e.claimed === "精算済み" ? "" : "精算済み";
+    const cycle = ["", "請求中", "精算済み"];
+    const next = cycle[(cycle.indexOf(e.claimed ?? "") + 1) % cycle.length];
     setUpdatingId(e.id);
     try {
       await fetch(`/api/coach-expenses/${e.id}`, {
@@ -218,6 +219,8 @@ export default function ExportPage() {
   }
 
   const coachPaidCount = preview?.coachExpenses.filter((e) => e.claimed === "精算済み").length ?? 0;
+  const coachBillingCount = preview?.coachExpenses.filter((e) => e.claimed === "請求中").length ?? 0;
+  const coachUnclaimedCount = preview?.coachExpenses.filter((e) => !e.claimed).length ?? 0;
   const coachTotalCount = preview?.coachExpenses.length ?? 0;
 
   const unbilledCount = preview?.matches.filter((m) => !m.settlementStatus).length ?? 0;
@@ -301,15 +304,15 @@ export default function ExportPage() {
             <div className="grid grid-cols-3 divide-x divide-gray-100">
               <div className="p-3 text-center">
                 <div className="text-xs text-gray-400 mb-0.5">未精算</div>
-                <div className="text-base font-bold text-gray-500">{coachTotalCount - coachPaidCount}件</div>
+                <div className="text-base font-bold text-gray-500">{coachUnclaimedCount}件</div>
               </div>
               <div className="p-3 text-center">
-                <div className="text-xs text-emerald-700 mb-0.5">精算済み</div>
+                <div className="text-xs text-amber-800 mb-0.5">請求中</div>
+                <div className="text-base font-bold text-amber-800">{coachBillingCount}件</div>
+              </div>
+              <div className="p-3 text-center">
+                <div className="text-xs text-emerald-700 mb-0.5">精算済</div>
                 <div className="text-base font-bold text-emerald-700">{coachPaidCount}件</div>
-              </div>
-              <div className="p-3 text-center">
-                <div className="text-xs text-amber-800 mb-0.5">合計</div>
-                <div className="text-base font-bold text-amber-700">{preview.coachExpenseTotal.toLocaleString()}円</div>
               </div>
             </div>
           </div>
@@ -368,9 +371,9 @@ export default function ExportPage() {
             ) : (
               <div className="divide-y divide-gray-50">
                 {preview.coachExpenses.map((e) => {
-                  const paid = e.claimed === "精算済み";
+                  const st = e.claimed ?? "";
                   return (
-                    <div key={e.id} className={`px-4 py-3 flex items-center gap-3 border-l-4 ${paid ? "border-emerald-300" : "border-gray-200"}`}>
+                    <div key={e.id} className={`px-4 py-3 flex items-center gap-3 border-l-4 ${STATUS_BORDER[st]}`}>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-gray-400">{e.date}</div>
                         <div className="text-sm font-medium text-gray-800 truncate">{e.description}</div>
@@ -380,9 +383,9 @@ export default function ExportPage() {
                       <button
                         onClick={() => toggleClaimed(e)}
                         disabled={updatingId === e.id}
-                        className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border transition-opacity ${paid ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-gray-100 text-gray-500 border-gray-200"} ${updatingId === e.id ? "opacity-40" : ""}`}
+                        className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border transition-opacity ${STATUS_COLOR[st]} ${STATUS_BORDER[st]} ${updatingId === e.id ? "opacity-40" : ""}`}
                       >
-                        {paid ? "精算済み" : "未精算"}
+                        {STATUS_LABEL[st]}
                       </button>
                     </div>
                   );

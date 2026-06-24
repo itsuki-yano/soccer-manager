@@ -4,6 +4,20 @@ import BackHeader from "@/components/BackHeader";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { CoachExpense, Parent } from "@/lib/types";
 
+// 精算ステータス（claimed列に保存）
+const STATUS_CYCLE = ["", "請求中", "精算済み"] as const;
+const STATUS_LABEL: Record<string, string> = { "": "未精算", "請求中": "請求中", "精算済み": "精算済み" };
+const STATUS_COLOR: Record<string, string> = {
+  "": "bg-gray-100 text-gray-500 border-gray-200",
+  "請求中": "bg-amber-100 text-amber-800 border-amber-300",
+  "精算済み": "bg-emerald-100 text-emerald-800 border-emerald-300",
+};
+const STATUS_BORDER: Record<string, string> = {
+  "": "border-gray-200",
+  "請求中": "border-amber-300",
+  "精算済み": "border-emerald-300",
+};
+
 export default function CoachExpensesPage() {
   const [expenses, setExpenses] = useState<CoachExpense[]>([]);
   const [parents, setParents] = useState<Parent[]>([]);
@@ -15,6 +29,24 @@ export default function CoachExpensesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [zoomReceipt, setZoomReceipt] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // 精算ステータスを順送り（未精算→請求中→精算済→未精算）
+  async function cycleStatus(e: CoachExpense) {
+    const idx = STATUS_CYCLE.indexOf((e.claimed ?? "") as typeof STATUS_CYCLE[number]);
+    const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+    setUpdatingId(e.id);
+    try {
+      await fetch(`/api/coach-expenses/${e.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...e, claimed: next }),
+      });
+      setExpenses((prev) => prev.map((x) => x.id === e.id ? { ...x, claimed: next } : x));
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 
   function resetForm() {
     setForm({ date: "", description: "", amount: "", claimed: "", purchaserName: "", receiptUrl: "" });
@@ -110,9 +142,27 @@ export default function CoachExpensesPage() {
         />
       )}
 
-      <div className="bg-stone-50 rounded-xl p-4 mb-4 flex justify-between items-center">
+      <div className="bg-stone-50 rounded-xl p-4 mb-3 flex justify-between items-center">
         <span className="text-gray-600 font-medium">合計</span>
         <span className="text-2xl font-bold text-stone-800">{total.toLocaleString()}円</span>
+      </div>
+
+      {/* 精算進捗 */}
+      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden mb-4">
+        <div className="grid grid-cols-3 divide-x divide-gray-100">
+          <div className="p-3 text-center">
+            <div className="text-xs text-gray-400 mb-0.5">未精算</div>
+            <div className="text-base font-bold text-gray-500">{expenses.filter((e) => !e.claimed).length}件</div>
+          </div>
+          <div className="p-3 text-center">
+            <div className="text-xs text-amber-800 mb-0.5">請求中</div>
+            <div className="text-base font-bold text-amber-800">{expenses.filter((e) => e.claimed === "請求中").length}件</div>
+          </div>
+          <div className="p-3 text-center">
+            <div className="text-xs text-emerald-700 mb-0.5">精算済</div>
+            <div className="text-base font-bold text-emerald-700">{expenses.filter((e) => e.claimed === "精算済み").length}件</div>
+          </div>
+        </div>
       </div>
 
       <button
@@ -183,7 +233,7 @@ export default function CoachExpensesPage() {
 
       <div className="grid gap-2">
         {sorted.map((e) => (
-          <div key={e.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex items-center gap-3">
+          <div key={e.id} className={`bg-white rounded-xl shadow-sm border border-gray-100 border-l-4 ${STATUS_BORDER[e.claimed ?? ""]} p-3 flex items-center gap-3`}>
             {e.receiptUrl ? (
               <button onClick={() => setZoomReceipt(e.receiptUrl)} className="shrink-0">
                 <img src={e.receiptUrl} alt="レシート" className="h-12 w-12 object-cover rounded-lg border border-gray-200" />
@@ -194,8 +244,17 @@ export default function CoachExpensesPage() {
               <div className="text-sm font-medium text-gray-800 truncate">{e.description}</div>
               {e.purchaserName && <div className="text-xs text-stone-500 mt-0.5">購入: {e.purchaserName}</div>}
             </div>
-            <div className="font-bold text-gray-800 whitespace-nowrap">{e.amount.toLocaleString()}円</div>
-            <div className="flex gap-1">
+            <div className="text-right shrink-0">
+              <div className="font-bold text-gray-800 whitespace-nowrap">{e.amount.toLocaleString()}円</div>
+              <button
+                onClick={() => cycleStatus(e)}
+                disabled={updatingId === e.id}
+                className={`mt-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[e.claimed ?? ""]} ${updatingId === e.id ? "opacity-40" : ""}`}
+              >
+                {STATUS_LABEL[e.claimed ?? ""]}
+              </button>
+            </div>
+            <div className="flex flex-col gap-1">
               <button onClick={() => startEdit(e)} className="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded">編集</button>
               <button onClick={() => setDeleteConfirm(e.id)} className="text-xs text-red-400 border border-red-100 px-2 py-1 rounded">削除</button>
             </div>
