@@ -313,6 +313,16 @@ export default function ParentsPage() {
                         練習着#{p.jerseyNumber}
                       </span>
                     )}
+                    {p.blueBibsNumber && (
+                      <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
+                        🔵#{p.blueBibsNumber}
+                      </span>
+                    )}
+                    {p.yellowBibsNumber && (
+                      <span className="text-xs bg-yellow-50 text-yellow-700 px-1.5 py-0.5 rounded border border-yellow-200">
+                        🟡#{p.yellowBibsNumber}
+                      </span>
+                    )}
                     {p.carCapacity > 0 && (
                       <span className="text-xs bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">
                         🚗{p.carCapacity}人
