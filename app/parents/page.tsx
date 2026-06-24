@@ -8,10 +8,12 @@ type EditForm = {
   playerName: string; furigana: string;
   jerseyNumber: string; uniformNumber: string;
   group: string; carCapacity: string; bucketOrder: string;
+  blueBibsNumber: string; yellowBibsNumber: string;
 };
 const EMPTY_FORM: EditForm = {
   playerName: "", furigana: "", jerseyNumber: "", uniformNumber: "",
   group: "", carCapacity: "", bucketOrder: "",
+  blueBibsNumber: "", yellowBibsNumber: "",
 };
 
 function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void }) {
@@ -37,6 +39,16 @@ function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void 
         <div>
           <label className="block text-xs text-gray-500 mb-0.5">練習着番号</label>
           <input type="text" value={f.jerseyNumber} onChange={setF("jerseyNumber")} placeholder="例: 51" className="input" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">🔵 青ビブス番号</label>
+          <input type="text" value={f.blueBibsNumber} onChange={setF("blueBibsNumber")} placeholder="例: 7" className="input" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">🟡 黄ビブス番号</label>
+          <input type="text" value={f.yellowBibsNumber} onChange={setF("yellowBibsNumber")} placeholder="例: 3" className="input" />
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
@@ -121,6 +133,7 @@ export default function ParentsPage() {
       jerseyNumber: f.jerseyNumber, uniformNumber: f.uniformNumber,
       group: f.group, carCapacity: Number(f.carCapacity) || 0,
       bucketOrder: Number(f.bucketOrder) || 0,
+      blueBibsNumber: f.blueBibsNumber, yellowBibsNumber: f.yellowBibsNumber,
     };
   }
 
@@ -146,6 +159,7 @@ export default function ParentsPage() {
       jerseyNumber: p.jerseyNumber, uniformNumber: p.uniformNumber ?? "",
       group: p.group, carCapacity: p.carCapacity ? String(p.carCapacity) : "",
       bucketOrder: p.bucketOrder ? String(p.bucketOrder) : "",
+      blueBibsNumber: p.blueBibsNumber ?? "", yellowBibsNumber: p.yellowBibsNumber ?? "",
     });
   }
 

@@ -30,6 +30,8 @@ export interface Parent {
   carCapacity: number;
   group: string;
   bucketOrder: number;
+  blueBibsNumber: string;    // 青ビブス番号
+  yellowBibsNumber: string;  // 黄ビブス番号
 }
 
 export interface CoachExpense {
