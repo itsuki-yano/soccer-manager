@@ -117,19 +117,7 @@ export default function SettingsPage() {
             className="input"
           />
         </Field>
-        <Field label="ガソリン単価 (円/km)">
-          <input
-            type="number"
-            step="0.1"
-            value={settings.gasPricePerKm}
-            onChange={(e) => setSettings((s) => ({ ...s, gasPricePerKm: Number(e.target.value) }))}
-            className="input"
-          />
-          <p className="text-xs text-gray-400 mt-1">
-            例: 16円/km → 往復20.76km = 332円（10円単位四捨五入）
-          </p>
-        </Field>
-        <Field label="デフォルト会計担当者">
+        <Field label="会計担当者">
           <input
             type="text"
             value={settings.accountant}

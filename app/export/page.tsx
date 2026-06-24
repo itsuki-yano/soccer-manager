@@ -206,7 +206,7 @@ export default function ExportPage() {
 
   return (
     <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
-      <BackHeader title="Excel出力" />
+      <BackHeader title="まとめ役・会計担当" />
 
       {/* 4つの出力ボタン */}
       <div className="grid gap-3 mb-5">

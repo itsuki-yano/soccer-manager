@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { href: "/roles",          icon: "📋", label: "役割予定" },
   { href: "/coach-expenses", icon: "🧃", label: "コーチ飲食費" },
   { href: "/parents",        icon: "👟", label: "選手マスタ" },
-  { href: "/export",         icon: "📊", label: "Excel出力" },
+  { href: "/export",         icon: "📊", label: "まとめ役・会計担当" },
   { href: "/equipment",      icon: "🎒", label: "備品管理" },
   { href: "/fees",           icon: "💰", label: "費用徴収管理" },
   { href: "/memo",           icon: "📝", label: "備忘録" },
