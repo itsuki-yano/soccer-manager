@@ -16,22 +16,30 @@ function formatDate(dateStr: string) {
 
 type MatchWithDrivers = Match & { matchDrivers: Driver[] };
 
+// 住所→ルート地図画像(Buffer)のキャッシュを作成（重複住所は1回のみ取得）
+async function fetchRouteImages(matchList: MatchWithDrivers[]): Promise<Map<string, Buffer>> {
+  const cache = new Map<string, Buffer>();
+  if (!process.env.GEOAPIFY_API_KEY) return cache;
+  const addresses = [...new Set(matchList.map((m) => m.address).filter(Boolean))];
+  const results = await Promise.all(addresses.map(async (a) => ({ a, buf: await fetchRouteMapImage(a) })));
+  for (const { a, buf } of results) if (buf) cache.set(a, buf);
+  return cache;
+}
+
 function buildStatusSheet(
   wb: ExcelJS.Workbook,
   sheetName: string,
   matchList: MatchWithDrivers[],
   settings: Settings,
   headerColor: string,
+  imageCache: Map<string, Buffer>,
 ) {
   const sheet = wb.addWorksheet(sheetName);
-  sheet.getColumn(1).width = 5;
-  sheet.getColumn(2).width = 12;
-  sheet.getColumn(3).width = 4;
-  sheet.getColumn(4).width = 22;
-  sheet.getColumn(5).width = 20;
-  sheet.getColumn(6).width = 30;
-  sheet.getColumn(7).width = 9;
-  sheet.getColumn(8).width = 6;
+  sheet.getColumn(1).width = 14;
+  sheet.getColumn(2).width = 22;
+  sheet.getColumn(3).width = 20;
+  sheet.getColumn(4).width = 12;
+  sheet.getColumn(5).width = 30;
 
   const titleRow = sheet.addRow([sheetName]);
   titleRow.font = { bold: true, size: 14 };
@@ -42,28 +50,28 @@ function buildStatusSheet(
     return;
   }
 
-  const hdr = sheet.addRow(["No.", "日付", "曜", "試合名", "会場", "住所", "往復(km)", "台数"]);
-  hdr.font = { bold: true };
-  hdr.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
-  hdr.border = { bottom: { style: "thin" } };
-
   matchList.forEach((m, i) => {
     const carCount = m.matchDrivers.length > 0 ? m.matchDrivers.length : m.carCount;
     const { label } = formatDate(m.date);
-    const weekday = label.match(/（(.+?)）/)?.[1] ?? "";
-    const row = sheet.addRow([
-      i + 1,
-      label.replace(/（.+?）/, ""),
-      weekday,
-      m.opponent ? `vs${m.opponent}` : m.matchName,
-      m.venue,
-      m.address,
-      m.distanceKm,
-      carCount,
-    ]);
-    if (i % 2 === 0) {
-      row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF7FF" } };
+    const dateStr = label;
+
+    // 1試合分の情報ブロック
+    const head = sheet.addRow([`${i + 1}. ${dateStr}　${m.opponent ? `vs${m.opponent}` : m.matchName}`]);
+    head.font = { bold: true, size: 12 };
+    head.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
+    sheet.addRow(["会場", m.venue]);
+    sheet.addRow(["住所", m.address]);
+    sheet.addRow(["往復", `${m.distanceKm} km`, "台数", `${carCount} 台`]);
+
+    // 情報の下にルート地図を埋め込み
+    const buf = imageCache.get(m.address);
+    if (buf) {
+      const anchorRow = sheet.rowCount; // 0始まりのanchor = 直近行の次
+      const imageId = wb.addImage({ buffer: new Uint8Array(buf) as unknown as ExcelJS.Buffer, extension: "png" });
+      sheet.addImage(imageId, { tl: { col: 0, row: anchorRow }, ext: { width: 480, height: 315 } });
+      for (let k = 0; k < 17; k++) sheet.addRow([]); // 画像高さ分の余白
     }
+    sheet.addRow([]); // ブロック間の余白
   });
 
   // 明細下段に会計担当者を1セルのみ記載（頭にチーム名）
@@ -71,47 +79,6 @@ function buildStatusSheet(
   sheet.addRow([]);
   const accRow = sheet.addRow([`会計担当者: ${accountant}`]);
   accRow.font = { bold: true };
-}
-
-// ルート地図シート（別シート）: かりがね小→各試合会場のルート画像を縦に並べる
-// GEOAPIFY_API_KEY 未設定時は画像が取得できずシートを作らない
-async function buildRouteMapSheet(wb: ExcelJS.Workbook, matchList: MatchWithDrivers[]) {
-  if (!process.env.GEOAPIFY_API_KEY) return;
-  // 住所がある試合のみ・重複住所は1回だけ
-  const seen = new Set<string>();
-  const targets = matchList.filter((m) => {
-    if (!m.address || seen.has(m.address)) return false;
-    seen.add(m.address);
-    return true;
-  });
-  if (targets.length === 0) return;
-
-  const images = await Promise.all(
-    targets.map(async (m) => ({ m, buf: await fetchRouteMapImage(m.address) }))
-  );
-  const valid = images.filter((x) => x.buf);
-  if (valid.length === 0) return;
-
-  const sheet = wb.addWorksheet("ルート地図");
-  sheet.getColumn(1).width = 100;
-  const title = sheet.addRow(["ルート地図（かりがね小学校 → 各会場）"]);
-  title.font = { bold: true, size: 14 };
-  sheet.addRow([]);
-
-  let rowIdx = sheet.rowCount; // 0始まりのanchor用に現在行
-  for (const { m, buf } of valid) {
-    const { label } = formatDate(m.date);
-    const head = sheet.addRow([`${label.replace(/（.+?）/, "")}　${m.opponent ? `vs${m.opponent}` : m.matchName}　${m.venue}　${m.address}`]);
-    head.font = { bold: true };
-    rowIdx = sheet.rowCount; // 画像はこの見出しの次行に配置
-    const imageId = wb.addImage({ buffer: new Uint8Array(buf as Buffer) as unknown as ExcelJS.Buffer, extension: "png" });
-    sheet.addImage(imageId, {
-      tl: { col: 0, row: rowIdx },
-      ext: { width: 640, height: 420 },
-    });
-    // 画像の高さ分(約420px ≒ 21行)の空行を確保
-    for (let k = 0; k < 22; k++) sheet.addRow([]);
-  }
 }
 
 // 配車担当者明細（別シート）: 試合ごとに配車担当者を一覧
@@ -211,25 +178,25 @@ async function logExport(exportType: string, dateFrom: string, dateTo: string, m
 }
 
 async function buildWorkbook(wb: ExcelJS.Workbook, exportType: string, settlementMatches: MatchWithDrivers[], settings: Settings, expenses: CoachExpense[]) {
+  // ルート地図画像を事前取得（GEOAPIFY_API_KEY設定時のみ）
+  const imageCache = await fetchRouteImages(settlementMatches);
+
   if (exportType === "billing") {
-    buildStatusSheet(wb, "請求中", settlementMatches, settings, "FFFFF2CC");
+    buildStatusSheet(wb, "請求中", settlementMatches, settings, "FFFFF2CC", imageCache);
   } else if (exportType === "issue-unbilled") {
     // 未請求→請求中に変更済みなので請求中として出力
-    buildStatusSheet(wb, "請求中（新規発行）", settlementMatches, settings, "FFFFF2CC");
+    buildStatusSheet(wb, "請求中（新規発行）", settlementMatches, settings, "FFFFF2CC", imageCache);
   } else if (exportType === "settled") {
-    buildStatusSheet(wb, "精算済み", settlementMatches, settings, "FFD9EAD3");
+    buildStatusSheet(wb, "精算済み", settlementMatches, settings, "FFD9EAD3", imageCache);
   } else {
     // all: ステータス別3シート
-    buildStatusSheet(wb, "未請求", settlementMatches.filter((m) => !m.settlementStatus), settings, "FFD9D9D9");
-    buildStatusSheet(wb, "請求中", settlementMatches.filter((m) => m.settlementStatus === "請求中"), settings, "FFFFF2CC");
-    buildStatusSheet(wb, "精算済み", settlementMatches.filter((m) => m.settlementStatus === "精算済み"), settings, "FFD9EAD3");
+    buildStatusSheet(wb, "未請求", settlementMatches.filter((m) => !m.settlementStatus), settings, "FFD9D9D9", imageCache);
+    buildStatusSheet(wb, "請求中", settlementMatches.filter((m) => m.settlementStatus === "請求中"), settings, "FFFFF2CC", imageCache);
+    buildStatusSheet(wb, "精算済み", settlementMatches.filter((m) => m.settlementStatus === "精算済み"), settings, "FFD9EAD3", imageCache);
   }
 
   // 配車担当者明細（別シート）
   buildDriverDetailSheet(wb, settlementMatches);
-
-  // ルート地図（別シート・GEOAPIFY_API_KEY設定時のみ）
-  await buildRouteMapSheet(wb, settlementMatches);
 
   // 飲み物代
   const drinkSheet = wb.addWorksheet("飲み物代請求");
@@ -271,11 +238,11 @@ export async function GET() {
       .map((m) => ({ ...m, matchDrivers: drivers.filter((d) => d.matchId === m.id) }));
 
     const wb = new ExcelJS.Workbook();
-    buildStatusSheet(wb, "未請求", settlementMatches.filter((m) => !m.settlementStatus), settings, "FFD9D9D9");
-    buildStatusSheet(wb, "請求中", settlementMatches.filter((m) => m.settlementStatus === "請求中"), settings, "FFFFF2CC");
-    buildStatusSheet(wb, "精算済み", settlementMatches.filter((m) => m.settlementStatus === "精算済み"), settings, "FFD9EAD3");
+    const imageCache = await fetchRouteImages(settlementMatches);
+    buildStatusSheet(wb, "未請求", settlementMatches.filter((m) => !m.settlementStatus), settings, "FFD9D9D9", imageCache);
+    buildStatusSheet(wb, "請求中", settlementMatches.filter((m) => m.settlementStatus === "請求中"), settings, "FFFFF2CC", imageCache);
+    buildStatusSheet(wb, "精算済み", settlementMatches.filter((m) => m.settlementStatus === "精算済み"), settings, "FFD9EAD3", imageCache);
     buildDriverDetailSheet(wb, settlementMatches);
-    await buildRouteMapSheet(wb, settlementMatches);
     const drinkSheet = wb.addWorksheet("飲み物代請求");
     buildDrinkSheet(drinkSheet, expenses, settings);
     const buf = await wb.xlsx.writeBuffer();
