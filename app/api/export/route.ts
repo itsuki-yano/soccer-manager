@@ -35,46 +35,68 @@ function buildStatusSheet(
   imageCache: Map<string, Buffer>,
 ) {
   const sheet = wb.addWorksheet(sheetName);
-  sheet.getColumn(1).width = 14;
-  sheet.getColumn(2).width = 22;
-  sheet.getColumn(3).width = 20;
-  sheet.getColumn(4).width = 12;
-  sheet.getColumn(5).width = 30;
-
-  const titleRow = sheet.addRow([sheetName]);
-  titleRow.font = { bold: true, size: 14 };
-  sheet.addRow([]);
+  // A4縦・横幅を1ページに収め、縦はページ区切りで3試合/ページ
+  sheet.pageSetup = {
+    paperSize: 9, // A4
+    orientation: "portrait",
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: { left: 0.3, right: 0.3, top: 0.3, bottom: 0.3, header: 0.2, footer: 0.2 },
+  };
+  // 左:情報(A-D)、右:地図(E〜)
+  sheet.getColumn(1).width = 8;   // ラベル
+  sheet.getColumn(2).width = 26;  // 値（住所など）
+  sheet.getColumn(3).width = 8;   // ラベル(台数)
+  sheet.getColumn(4).width = 8;   // 値
+  sheet.getColumn(5).width = 2;   // 余白
 
   if (matchList.length === 0) {
     sheet.addRow(["該当する試合がありません"]);
     return;
   }
 
+  const BLOCK_ROWS = 16;    // 1試合ブロックの行数（A4縦に3つ収まる高さ）
+  const thin = { style: "thin" as const };
+  const box = { top: thin, bottom: thin, left: thin, right: thin };
+
   matchList.forEach((m, i) => {
     const carCount = m.matchDrivers.length > 0 ? m.matchDrivers.length : m.carCount;
     const { label } = formatDate(m.date);
-    const dateStr = label;
+    const blockStart = sheet.rowCount; // 0始まりのブロック先頭行（地図アンカー用）
 
-    // 1試合分の情報ブロック
-    const head = sheet.addRow([`${i + 1}. ${dateStr}　${m.opponent ? `vs${m.opponent}` : m.matchName}`]);
+    // 見出し
+    const head = sheet.addRow([`${i + 1}. ${label}　${m.opponent ? `vs${m.opponent}` : m.matchName}`]);
     head.font = { bold: true, size: 12 };
     head.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
-    sheet.addRow(["会場", m.venue]);
-    sheet.addRow(["住所", m.address]);
-    sheet.addRow(["往復", `${m.distanceKm} km`, "台数", `${carCount} 台`]);
+    // 情報（枠線つき）
+    const r1 = sheet.addRow(["会場", m.venue]);
+    const r2 = sheet.addRow(["住所", m.address]);
+    const r3 = sheet.addRow(["往復", `${m.distanceKm} km`, "台数", `${carCount} 台`]);
+    for (const r of [r1, r2, r3]) {
+      r.getCell(1).font = { color: { argb: "FF888888" } };
+      r.getCell(3).font = { color: { argb: "FF888888" } };
+      for (let c = 1; c <= 4; c++) r.getCell(c).border = box;
+    }
 
-    // 情報の下にルート地図を埋め込み
+    // 右側にルート地図
     const buf = imageCache.get(m.address);
     if (buf) {
-      const anchorRow = sheet.rowCount; // 0始まりのanchor = 直近行の次
       const imageId = wb.addImage({ buffer: new Uint8Array(buf) as unknown as ExcelJS.Buffer, extension: "png" });
-      sheet.addImage(imageId, { tl: { col: 0, row: anchorRow }, ext: { width: 480, height: 315 } });
-      for (let k = 0; k < 17; k++) sheet.addRow([]); // 画像高さ分の余白
+      sheet.addImage(imageId, { tl: { col: 5, row: blockStart }, ext: { width: 430, height: 285 } });
     }
-    sheet.addRow([]); // ブロック間の余白
+
+    // ブロック高さを揃える（既に4行使用済み → 残りを空行で埋める）
+    const used = sheet.rowCount - blockStart;
+    for (let k = used; k < BLOCK_ROWS; k++) sheet.addRow([]);
+
+    // 3試合ごとにページ区切り
+    if ((i + 1) % 3 === 0 && i < matchList.length - 1) {
+      sheet.getRow(sheet.rowCount).addPageBreak();
+    }
   });
 
-  // 明細下段に会計担当者を1セルのみ記載（頭にチーム名）
+  // 末尾に会計担当者（頭にチーム名）
   const accountant = settings.accountant ? `${settings.teamName} ${settings.accountant}` : settings.teamName;
   sheet.addRow([]);
   const accRow = sheet.addRow([`会計担当者: ${accountant}`]);
