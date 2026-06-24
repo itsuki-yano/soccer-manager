@@ -31,7 +31,6 @@ function buildStatusSheet(
   sheet.getColumn(6).width = 30;
   sheet.getColumn(7).width = 9;
   sheet.getColumn(8).width = 6;
-  sheet.getColumn(9).width = 22;
 
   const titleRow = sheet.addRow([sheetName]);
   titleRow.font = { bold: true, size: 14 };
@@ -42,9 +41,7 @@ function buildStatusSheet(
     return;
   }
 
-  const accountant = settings.accountant ? `${settings.teamName} ${settings.accountant}` : settings.teamName;
-
-  const hdr = sheet.addRow(["No.", "日付", "曜", "試合名", "会場", "住所", "往復(km)", "台数", "会計担当者"]);
+  const hdr = sheet.addRow(["No.", "日付", "曜", "試合名", "会場", "住所", "往復(km)", "台数"]);
   hdr.font = { bold: true };
   hdr.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
   hdr.border = { bottom: { style: "thin" } };
@@ -62,12 +59,17 @@ function buildStatusSheet(
       m.address,
       m.distanceKm,
       carCount,
-      accountant,
     ]);
     if (i % 2 === 0) {
       row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF7FF" } };
     }
   });
+
+  // 明細下段に会計担当者を1セルのみ記載（頭にチーム名）
+  const accountant = settings.accountant ? `${settings.teamName} ${settings.accountant}` : settings.teamName;
+  sheet.addRow([]);
+  const accRow = sheet.addRow([`会計担当者: ${accountant}`]);
+  accRow.font = { bold: true };
 }
 
 // 配車担当者明細（別シート）: 試合ごとに配車担当者を一覧
