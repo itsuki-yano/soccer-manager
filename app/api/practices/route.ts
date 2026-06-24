@@ -11,12 +11,13 @@ function rowToPractice(r: string[]): Practice {
     startTime: r[4] ?? "",
     endTime: r[5] ?? "",
     bandUid: r[6] ?? "",
+    address: r[7] ?? "",
   };
 }
 
 export async function GET() {
   try {
-    const rows = await getSheetData("practices!A:G");
+    const rows = await getSheetData("practices!A:H");
     const practices = rows.slice(1).filter((r) => r[0]).map(rowToPractice);
     return NextResponse.json(practices);
   } catch (e) {
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     const id = crypto.randomUUID();
     await appendRow("practices", [
       id, body.date, body.type, body.venue,
-      body.startTime, body.endTime, body.bandUid ?? "",
+      body.startTime, body.endTime, body.bandUid ?? "", body.address ?? "",
     ]);
     return NextResponse.json({ id });
   } catch (e) {

@@ -62,6 +62,7 @@ export interface Practice {
   startTime: string;
   endTime: string;
   bandUid: string;
+  address: string; // 練習場の住所
 }
 
 export interface DutySwap {

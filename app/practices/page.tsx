@@ -88,7 +88,28 @@ export default function PracticesPage() {
   const [deletingBand, setDeletingBand] = useState(false);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
-  const [form, setForm] = useState({ date: "", type: "通常練習", venue: "", startTime: "", endTime: "" });
+  const [form, setForm] = useState({ date: "", type: "通常練習", venue: "", address: "", startTime: "", endTime: "" });
+  // 練習の編集
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ type: "通常練習", date: "", venue: "", address: "", startTime: "", endTime: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  function startEditPractice(p: Practice) {
+    setEditId(p.id);
+    setEditForm({ type: p.type, date: p.date, venue: p.venue, address: p.address ?? "", startTime: p.startTime, endTime: p.endTime });
+  }
+
+  async function saveEditPractice(id: string) {
+    setSavingEdit(true);
+    await fetch(`/api/practices/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editForm),
+    });
+    setPractices((prev) => prev.map((p) => p.id === id ? { ...p, ...editForm } : p));
+    setEditId(null);
+    setSavingEdit(false);
+  }
 
   const load = useCallback(async () => {
     const [ps, ds, st] = await Promise.all([
@@ -180,7 +201,7 @@ export default function PracticesPage() {
     const data = await res.json();
     if (data.id) {
       setPractices((prev) => [...prev, { id: data.id, ...body }].sort((a, b) => a.date.localeCompare(b.date)));
-      setForm({ date: "", type: "通常練習", venue: "", startTime: "", endTime: "" });
+      setForm({ date: "", type: "通常練習", venue: "", address: "", startTime: "", endTime: "" });
       setShowForm(false);
     } else {
       alert("追加に失敗しました");
@@ -302,8 +323,12 @@ export default function PracticesPage() {
             <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="input" />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-0.5">会場</label>
+            <label className="block text-xs text-gray-500 mb-0.5">練習場名</label>
             <input type="text" value={form.venue} onChange={(e) => setForm((f) => ({ ...f, venue: e.target.value }))} placeholder="例: かりがね小学校" className="input" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">住所</label>
+            <input type="text" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} placeholder="例: 愛知県刈谷市築地町2-15-1" className="input" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -379,19 +404,66 @@ export default function PracticesPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[p.type] ?? "bg-gray-100 text-gray-600"}`}>{p.type}</span>
                         <span className="font-semibold text-gray-800">{fmtDate(p.date)}</span>
                       </div>
-                      <button onClick={() => setDeleteConfirm({ id: p.id, date: fmtDate(p.date) })} className="text-gray-300 text-lg active:text-red-400 ml-2">✕</button>
+                      {editId !== p.id && (
+                        <div className="flex gap-1.5 shrink-0 ml-2">
+                          <button onClick={() => startEditPractice(p)} className="text-xs text-stone-600 border border-stone-200 px-2 py-1 rounded-lg">編集</button>
+                          <button onClick={() => setDeleteConfirm({ id: p.id, date: fmtDate(p.date) })} className="text-gray-300 text-lg active:text-red-400">✕</button>
+                        </div>
+                      )}
                     </div>
-                    {(p.venue || p.startTime) && (
-                      <div className="text-sm text-gray-500 mt-1">
-                        {p.venue && <span>📍 {p.venue}</span>}
-                        {p.startTime && <span className="ml-2">🕐 {p.startTime}{p.endTime ? `〜${p.endTime}` : ""}</span>}
+                    {editId === p.id ? (
+                      <div className="mt-2 grid gap-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          {["通常練習", "自主練習"].map((t) => (
+                            <button key={t} type="button" onClick={() => setEditForm((f) => ({ ...f, type: t }))}
+                              className={`py-2 rounded-lg text-sm font-medium border ${editForm.type === t ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"}`}>{t}</button>
+                          ))}
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-0.5">日付</label>
+                          <input type="date" value={editForm.date} onChange={(e) => setEditForm((f) => ({ ...f, date: e.target.value }))} className="input" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-0.5">練習場名</label>
+                          <input type="text" value={editForm.venue} onChange={(e) => setEditForm((f) => ({ ...f, venue: e.target.value }))} placeholder="例: かりがね小学校" className="input" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-0.5">住所</label>
+                          <input type="text" value={editForm.address} onChange={(e) => setEditForm((f) => ({ ...f, address: e.target.value }))} placeholder="例: 愛知県刈谷市築地町2-15-1" className="input" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-0.5">開始</label>
+                            <input type="time" value={editForm.startTime} onChange={(e) => setEditForm((f) => ({ ...f, startTime: e.target.value }))} className="input" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-0.5">終了</label>
+                            <input type="time" value={editForm.endTime} onChange={(e) => setEditForm((f) => ({ ...f, endTime: e.target.value }))} className="input" />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => saveEditPractice(p.id)} disabled={savingEdit} className="flex-1 bg-emerald-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
+                            {savingEdit ? "保存中..." : "保存"}
+                          </button>
+                          <button onClick={() => setEditId(null)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm">キャンセル</button>
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        {(p.venue || p.address || p.startTime) && (
+                          <div className="text-sm text-gray-500 mt-1">
+                            {p.venue && <span>📍 {p.venue}</span>}
+                            {p.startTime && <span className="ml-2">🕐 {p.startTime}{p.endTime ? `〜${p.endTime}` : ""}</span>}
+                            {p.address && <div className="text-xs text-gray-400 mt-0.5">{p.address}</div>}
+                          </div>
+                        )}
+                        <BucketDutyCard
+                          practice={p}
+                          duty={duty}
+                          bucketActive={active}
+                        />
+                      </>
                     )}
-                    <BucketDutyCard
-                      practice={p}
-                      duty={duty}
-                      bucketActive={active}
-                    />
                   </div>
                 );
               })}

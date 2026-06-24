@@ -168,7 +168,8 @@ export async function GET() {
       const { date: firstDate, time: startTime } = parseDtstart(e.dtstart);
       const { time: endTime } = e.dtend ? parseDtstart(e.dtend) : { time: "" };
       const dates = expandRecurrence(firstDate, e.rrule, e.exdates);
-      const venue = (e.location ?? "").split(/[,、\n]/)[0].trim();
+      const fullLocation = (e.location ?? "").trim();
+      const venue = fullLocation.split(/[,、\n]/)[0].trim();
       const type = detectPracticeType(e.summary);
       return dates.map((date) => ({
         // 繰り返し予定は日付ごとに一意なUIDにする（単発はそのまま）
@@ -178,6 +179,7 @@ export async function GET() {
         venue,
         startTime,
         endTime,
+        address: fullLocation, // フル住所（同期で取り込む）
       }));
     });
 
