@@ -26,6 +26,19 @@ async function fetchRouteImages(matchList: MatchWithDrivers[]): Promise<Map<stri
   return cache;
 }
 
+// A4縦・横1ページfitの共通印刷設定。printTitlesRowを渡すと各ページに見出し行を繰り返す
+function setA4Portrait(sheet: ExcelJS.Worksheet, printTitlesRow?: string) {
+  sheet.pageSetup = {
+    paperSize: 9, // A4
+    orientation: "portrait",
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: { left: 0.3, right: 0.3, top: 0.3, bottom: 0.3, header: 0.2, footer: 0.2 },
+    ...(printTitlesRow ? { printTitlesRow } : {}),
+  };
+}
+
 function buildStatusSheet(
   wb: ExcelJS.Workbook,
   sheetName: string,
@@ -35,15 +48,7 @@ function buildStatusSheet(
   imageCache: Map<string, Buffer>,
 ) {
   const sheet = wb.addWorksheet(sheetName);
-  // A4縦・横幅を1ページに収め、縦はページ区切りで3試合/ページ
-  sheet.pageSetup = {
-    paperSize: 9, // A4
-    orientation: "portrait",
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 0,
-    margins: { left: 0.3, right: 0.3, top: 0.3, bottom: 0.3, header: 0.2, footer: 0.2 },
-  };
+  setA4Portrait(sheet); // A4縦・横1ページfit（縦はページ区切りで3試合/ページ）
   // 左:情報(A-D)、右:地図(E〜)
   sheet.getColumn(1).width = 8;   // ラベル
   sheet.getColumn(2).width = 26;  // 値（住所など）
@@ -106,18 +111,21 @@ function buildStatusSheet(
 // 配車担当者明細（別シート）: 試合ごとに配車担当者を一覧
 function buildDriverDetailSheet(wb: ExcelJS.Workbook, matchList: MatchWithDrivers[]) {
   const sheet = wb.addWorksheet("配車担当者明細");
+  setA4Portrait(sheet, "3:3"); // 見出し行(3行目)を各ページに繰り返す
   sheet.getColumn(1).width = 12;
-  sheet.getColumn(2).width = 22;
-  sheet.getColumn(3).width = 20;
+  sheet.getColumn(2).width = 18;
+  sheet.getColumn(3).width = 18;
   sheet.getColumn(4).width = 6;
-  sheet.getColumn(5).width = 40;
+  sheet.getColumn(5).width = 34;
 
   const title = sheet.addRow(["配車担当者明細"]);
   title.font = { bold: true, size: 14 };
   sheet.addRow([]);
+  const thin = { style: "thin" as const };
+  const box = { top: thin, bottom: thin, left: thin, right: thin };
   const hdr = sheet.addRow(["日付", "試合名", "会場", "台数", "配車担当者"]);
   hdr.font = { bold: true };
-  hdr.border = { bottom: { style: "thin" } };
+  hdr.eachCell((c) => { c.border = box; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE9E9E9" } }; });
 
   matchList.forEach((m, i) => {
     const { label } = formatDate(m.date);
@@ -129,8 +137,10 @@ function buildDriverDetailSheet(wb: ExcelJS.Workbook, matchList: MatchWithDriver
       names.length,
       names.join("、"),
     ]);
+    row.alignment = { vertical: "top", wrapText: true };
+    for (let c = 1; c <= 5; c++) row.getCell(c).border = box;
     if (i % 2 === 0) {
-      row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF7FF" } };
+      for (let c = 1; c <= 5; c++) row.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF7FF" } };
     }
   });
 }
@@ -227,28 +237,40 @@ async function buildWorkbook(wb: ExcelJS.Workbook, exportType: string, settlemen
 
 // 飲み物代・食事代シートを構築（日付・内容・購入者・金額・レシート）
 function buildDrinkSheet(sheet: ExcelJS.Worksheet, expenses: CoachExpense[], settings: Settings) {
+  setA4Portrait(sheet, "3:3"); // 見出し行(3行目)を各ページに繰り返す
   sheet.getColumn(1).width = 12;
-  sheet.getColumn(2).width = 40;
-  sheet.getColumn(3).width = 14;
+  sheet.getColumn(2).width = 30;
+  sheet.getColumn(3).width = 12;
   sheet.getColumn(4).width = 10;
-  sheet.getColumn(5).width = 30;
-  const title = sheet.addRow([null, `${settings.teamName}　コーチ飲み物代・食事代請求`]);
-  title.font = { bold: true, size: 12 };
+  sheet.getColumn(5).width = 12;
+  const thin = { style: "thin" as const };
+  const box = { top: thin, bottom: thin, left: thin, right: thin };
+
+  const title = sheet.addRow([`${settings.teamName}　コーチ飲み物代・食事代請求`]);
+  title.font = { bold: true, size: 14 };
   sheet.addRow([]);
   const header = sheet.addRow(["日付", "内容", "購入者", "金額", "レシート"]);
   header.font = { bold: true };
+  header.eachCell((c) => { c.border = box; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE9E9E9" } }; });
+
   let total = 0;
-  for (const e of expenses) {
+  expenses.forEach((e, i) => {
     const row = sheet.addRow([e.date, e.description, e.purchaserName || "（チーム）", e.amount, null]);
+    row.alignment = { vertical: "top", wrapText: true };
     if (e.receiptUrl) {
       const cell = row.getCell(5);
       cell.value = { text: "画像を開く", hyperlink: e.receiptUrl };
       cell.font = { color: { argb: "FF0563C1" }, underline: true };
     }
+    for (let c = 1; c <= 5; c++) row.getCell(c).border = box;
+    if (i % 2 === 0) {
+      for (let c = 1; c <= 5; c++) row.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF7FF" } };
+    }
     total += e.amount;
-  }
-  sheet.addRow([]);
-  sheet.addRow(["合計", null, null, total]).font = { bold: true };
+  });
+  const sumRow = sheet.addRow(["合計", null, null, total]);
+  sumRow.font = { bold: true };
+  for (let c = 1; c <= 5; c++) sumRow.getCell(c).border = box;
 }
 
 // GET: 旧互換（全ステータス出力）
