@@ -94,9 +94,16 @@ export default function PracticesPage() {
   const [editForm, setEditForm] = useState({ type: "通常練習", date: "", venue: "", address: "", startTime: "", endTime: "" });
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // input[type=time] は "HH:MM"（時は2桁）でないと表示されないため整形
+  function toTimeInput(s: string): string {
+    const m = (s ?? "").trim().match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return "";
+    return `${m[1].padStart(2, "0")}:${m[2]}`;
+  }
+
   function startEditPractice(p: Practice) {
     setEditId(p.id);
-    setEditForm({ type: p.type, date: p.date, venue: p.venue, address: p.address ?? "", startTime: p.startTime, endTime: p.endTime });
+    setEditForm({ type: p.type, date: p.date, venue: p.venue, address: p.address ?? "", startTime: toTimeInput(p.startTime), endTime: toTimeInput(p.endTime) });
   }
 
   async function saveEditPractice(id: string) {
