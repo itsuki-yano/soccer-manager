@@ -20,7 +20,7 @@ interface MatchPreview {
 interface PreviewData {
   settings: { leagueName: string; gasPricePerKm: number };
   matches: MatchPreview[];
-  coachExpenses: { id: string; date: string; description: string; amount: number }[];
+  coachExpenses: { id: string; date: string; description: string; amount: number; purchaserName: string; claimed: string; receiptUrl: string }[];
   coachExpenseTotal: number;
   transportTotal: number;
   grandTotal: number;
@@ -198,6 +198,28 @@ export default function ExportPage() {
     }
   }
 
+  // コーチ飲食費の精算状況トグル（claimed: "" 未精算 / "精算済み"）
+  async function toggleClaimed(e: PreviewData["coachExpenses"][number]) {
+    const next = e.claimed === "精算済み" ? "" : "精算済み";
+    setUpdatingId(e.id);
+    try {
+      await fetch(`/api/coach-expenses/${e.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...e, claimed: next }),
+      });
+      setPreview((prev) => prev ? {
+        ...prev,
+        coachExpenses: prev.coachExpenses.map((x) => x.id === e.id ? { ...x, claimed: next } : x),
+      } : prev);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  const coachPaidCount = preview?.coachExpenses.filter((e) => e.claimed === "精算済み").length ?? 0;
+  const coachTotalCount = preview?.coachExpenses.length ?? 0;
+
   const unbilledCount = preview?.matches.filter((m) => !m.settlementStatus).length ?? 0;
   const billingCount = preview?.matches.filter((m) => m.settlementStatus === "請求中").length ?? 0;
   const settledCount = preview?.matches.filter((m) => m.settlementStatus === "精算済み").length ?? 0;
@@ -272,9 +294,24 @@ export default function ExportPage() {
               </div>
             </div>
           </div>
-          <div className="bg-stone-50 rounded-xl p-3 text-center">
-            <div className="text-xs text-gray-500 mb-0.5">コーチ飲食費</div>
-            <div className="text-base font-bold text-amber-700">{preview.coachExpenseTotal.toLocaleString()}円</div>
+          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-100">
+              <span className="text-xs font-semibold text-gray-600">🧃 コーチ飲食費（進捗）</span>
+            </div>
+            <div className="grid grid-cols-3 divide-x divide-gray-100">
+              <div className="p-3 text-center">
+                <div className="text-xs text-gray-400 mb-0.5">未精算</div>
+                <div className="text-base font-bold text-gray-500">{coachTotalCount - coachPaidCount}件</div>
+              </div>
+              <div className="p-3 text-center">
+                <div className="text-xs text-emerald-700 mb-0.5">精算済み</div>
+                <div className="text-base font-bold text-emerald-700">{coachPaidCount}件</div>
+              </div>
+              <div className="p-3 text-center">
+                <div className="text-xs text-amber-800 mb-0.5">合計</div>
+                <div className="text-base font-bold text-amber-700">{preview.coachExpenseTotal.toLocaleString()}円</div>
+              </div>
+            </div>
           </div>
 
           {/* 試合一覧 */}
@@ -324,21 +361,32 @@ export default function ExportPage() {
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">🧃 コーチ飲食費</span>
-              <span className="text-xs font-bold text-amber-700">{preview.coachExpenseTotal.toLocaleString()}円</span>
+              <span className="text-xs text-gray-400">{coachPaidCount}/{coachTotalCount}件 精算済み</span>
             </div>
             {preview.coachExpenses.length === 0 ? (
               <div className="px-4 py-6 text-center text-gray-400 text-sm">費用が登録されていません</div>
             ) : (
               <div className="divide-y divide-gray-50">
-                {preview.coachExpenses.map((e) => (
-                  <div key={e.id} className="px-4 py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs text-gray-400">{e.date}</div>
-                      <div className="text-sm text-gray-700 truncate">{e.description}</div>
+                {preview.coachExpenses.map((e) => {
+                  const paid = e.claimed === "精算済み";
+                  return (
+                    <div key={e.id} className={`px-4 py-3 flex items-center gap-3 border-l-4 ${paid ? "border-emerald-300" : "border-gray-200"}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-gray-400">{e.date}</div>
+                        <div className="text-sm font-medium text-gray-800 truncate">{e.description}</div>
+                        {e.purchaserName && <div className="text-xs text-stone-500">購入: {e.purchaserName}</div>}
+                      </div>
+                      <div className="text-sm font-bold text-gray-800 shrink-0">{e.amount.toLocaleString()}円</div>
+                      <button
+                        onClick={() => toggleClaimed(e)}
+                        disabled={updatingId === e.id}
+                        className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border transition-opacity ${paid ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-gray-100 text-gray-500 border-gray-200"} ${updatingId === e.id ? "opacity-40" : ""}`}
+                      >
+                        {paid ? "精算済み" : "未精算"}
+                      </button>
                     </div>
-                    <div className="text-sm font-bold text-gray-800 shrink-0">{e.amount.toLocaleString()}円</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

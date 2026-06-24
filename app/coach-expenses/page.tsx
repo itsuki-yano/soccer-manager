@@ -130,7 +130,16 @@ export default function CoachExpensesPage() {
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-0.5">内容 *</label>
-            <input type="text" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="例: 西三河リーグ vs高浜、コーチ飲み物代" className="input" />
+            <input type="text" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="例: 飲み物、お弁当" className="input" />
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {["飲み物", "お弁当", "お菓子", "軽食", "その他"].map((c) => (
+                <button key={c} type="button"
+                  onClick={() => setForm((f) => ({ ...f, description: c }))}
+                  className="text-xs px-2.5 py-1 rounded-full border border-stone-200 bg-stone-50 text-stone-700">
+                  {c}
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-0.5">金額(円) *</label>
