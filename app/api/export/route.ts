@@ -61,8 +61,8 @@ function buildStatusSheet(
     return;
   }
 
-  const BLOCK_ROWS = 12;    // 1試合ブロックの行数（A4縦に4つ収まる高さ）
-  const PER_PAGE = 4;
+  const PER_PAGE = 4;       // A4縦に4試合
+  const BLOCK_ROWS = 17;    // 1試合ブロックの行数（4つでページ全体に均等配置）
   const thin = { style: "thin" as const };
   const box = { top: thin, bottom: thin, left: thin, right: thin };
 
@@ -89,7 +89,7 @@ function buildStatusSheet(
     const buf = imageCache.get(m.address);
     if (buf) {
       const imageId = wb.addImage({ buffer: new Uint8Array(buf) as unknown as ExcelJS.Buffer, extension: "png" });
-      sheet.addImage(imageId, { tl: { col: 5, row: blockStart }, ext: { width: 340, height: 225 } });
+      sheet.addImage(imageId, { tl: { col: 5, row: blockStart }, ext: { width: 360, height: 240 } });
     }
 
     // ブロック高さを揃える（既に4行使用済み → 残りを空行で埋める）
