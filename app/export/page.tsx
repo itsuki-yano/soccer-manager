@@ -199,10 +199,8 @@ export default function ExportPage() {
   }
 
   const unbilledCount = preview?.matches.filter((m) => !m.settlementStatus).length ?? 0;
-  const billingTotal = preview?.matches.filter((m) => m.settlementStatus === "請求中").reduce((s, m) => s + m.totalFee, 0) ?? 0;
-  const settledTotal = preview?.matches.filter((m) => m.settlementStatus === "精算済み").reduce((s, m) => s + m.totalFee, 0) ?? 0;
-  const unbilledTotal = preview?.matches.filter((m) => !m.settlementStatus).reduce((s, m) => s + m.totalFee, 0) ?? 0;
-  const transportTotal = (billingTotal + settledTotal + unbilledTotal);
+  const billingCount = preview?.matches.filter((m) => m.settlementStatus === "請求中").length ?? 0;
+  const settledCount = preview?.matches.filter((m) => m.settlementStatus === "精算済み").length ?? 0;
 
   return (
     <main className="max-w-lg md:max-w-4xl mx-auto px-4 md:px-8 pt-16 md:pt-8 pb-8">
@@ -257,35 +255,26 @@ export default function ExportPage() {
         <div className="grid gap-3">
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <div className="bg-gray-50 px-4 py-2 border-b border-gray-100">
-              <span className="text-xs font-semibold text-gray-600">🚗 交通費（精算あり試合）</span>
+              <span className="text-xs font-semibold text-gray-600">🚗 精算あり試合（件数）</span>
             </div>
             <div className="grid grid-cols-3 divide-x divide-gray-100">
               <div className="p-3 text-center">
                 <div className="text-xs text-gray-400 mb-0.5">未請求</div>
-                <div className="text-base font-bold text-gray-500">{unbilledTotal.toLocaleString()}円</div>
-                <div className="text-xs text-gray-300">{preview.matches.filter((m) => !m.settlementStatus).length}件</div>
+                <div className="text-base font-bold text-gray-500">{unbilledCount}件</div>
               </div>
               <div className="p-3 text-center">
                 <div className="text-xs text-amber-800 mb-0.5">請求中</div>
-                <div className="text-base font-bold text-amber-800">{billingTotal.toLocaleString()}円</div>
-                <div className="text-xs text-gray-300">{preview.matches.filter((m) => m.settlementStatus === "請求中").length}件</div>
+                <div className="text-base font-bold text-amber-800">{billingCount}件</div>
               </div>
               <div className="p-3 text-center">
                 <div className="text-xs text-emerald-700 mb-0.5">精算済み</div>
-                <div className="text-base font-bold text-emerald-700">{settledTotal.toLocaleString()}円</div>
-                <div className="text-xs text-gray-300">{preview.matches.filter((m) => m.settlementStatus === "精算済み").length}件</div>
+                <div className="text-base font-bold text-emerald-700">{settledCount}件</div>
               </div>
             </div>
           </div>
-          <div className="bg-stone-50 rounded-xl p-3 grid grid-cols-2 gap-3 text-center">
-            <div>
-              <div className="text-xs text-gray-500 mb-0.5">コーチ飲食費</div>
-              <div className="text-base font-bold text-amber-700">{preview.coachExpenseTotal.toLocaleString()}円</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 mb-0.5">総合計</div>
-              <div className="text-base font-bold text-stone-800">{(transportTotal + preview.coachExpenseTotal).toLocaleString()}円</div>
-            </div>
+          <div className="bg-stone-50 rounded-xl p-3 text-center">
+            <div className="text-xs text-gray-500 mb-0.5">コーチ飲食費</div>
+            <div className="text-base font-bold text-amber-700">{preview.coachExpenseTotal.toLocaleString()}円</div>
           </div>
 
           {/* 試合一覧 */}
@@ -319,12 +308,7 @@ export default function ExportPage() {
                         <span>往復距離</span><span className="font-medium">{m.distanceKm} km</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>1台あたり（{m.distanceKm} × {m.gasPricePerKm}）</span>
-                        <span className="font-medium">{m.feePerCar.toLocaleString()} 円</span>
-                      </div>
-                      <div className="flex justify-between border-t border-gray-200 pt-1 mt-0.5 font-semibold text-gray-800">
-                        <span>小計（{m.feePerCar.toLocaleString()} × {m.carCount}台）</span>
-                        <span>{m.totalFee.toLocaleString()} 円</span>
+                        <span>台数</span><span className="font-medium">{m.carCount} 台</span>
                       </div>
                     </div>
                     {m.drivers.length > 0 && (
