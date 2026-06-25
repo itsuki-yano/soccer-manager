@@ -560,9 +560,12 @@ export default function PracticesPage() {
                 const active = isBucketActive(p, bucketStart, bucketEnd);
                 return (
                   <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${TYPE_COLORS[p.type] ?? "bg-gray-100 text-gray-600"}`}>{p.type}</span>
-                      <span className="text-sm text-gray-700">{fmtDate(p.date)}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${TYPE_COLORS[p.type] ?? "bg-gray-100 text-gray-600"}`}>{p.type}</span>
+                        <span className="text-sm text-gray-700">{fmtDate(p.date)}</span>
+                      </div>
+                      {p.venue && <div className="text-xs text-gray-500 mt-0.5 truncate">📍 {p.venue}</div>}
                     </div>
                     {active && duty && (
                       <div className="text-xs text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
