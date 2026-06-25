@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BackHeader from "@/components/BackHeader";
 
-const MATCH_TYPES = ["公式戦", "合宿", "TM", "その他"];
+const MATCH_TYPES = ["公式戦", "TM", "その他", "合宿"];
 
 export default function NewMatchPage() {
   const router = useRouter();
