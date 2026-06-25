@@ -7,7 +7,7 @@ import type { Settings } from "@/lib/types";
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     teamName: "", gasPricePerKm: 16, accountant: "", leagueName: "", logoUrl: "",
-    bucketDutyStartDate: "", bucketDutyEndDate: "",
+    bucketDutyStartDate: "", bucketDutyEndDate: "", leagueTableUrl: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -116,6 +116,16 @@ export default function SettingsPage() {
             onChange={(e) => setSettings((s) => ({ ...s, leagueName: e.target.value }))}
             className="input"
           />
+        </Field>
+        <Field label="リーグ戦績表URL（少年サッカー応援団）">
+          <input
+            type="url"
+            value={settings.leagueTableUrl}
+            onChange={(e) => setSettings((s) => ({ ...s, leagueTableUrl: e.target.value }))}
+            placeholder="https://junior-soccer.jp/sp/tokai/aichi/league/table/..."
+            className="input"
+          />
+          <p className="text-xs text-gray-400 mt-1">「リーグ戦戦績」画面の取得元。シーズン更新時に変更してください。</p>
         </Field>
         <Field label="会計担当者">
           <input

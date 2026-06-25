@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/practices",      icon: "🏃", label: "通常練習" },
   { href: "/duty-roster",   icon: "📅", label: "当番一覧" },
   { href: "/roles",          icon: "📋", label: "役割予定" },
+  { href: "/league",         icon: "🏆", label: "リーグ戦戦績" },
   { href: "/coach-expenses", icon: "🧃", label: "コーチ飲食費" },
   { href: "/parents",        icon: "👟", label: "選手マスタ" },
   { href: "/export",         icon: "📊", label: "まとめ役・会計担当" },

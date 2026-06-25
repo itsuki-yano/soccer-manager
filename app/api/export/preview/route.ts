@@ -25,6 +25,7 @@ export async function GET() {
       logoUrl: settingsMap.logoUrl ?? "",
       bucketDutyStartDate: settingsMap.bucketDutyStartDate ?? "",
       bucketDutyEndDate: settingsMap.bucketDutyEndDate ?? "",
+    leagueTableUrl: settingsMap.leagueTableUrl ?? "",
     };
 
     const matches: Match[] = matchRows.slice(1).filter((r) => r[0]).map((r) => ({

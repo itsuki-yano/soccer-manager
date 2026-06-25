@@ -54,6 +54,7 @@ export interface Settings {
   logoUrl: string;
   bucketDutyStartDate: string;
   bucketDutyEndDate: string;
+  leagueTableUrl: string; // junior-soccer.jp のリーグ戦績表URL
 }
 
 export interface Practice {
