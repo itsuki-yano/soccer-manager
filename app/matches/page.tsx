@@ -325,7 +325,7 @@ export default function MatchesPage() {
         <>
           {/* フィルター */}
           <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-            {["すべて", "公式戦", "合宿", "TM", "その他"].map((t) => (
+            {["すべて", "公式戦", "TM", "その他", "合宿"].map((t) => (
               <button key={t} onClick={() => setFilterType(t)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                   filterType === t ? "bg-stone-700 text-white border-stone-700" : "bg-white text-gray-600 border-gray-200"
