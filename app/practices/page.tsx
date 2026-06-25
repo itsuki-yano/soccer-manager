@@ -295,7 +295,7 @@ export default function PracticesPage() {
           disabled={syncing}
           className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
         >
-          {syncing ? "同期中..." : "🎵 BAND同期"}
+          {syncing ? "取込み中..." : "🎵 BAND予定取込み"}
         </button>
         <button
           onClick={() => { setShowForm((v) => !v); setShowBand(false); }}
@@ -396,7 +396,7 @@ export default function PracticesPage() {
       {view === "list" && (
         <>
           {upcoming.length === 0 && past.length === 0 && (
-            <div className="text-center text-gray-400 py-12">練習が登録されていません<br /><span className="text-sm">BAND同期または手動追加してください</span></div>
+            <div className="text-center text-gray-400 py-12">練習が登録されていません<br /><span className="text-sm">BAND予定取込みまたは手動追加してください</span></div>
           )}
           {upcoming.length > 0 && (
             <>
