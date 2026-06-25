@@ -6,7 +6,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const body: Omit<Match, "id"> = await req.json();
-    const rows = await getSheetData("matches!A:O");
+    const rows = await getSheetData("matches!A:Q");
     const idx = rows.findIndex((r) => r[0] === id);
     if (idx < 0) return NextResponse.json({ error: "not found" }, { status: 404 });
     await updateRow("matches", idx + 1, [
@@ -15,6 +15,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       body.needsSettlement ? "true" : "false",
       body.bandUid ?? "", body.equipmentBringIn ?? "", body.equipmentBringOut ?? "",
       body.settlementStatus ?? "", body.skippedDrivers ?? "",
+      body.bandUrl1 ?? "", body.bandUrl2 ?? "",
     ]);
     return NextResponse.json({ ok: true });
   } catch (e) {

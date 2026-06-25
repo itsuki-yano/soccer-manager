@@ -19,12 +19,14 @@ function rowToMatch(r: string[]): Match {
     equipmentBringOut: r[12] ?? "",
     settlementStatus: r[13] ?? "",
     skippedDrivers: r[14] ?? "",
+    bandUrl1: r[15] ?? "",
+    bandUrl2: r[16] ?? "",
   };
 }
 
 export async function GET() {
   try {
-    const rows = await getSheetData("matches!A:O");
+    const rows = await getSheetData("matches!A:Q");
     const matches = rows.slice(1).filter((r) => r[0]).map(rowToMatch);
     return NextResponse.json(matches);
   } catch (e) {
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
     // 直前の試合の持ち帰り人を今回の持ってくる人に自動セット
     let equipmentBringIn = body.equipmentBringIn ?? "";
     if (!equipmentBringIn) {
-      const rows = await getSheetData("matches!A:O");
+      const rows = await getSheetData("matches!A:Q");
       const existing = rows.slice(1).filter((r) => r[0]).map(rowToMatch);
       const prev = existing
         .filter((m) => m.date < body.date && m.equipmentBringOut)
@@ -54,6 +56,7 @@ export async function POST(req: Request) {
       body.needsSettlement ? "true" : "false",
       body.bandUid ?? "", equipmentBringIn, body.equipmentBringOut ?? "",
       body.settlementStatus ?? "", body.skippedDrivers ?? "",
+      body.bandUrl1 ?? "", body.bandUrl2 ?? "",
     ]);
     return NextResponse.json({ id, equipmentBringIn });
   } catch (e) {

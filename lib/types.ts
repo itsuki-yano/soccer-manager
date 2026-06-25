@@ -14,6 +14,8 @@ export interface Match {
   equipmentBringOut: string;
   settlementStatus: string; // "" | "請求中" | "精算済み"
   skippedDrivers: string; // スキップした配車当番（カンマ区切り）
+  bandUrl1: string; // BAND投稿リンク1
+  bandUrl2: string; // BAND投稿リンク2
 }
 
 export interface Driver {

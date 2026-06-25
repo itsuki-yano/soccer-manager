@@ -27,7 +27,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [matchType, setMatchType] = useState("公式戦");
   const [needsSettlement, setNeedsSettlement] = useState(true);
   const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement" | "bandUid" | "equipmentBringIn" | "equipmentBringOut" | "settlementStatus" | "carCount" | "skippedDrivers">>({
-    date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0,
+    date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0, bandUrl1: "", bandUrl2: "",
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -44,7 +44,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         setMatch(m);
         setMatchType(m.matchType ?? "公式戦");
         setNeedsSettlement(m.needsSettlement ?? false);
-        setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm });
+        setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm, bandUrl1: m.bandUrl1 ?? "", bandUrl2: m.bandUrl2 ?? "" });
       }
       setDrivers(drvList);
       setLoading(false);
@@ -178,6 +178,14 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                 )}
               </div>
             </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-0.5">BAND投稿リンク1</label>
+              <input type="url" value={form.bandUrl1} onChange={(e) => setForm((f) => ({ ...f, bandUrl1: e.target.value }))} placeholder="https://band.us/..." className="input" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-0.5">BAND投稿リンク2</label>
+              <input type="url" value={form.bandUrl2} onChange={(e) => setForm((f) => ({ ...f, bandUrl2: e.target.value }))} placeholder="https://band.us/..." className="input" />
+            </div>
             <div className="flex gap-2 mt-2">
               <button onClick={saveMatch} disabled={saving} className="flex-1 bg-stone-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
                 {saving ? "保存中..." : "保存"}
@@ -206,6 +214,18 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               <div>📍 {match.venue}</div>
               {match.address && <div className="text-gray-400 text-xs pl-4">{match.address}</div>}
               {match.distanceKm > 0 && <div>🚗 往復 {match.distanceKm}km × {drivers.length}台</div>}
+              {(match.bandUrl1 || match.bandUrl2) && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {match.bandUrl1 && (
+                    <a href={match.bandUrl1} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">🎵 BAND投稿1 ›</a>
+                  )}
+                  {match.bandUrl2 && (
+                    <a href={match.bandUrl2} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">🎵 BAND投稿2 ›</a>
+                  )}
+                </div>
+              )}
             </div>
             <button onClick={() => setShowDeleteConfirm(true)} className="mt-4 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
               この試合を削除

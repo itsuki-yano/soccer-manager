@@ -9,7 +9,7 @@ function calcFee(distanceKm: number, gasPricePerKm: number): number {
 export async function GET() {
   try {
     const [matchRows, driverRows, expenseRows, settingsRows] = await Promise.all([
-      getSheetData("matches!A:N"),
+      getSheetData("matches!A:Q"),
       getSheetData("drivers!A:B"),
       getSheetData("coach_expenses!A:G"),
       getSheetData("settings!A:B"),
@@ -35,6 +35,7 @@ export async function GET() {
       bandUid: r[10] ?? "", equipmentBringIn: r[11] ?? "", equipmentBringOut: r[12] ?? "",
       settlementStatus: r[13] ?? "",
       skippedDrivers: r[14] ?? "",
+    bandUrl1: r[15] ?? "", bandUrl2: r[16] ?? "",
     })).sort((a, b) => a.date.localeCompare(b.date));
 
     const drivers: Driver[] = driverRows.slice(1).filter((r) => r[0]).map((r) => ({
