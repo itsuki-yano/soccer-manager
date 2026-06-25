@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
+import { VIEW_ONLY, VIEW_ONLY_PATHS } from "@/lib/viewOnly";
 
 const menu = [
   { href: "/matches",        label: "試合・合宿管理", icon: "⚽", desc: "試合登録・配車当番の設定" },
@@ -118,8 +119,14 @@ export default function Home() {
         <p className="text-gray-500 text-sm mt-1">{teamName} マネジメントApp</p>
       </div>
 
+      {VIEW_ONLY && (
+        <div className="mb-4 text-center text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl py-2">
+          👀 閲覧専用モード
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 gap-3 mb-6">
-        {menu.map((item) => (
+        {(VIEW_ONLY ? menu.filter((m) => VIEW_ONLY_PATHS.includes(m.href)) : menu).map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -142,12 +149,14 @@ export default function Home() {
             <span className="text-xl">💬</span>
             <span className="font-semibold text-gray-800">BANDトーク</span>
           </div>
-          <button
-            onClick={() => { setShowLinkForm((v) => !v); setEditLinkId(null); setLinkForm({ name: "", url: "" }); }}
-            className="text-xs text-stone-700 border border-stone-200 px-3 py-1.5 rounded-lg"
-          >
-            {showLinkForm ? "キャンセル" : "＋ 追加"}
-          </button>
+          {!VIEW_ONLY && (
+            <button
+              onClick={() => { setShowLinkForm((v) => !v); setEditLinkId(null); setLinkForm({ name: "", url: "" }); }}
+              className="text-xs text-stone-700 border border-stone-200 px-3 py-1.5 rounded-lg"
+            >
+              {showLinkForm ? "キャンセル" : "＋ 追加"}
+            </button>
+          )}
         </div>
 
         {showLinkForm && (
@@ -199,12 +208,14 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <div className="flex flex-col">
-                    <button onClick={() => moveLink(i, -1)} disabled={i === 0}
-                      className="text-gray-400 leading-none px-1 disabled:opacity-20 active:text-gray-600" aria-label="上へ">▲</button>
-                    <button onClick={() => moveLink(i, 1)} disabled={i === links.length - 1}
-                      className="text-gray-400 leading-none px-1 disabled:opacity-20 active:text-gray-600" aria-label="下へ">▼</button>
-                  </div>
+                  {!VIEW_ONLY && (
+                    <div className="flex flex-col">
+                      <button onClick={() => moveLink(i, -1)} disabled={i === 0}
+                        className="text-gray-400 leading-none px-1 disabled:opacity-20 active:text-gray-600" aria-label="上へ">▲</button>
+                      <button onClick={() => moveLink(i, 1)} disabled={i === links.length - 1}
+                        className="text-gray-400 leading-none px-1 disabled:opacity-20 active:text-gray-600" aria-label="下へ">▼</button>
+                    </div>
+                  )}
                   <a
                     href={l.url}
                     target="_blank"
@@ -215,12 +226,16 @@ export default function Home() {
                     <span className="text-sm font-medium text-emerald-800">{l.name}</span>
                     <span className="ml-auto text-emerald-700 text-xs">開く ›</span>
                   </a>
-                  <button onClick={() => startEditLink(l)} className="text-xs text-gray-400 border border-gray-200 px-2 py-2 rounded-lg">
-                    編集
-                  </button>
-                  <button onClick={() => setDeleteConfirm({ id: l.id, name: l.name })} className="text-xs text-red-400 border border-red-100 px-2 py-2 rounded-lg">
-                    削除
-                  </button>
+                  {!VIEW_ONLY && (
+                    <>
+                      <button onClick={() => startEditLink(l)} className="text-xs text-gray-400 border border-gray-200 px-2 py-2 rounded-lg">
+                        編集
+                      </button>
+                      <button onClick={() => setDeleteConfirm({ id: l.id, name: l.name })} className="text-xs text-red-400 border border-red-100 px-2 py-2 rounded-lg">
+                        削除
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

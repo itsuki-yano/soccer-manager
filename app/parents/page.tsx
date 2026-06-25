@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import BackHeader from "@/components/BackHeader";
+import { VIEW_ONLY } from "@/lib/viewOnly";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Parent } from "@/lib/types";
 
@@ -226,12 +227,14 @@ export default function ParentsPage() {
           onCancel={() => setDeleteConfirm(null)}
         />
       )}
-      <button
-        onClick={() => withPassword(() => { setShowForm((v) => !v); setEditId(null); })}
-        className="block w-full bg-stone-700 text-white text-center py-3 rounded-xl font-semibold mb-4"
-      >
-        {showForm ? "✕ キャンセル" : "＋ 選手を追加"}
-      </button>
+      {!VIEW_ONLY && (
+        <button
+          onClick={() => withPassword(() => { setShowForm((v) => !v); setEditId(null); })}
+          className="block w-full bg-stone-700 text-white text-center py-3 rounded-xl font-semibold mb-4"
+        >
+          {showForm ? "✕ キャンセル" : "＋ 選手を追加"}
+        </button>
+      )}
 
       {showForm && (
         <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-4 mb-4 grid gap-3">
@@ -333,8 +336,8 @@ export default function ParentsPage() {
 
                 {/* アクションボタン */}
                 <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => withPassword(() => startEdit(p))} className="text-xs text-stone-600 border border-stone-300 px-2.5 py-1.5 rounded-lg">修正</button>
-                  <button onClick={() => withPassword(() => setDeleteConfirm({ id: p.id, name: p.playerName }))} className="text-xs text-red-400 border border-red-100 px-2.5 py-1.5 rounded-lg">削除</button>
+                  {!VIEW_ONLY && <button onClick={() => withPassword(() => startEdit(p))} className="text-xs text-stone-600 border border-stone-300 px-2.5 py-1.5 rounded-lg">修正</button>}
+                  {!VIEW_ONLY && <button onClick={() => withPassword(() => setDeleteConfirm({ id: p.id, name: p.playerName }))} className="text-xs text-red-400 border border-red-100 px-2.5 py-1.5 rounded-lg">削除</button>}
                 </div>
               </div>
             )}

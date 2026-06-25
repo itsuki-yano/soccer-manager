@@ -5,6 +5,7 @@ import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Match, Driver, Parent } from "@/lib/types";
+import { VIEW_ONLY } from "@/lib/viewOnly";
 
 const MATCH_TYPES = ["公式戦", "TM", "その他", "合宿"];
 
@@ -207,7 +208,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="font-bold text-gray-800 text-lg">{fmtDate(match.date)}</div>
                 {match.opponent && <div className="text-stone-700 font-semibold">vs {match.opponent}</div>}
               </div>
-              <button onClick={() => setEditing(true)} className="text-sm text-gray-400 border border-gray-200 px-3 py-1 rounded-lg">編集</button>
+              {!VIEW_ONLY && <button onClick={() => setEditing(true)} className="text-sm text-gray-400 border border-gray-200 px-3 py-1 rounded-lg">編集</button>}
             </div>
             <div className="space-y-1 text-sm text-gray-600">
               {match.matchName && <div>🏆 {match.matchName}</div>}
@@ -227,9 +228,11 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
             </div>
-            <button onClick={() => setShowDeleteConfirm(true)} className="mt-4 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
-              この試合を削除
-            </button>
+            {!VIEW_ONLY && (
+              <button onClick={() => setShowDeleteConfirm(true)} className="mt-4 w-full text-red-400 text-sm py-2 border border-red-100 rounded-lg">
+                この試合を削除
+              </button>
+            )}
           </>
         )}
       </div>
@@ -241,10 +244,12 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
             <h2 className="font-bold text-gray-700">配車当番</h2>
             {match.needsSettlement && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">💴 精算あり</span>}
           </div>
-          <Link href={`/duty-roster?matchId=${id}`}
-            className="text-sm text-stone-700 border border-stone-200 px-3 py-1 rounded-lg">
-            当番一覧で設定 →
-          </Link>
+          {!VIEW_ONLY && (
+            <Link href={`/duty-roster?matchId=${id}`}
+              className="text-sm text-stone-700 border border-stone-200 px-3 py-1 rounded-lg">
+              当番一覧で設定 →
+            </Link>
+          )}
         </div>
         {drivers.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
@@ -263,10 +268,12 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-gray-700">備品持帰り当番</h2>
-          <Link href={`/duty-roster?matchId=${id}`}
-            className="text-sm text-stone-700 border border-stone-200 px-3 py-1 rounded-lg">
-            当番一覧で設定 →
-          </Link>
+          {!VIEW_ONLY && (
+            <Link href={`/duty-roster?matchId=${id}`}
+              className="text-sm text-stone-700 border border-stone-200 px-3 py-1 rounded-lg">
+              当番一覧で設定 →
+            </Link>
+          )}
         </div>
         {equipOutNames.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">

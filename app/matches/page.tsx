@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import type { Match, Driver, Parent } from "@/lib/types";
+import { VIEW_ONLY } from "@/lib/viewOnly";
 
 const TYPE_COLORS: Record<string, string> = {
   "公式戦": "bg-stone-100 text-stone-700",
@@ -256,16 +257,18 @@ export default function MatchesPage() {
       )}
 
       {/* 追加 + BANDボタン */}
-      <div className="flex gap-2 mb-4">
-        <button onClick={syncBand} disabled={bandLoading}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50">
-          {bandLoading ? "取得中…" : "🎵 BAND予定取込み"}
-        </button>
-        <Link href="/matches/new"
-          className="flex-1 bg-stone-700 text-white text-center py-2.5 rounded-xl text-sm font-semibold active:bg-stone-800 flex items-center justify-center">
-          ＋ 手動追加
-        </Link>
-      </div>
+      {!VIEW_ONLY && (
+        <div className="flex gap-2 mb-4">
+          <button onClick={syncBand} disabled={bandLoading}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50">
+            {bandLoading ? "取得中…" : "🎵 BAND予定取込み"}
+          </button>
+          <Link href="/matches/new"
+            className="flex-1 bg-stone-700 text-white text-center py-2.5 rounded-xl text-sm font-semibold active:bg-stone-800 flex items-center justify-center">
+            ＋ 手動追加
+          </Link>
+        </div>
+      )}
 
       {syncSummary && (
         <div className="mb-4 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">

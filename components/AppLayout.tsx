@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { VIEW_ONLY, VIEW_ONLY_PATHS } from "@/lib/viewOnly";
 
 const NAV_ITEMS = [
   { href: "/matches",        icon: "⚽", label: "試合・合宿管理" },
@@ -44,7 +45,7 @@ function Sidebar({ onClose, logoUrl, teamName }: { onClose?: () => void; logoUrl
 
       {/* ナビゲーション */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {NAV_ITEMS.map((item) => {
+        {(VIEW_ONLY ? NAV_ITEMS.filter((n) => VIEW_ONLY_PATHS.includes(n.href)) : NAV_ITEMS).map((item) => {
           const active = pathname.startsWith(item.href);
           return (
             <Link

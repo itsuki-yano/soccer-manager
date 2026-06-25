@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
+import { VIEW_ONLY } from "@/lib/viewOnly";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Practice, BucketDuty, Settings } from "@/lib/types";
 
@@ -45,12 +46,14 @@ function BucketDutyCard({
     <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-semibold text-amber-800">🪣 バケツ当番</span>
-        <Link
-          href={`/duty-roster?practiceId=${practice.id}`}
-          className="text-xs text-stone-700 bg-stone-100 border border-stone-300 px-2.5 py-1 rounded-lg font-medium"
-        >
-          当番一覧で設定 →
-        </Link>
+        {!VIEW_ONLY && (
+          <Link
+            href={`/duty-roster?practiceId=${practice.id}`}
+            className="text-xs text-stone-700 bg-stone-100 border border-stone-300 px-2.5 py-1 rounded-lg font-medium"
+          >
+            当番一覧で設定 →
+          </Link>
+        )}
       </div>
       {duty ? (
         <div className="grid grid-cols-2 gap-2">
@@ -290,19 +293,23 @@ export default function PracticesPage() {
 
       {/* アクションバー */}
       <div className="flex gap-2 mb-4">
-        <button
-          onClick={syncBand}
-          disabled={syncing}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-        >
-          {syncing ? "取込み中..." : "🎵 BAND予定取込み"}
-        </button>
-        <button
-          onClick={() => { setShowForm((v) => !v); setShowBand(false); }}
-          className="flex-1 bg-stone-700 text-white py-2.5 rounded-xl text-sm font-semibold"
-        >
-          {showForm ? "✕ キャンセル" : "＋ 手動追加"}
-        </button>
+        {!VIEW_ONLY && (
+          <button
+            onClick={syncBand}
+            disabled={syncing}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+          >
+            {syncing ? "取込み中..." : "🎵 BAND予定取込み"}
+          </button>
+        )}
+        {!VIEW_ONLY && (
+          <button
+            onClick={() => { setShowForm((v) => !v); setShowBand(false); }}
+            className="flex-1 bg-stone-700 text-white py-2.5 rounded-xl text-sm font-semibold"
+          >
+            {showForm ? "✕ キャンセル" : "＋ 手動追加"}
+          </button>
+        )}
         <div className="flex bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
           {(["list", "cal"] as View[]).map((v) => (
             <button
@@ -411,7 +418,7 @@ export default function PracticesPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[p.type] ?? "bg-gray-100 text-gray-600"}`}>{p.type}</span>
                         <span className="font-semibold text-gray-800">{fmtDate(p.date)}</span>
                       </div>
-                      {editId !== p.id && (
+                      {!VIEW_ONLY && editId !== p.id && (
                         <div className="flex gap-1.5 shrink-0 ml-2">
                           <button onClick={() => startEditPractice(p)} className="text-xs text-stone-600 border border-stone-200 px-2 py-1 rounded-lg">編集</button>
                           <button onClick={() => setDeleteConfirm({ id: p.id, date: fmtDate(p.date) })} className="text-gray-300 text-lg active:text-red-400">✕</button>
@@ -489,7 +496,7 @@ export default function PracticesPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[p.type] ?? "bg-gray-100 text-gray-600"}`}>{p.type}</span>
                         <span className="font-semibold text-gray-700">{fmtDate(p.date)}</span>
                       </div>
-                      <button onClick={() => setDeleteConfirm({ id: p.id, date: fmtDate(p.date) })} className="text-gray-300 text-lg active:text-red-400 ml-2">✕</button>
+                      {!VIEW_ONLY && <button onClick={() => setDeleteConfirm({ id: p.id, date: fmtDate(p.date) })} className="text-gray-300 text-lg active:text-red-400 ml-2">✕</button>}
                     </div>
                     {(p.venue || p.startTime) && (
                       <div className="text-sm text-gray-500 mt-1">
