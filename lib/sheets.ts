@@ -28,17 +28,31 @@ export async function getSheetData(range: string): Promise<string[][]> {
 
 export async function appendRow(sheet: string, values: (string | number | null)[]): Promise<void> {
   const sheets = await getSheetsClient();
-  await sheets.spreadsheets.values.append({
+  // append の表検出に頼ると列がずれることがあるため、A列の行数から次行を決めて確実に書き込む
+  const colA = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${sheet}!A:Z`,
+    range: `${sheet}!A:A`,
+  });
+  const nextRow = ((colA.data.values as string[][]) || []).length + 1;
+  const endCol = colIndexToLetter(values.length);
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheet}!A${nextRow}:${endCol}${nextRow}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [values] },
   });
 }
 
+// 1→A, 26→Z, 27→AA ...
+function colIndexToLetter(n: number): string {
+  let s = "";
+  while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); }
+  return s || "A";
+}
+
 export async function updateRow(sheet: string, rowIndex: number, values: (string | number | null)[]): Promise<void> {
   const sheets = await getSheetsClient();
-  const col = String.fromCharCode(64 + values.length);
+  const col = colIndexToLetter(values.length);
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheet}!A${rowIndex}:${col}${rowIndex}`,
