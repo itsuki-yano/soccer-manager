@@ -28,6 +28,7 @@ type BandEvent = {
   bandUid: string; date: string; matchType: string; matchName: string;
   opponent: string; venue: string; address: string;
   distanceKm: number; carCount: number; needsSettlement: boolean; isHome: boolean;
+  postUrl?: string;
 };
 
 export default function MatchesPage() {
@@ -99,6 +100,7 @@ export default function MatchesPage() {
         body: JSON.stringify({
           ...ev, matchName: ev.matchName, bandUid: ev.bandUid,
           equipmentBringIn: "", equipmentBringOut: "",
+          bandUrl1: ev.postUrl ?? "",
         }),
       });
       const data = await res.json();
@@ -113,7 +115,7 @@ export default function MatchesPage() {
         equipmentBringOut: "",
         settlementStatus: "",
         skippedDrivers: "",
-        bandUrl1: "",
+        bandUrl1: ev.postUrl ?? "",
         bandUrl2: "",
       };
       setMatches((prev) => [...prev, newMatch]);

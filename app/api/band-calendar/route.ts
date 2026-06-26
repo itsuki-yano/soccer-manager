@@ -6,6 +6,16 @@ interface ICalEvent {
   dtstart: string;
   location: string;
   description: string;
+  url: string;
+}
+
+// BAND投稿URL（https://band.us/band/.../post/...）を抽出
+function extractPostUrl(e: Partial<ICalEvent>): string {
+  const re = /https?:\/\/band\.us\/\S+/i;
+  if (e.url && re.test(e.url)) return e.url.match(re)![0];
+  if (e.description) { const m = e.description.match(re); if (m) return m[0]; }
+  if (e.url) return e.url; // URLプロパティがband.us以外でも一応返す
+  return "";
 }
 
 function shouldSkip(summary: string): boolean {
@@ -61,6 +71,7 @@ function parseIcal(text: string): ICalEvent[] {
       else if (keyPart === "LOCATION") current.location = unescape(value);
       else if (keyPart === "DTSTART") current.dtstart = parseDtstart(value);
       else if (keyPart === "DESCRIPTION") current.description = unescape(value);
+      else if (keyPart === "URL") current.url = value;
     }
   }
 
@@ -115,6 +126,7 @@ export async function GET() {
           carCount: isHome ? 0 : 1,
           needsSettlement: matchType !== "TM",
           isHome,
+          postUrl: extractPostUrl(e),
         };
       })
     );
