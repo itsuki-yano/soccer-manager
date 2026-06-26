@@ -14,6 +14,19 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [pwModal, setPwModal] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pwError, setPwError] = useState(false);
+
+  const SHEET_URL = "https://docs.google.com/spreadsheets/d/1X7qM1JvYT2RT16a8enu2agzEOMFRxwCexSga33p6H2k";
+  function tryOpenSheet() {
+    if (pw === "0404") {
+      window.open(SHEET_URL, "_blank", "noopener,noreferrer");
+      setPwModal(false); setPw(""); setPwError(false);
+    } else {
+      setPwError(true);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/settings").then((r) => r.json()).then((d) => {
@@ -182,15 +195,37 @@ export default function SettingsPage() {
           データはGoogleスプレッドシートに保存されます。<br />
           サービスアカウントの設定が必要です（.env.local）。
         </p>
-        <a
-          href="https://docs.google.com/spreadsheets/d/1X7qM1JvYT2RT16a8enu2agzEOMFRxwCexSga33p6H2k"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={() => { setPwModal(true); setPw(""); setPwError(false); }}
           className="block mt-2 text-sm text-stone-700 underline"
         >
           スプレッドシートを開く →
-        </a>
+        </button>
       </div>
+
+      {pwModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setPwModal(false)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-bold text-gray-800 mb-1">パスワード入力</h2>
+            <p className="text-xs text-gray-500 mb-3">スプレッドシートを開くにはパスワードが必要です。</p>
+            <input
+              type="password"
+              inputMode="numeric"
+              value={pw}
+              autoFocus
+              onChange={(e) => { setPw(e.target.value); setPwError(false); }}
+              onKeyDown={(e) => { if (e.key === "Enter") tryOpenSheet(); }}
+              className="input w-full"
+              placeholder="パスワード"
+            />
+            {pwError && <p className="text-xs text-red-500 mt-1">パスワードが違います</p>}
+            <div className="flex gap-2 mt-4">
+              <button onClick={tryOpenSheet} className="flex-1 bg-stone-700 text-white py-2 rounded-lg text-sm font-semibold">開く</button>
+              <button onClick={() => setPwModal(false)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm">キャンセル</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
