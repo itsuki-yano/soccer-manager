@@ -8,6 +8,17 @@ interface ICalEvent {
   location: string;
   rrule?: string;
   exdates?: string[];
+  url?: string;
+  description?: string;
+}
+
+// BAND投稿URL（https://band.us/band/.../post/...）を抽出
+function extractPostUrl(e: ICalEvent): string {
+  const re = /https?:\/\/band\.us\/\S+/i;
+  if (e.url && re.test(e.url)) return e.url.match(re)![0];
+  if (e.description) { const m = e.description.match(re); if (m) return m[0]; }
+  if (e.url) return e.url;
+  return "";
 }
 
 function isPractice(summary: string): boolean {
@@ -58,6 +69,8 @@ function parseIcal(text: string): ICalEvent[] {
       else if (key === "LOCATION") current.location = unescape(val);
       else if (key === "DTSTART") current.dtstart = val;
       else if (key === "DTEND") current.dtend = val;
+      else if (key === "URL") current.url = val;
+      else if (key === "DESCRIPTION") current.description = unescape(val);
       else if (key === "RRULE") current.rrule = val;
       else if (key === "EXDATE") {
         // 複数日付（カンマ区切り）に対応し YYYY-MM-DD で蓄積
@@ -171,6 +184,7 @@ export async function GET() {
       const fullLocation = (e.location ?? "").trim();
       const venue = fullLocation.split(/[,、\n]/)[0].trim();
       const type = detectPracticeType(e.summary);
+      const postUrl = extractPostUrl(e);
       return dates.map((date) => ({
         // 繰り返し予定は日付ごとに一意なUIDにする（単発はそのまま）
         bandUid: e.rrule ? `${e.uid}_${date}` : e.uid,
@@ -179,6 +193,7 @@ export async function GET() {
         venue,
         startTime,
         endTime,
+        bandUrl: postUrl, // BAND投稿URL
         address: fullLocation, // フル住所（同期で取り込む）
       }));
     });

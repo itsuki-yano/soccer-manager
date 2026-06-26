@@ -6,7 +6,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   try {
     const body: Partial<Practice> = await req.json();
-    const rows = await getSheetData("practices!A:H");
+    const rows = await getSheetData("practices!A:I");
     const idx = rows.findIndex((r) => r[0] === id);
     if (idx < 0) return NextResponse.json({ error: "not found" }, { status: 404 });
     const old = rows[idx];
@@ -19,6 +19,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       body.endTime ?? old[5],
       body.bandUid ?? old[6] ?? "",
       body.address ?? old[7] ?? "",
+      body.bandUrl ?? old[8] ?? "",
     ]);
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -29,7 +30,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const rows = await getSheetData("practices!A:H");
+    const rows = await getSheetData("practices!A:I");
     const idx = rows.findIndex((r) => r[0] === id);
     if (idx < 0) return NextResponse.json({ error: "not found" }, { status: 404 });
     await deleteRow("practices", idx + 1);

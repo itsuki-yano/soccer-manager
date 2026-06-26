@@ -91,10 +91,10 @@ export default function PracticesPage() {
   const [deletingBand, setDeletingBand] = useState(false);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
-  const [form, setForm] = useState({ date: "", type: "通常練習", venue: "", address: "", startTime: "", endTime: "" });
+  const [form, setForm] = useState({ date: "", type: "通常練習", venue: "", address: "", startTime: "", endTime: "", bandUrl: "" });
   // 練習の編集
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ type: "通常練習", date: "", venue: "", address: "", startTime: "", endTime: "" });
+  const [editForm, setEditForm] = useState({ type: "通常練習", date: "", venue: "", address: "", startTime: "", endTime: "", bandUrl: "" });
   const [savingEdit, setSavingEdit] = useState(false);
 
   // input[type=time] は "HH:MM"（時は2桁）でないと表示されないため整形
@@ -106,7 +106,7 @@ export default function PracticesPage() {
 
   function startEditPractice(p: Practice) {
     setEditId(p.id);
-    setEditForm({ type: p.type, date: p.date, venue: p.venue, address: p.address ?? "", startTime: toTimeInput(p.startTime), endTime: toTimeInput(p.endTime) });
+    setEditForm({ type: p.type, date: p.date, venue: p.venue, address: p.address ?? "", startTime: toTimeInput(p.startTime), endTime: toTimeInput(p.endTime), bandUrl: p.bandUrl ?? "" });
   }
 
   async function saveEditPractice(id: string) {
@@ -211,7 +211,7 @@ export default function PracticesPage() {
     const data = await res.json();
     if (data.id) {
       setPractices((prev) => [...prev, { id: data.id, ...body }].sort((a, b) => a.date.localeCompare(b.date)));
-      setForm({ date: "", type: "通常練習", venue: "", address: "", startTime: "", endTime: "" });
+      setForm({ date: "", type: "通常練習", venue: "", address: "", startTime: "", endTime: "", bandUrl: "" });
       setShowForm(false);
     } else {
       alert("追加に失敗しました");
@@ -455,6 +455,10 @@ export default function PracticesPage() {
                             <input type="time" value={editForm.endTime} onChange={(e) => setEditForm((f) => ({ ...f, endTime: e.target.value }))} className="input" />
                           </div>
                         </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-0.5">BAND投稿リンク</label>
+                          <input type="url" value={editForm.bandUrl} onChange={(e) => setEditForm((f) => ({ ...f, bandUrl: e.target.value }))} placeholder="https://band.us/..." className="input" />
+                        </div>
                         <div className="flex gap-2">
                           <button onClick={() => saveEditPractice(p.id)} disabled={savingEdit} className="flex-1 bg-emerald-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50">
                             {savingEdit ? "保存中..." : "保存"}
@@ -470,6 +474,10 @@ export default function PracticesPage() {
                             {p.startTime && <span className="ml-2">🕐 {p.startTime}{p.endTime ? `〜${p.endTime}` : ""}</span>}
                             {p.address && <div className="text-xs text-gray-400 mt-0.5">{p.address}</div>}
                           </div>
+                        )}
+                        {p.bandUrl && (
+                          <a href={p.bandUrl} target="_blank" rel="noopener noreferrer"
+                            className="inline-block mt-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">🎵 BAND投稿 ›</a>
                         )}
                         <BucketDutyCard
                           practice={p}
