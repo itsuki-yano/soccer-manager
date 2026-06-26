@@ -339,14 +339,16 @@ export default function MatchesPage() {
                 }`}>{t}</button>
             ))}
           </div>
-          <div className="mb-4">
-            <button onClick={() => setFilterSettlement((v) => !v)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                filterSettlement ? "bg-amber-600 text-white border-amber-600" : "bg-white text-gray-600 border-gray-200"
-              }`}>
-              💴 精算あり のみ
-            </button>
-          </div>
+          {!VIEW_ONLY && (
+            <div className="mb-4">
+              <button onClick={() => setFilterSettlement((v) => !v)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  filterSettlement ? "bg-amber-600 text-white border-amber-600" : "bg-white text-gray-600 border-gray-200"
+                }`}>
+                💴 精算あり のみ
+              </button>
+            </div>
+          )}
 
           {filtered.length === 0 && (
             <p className="text-center text-gray-400 py-8">該当する試合がありません</p>
@@ -463,7 +465,7 @@ export default function MatchesPage() {
                     </div>
                   </div>
                 )}
-                {past.length > 0 && (
+                {!VIEW_ONLY && past.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-sm font-bold text-gray-400">過去の試合</span>

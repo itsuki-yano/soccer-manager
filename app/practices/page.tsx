@@ -479,11 +479,13 @@ export default function PracticesPage() {
                           <a href={p.bandUrl} target="_blank" rel="noopener noreferrer"
                             className="inline-block mt-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">🎵 BAND投稿 ›</a>
                         )}
-                        <BucketDutyCard
-                          practice={p}
-                          duty={duty}
-                          bucketActive={active}
-                        />
+                        {!VIEW_ONLY && (
+                          <BucketDutyCard
+                            practice={p}
+                            duty={duty}
+                            bucketActive={active}
+                          />
+                        )}
                       </>
                     )}
                   </div>
@@ -491,7 +493,7 @@ export default function PracticesPage() {
               })}
             </>
           )}
-          {past.length > 0 && (
+          {!VIEW_ONLY && past.length > 0 && (
             <>
               <p className="text-xs font-medium text-gray-400 mb-2 mt-4">過去の練習</p>
               {past.map((p) => {
@@ -568,7 +570,7 @@ export default function PracticesPage() {
           <div className="mt-4 border-t border-gray-100 pt-3">
             {(() => {
               const monthStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}`;
-              const monthPractices = sorted.filter((p) => p.date.startsWith(monthStr));
+              const monthPractices = sorted.filter((p) => p.date.startsWith(monthStr) && (!VIEW_ONLY || p.date >= today));
               if (monthPractices.length === 0) return <p className="text-xs text-gray-400 text-center py-2">この月の練習はありません</p>;
               return monthPractices.map((p) => {
                 const duty = duties.find((d) => d.practiceId === p.id);
@@ -582,7 +584,7 @@ export default function PracticesPage() {
                       </div>
                       {p.venue && <div className="text-xs text-gray-500 mt-0.5 truncate">📍 {p.venue}</div>}
                     </div>
-                    {active && duty && (
+                    {!VIEW_ONLY && active && duty && (
                       <div className="text-xs text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                         🪣 {duty.bringPersonName || "−"} / {duty.returnPersonName || "−"}
                       </div>
