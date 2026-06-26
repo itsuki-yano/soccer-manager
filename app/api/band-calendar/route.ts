@@ -18,6 +18,14 @@ function extractPostUrl(e: Partial<ICalEvent>): string {
   return "";
 }
 
+// 「日本、〒448-0011 愛知県…」→「愛知県…」（郵便番号より後だけ採用）
+function cleanAddress(raw: string): string {
+  const s = (raw ?? "").trim();
+  const m = s.match(/〒?\s*\d{3}-?\d{4}\s*(.+)$/);
+  if (m && m[1].trim()) return m[1].trim();
+  return s.replace(/^日本[、,\s]*/, "").trim();
+}
+
 function shouldSkip(summary: string): boolean {
   return summary.includes("練習");
 }
@@ -109,7 +117,7 @@ export async function GET() {
       filtered.map(async (e) => {
         const matchType = detectMatchType(e.summary);
         let distanceKm = 0;
-        const address = e.location ?? "";
+        const address = cleanAddress(e.location ?? "");
         const isHome = address.includes("かりがね") || e.summary.includes("かりがね");
         if (address && !isHome) {
           distanceKm = await calcDistance(address);

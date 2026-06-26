@@ -21,6 +21,14 @@ function extractPostUrl(e: ICalEvent): string {
   return "";
 }
 
+// 「日本、〒448-0011 愛知県…」→「愛知県…」（郵便番号より後だけ採用）
+function cleanAddress(raw: string): string {
+  const s = (raw ?? "").trim();
+  const m = s.match(/〒?\s*\d{3}-?\d{4}\s*(.+)$/);
+  if (m && m[1].trim()) return m[1].trim();
+  return s.replace(/^日本[、,\s]*/, "").trim();
+}
+
 function isPractice(summary: string): boolean {
   return /通常練習|自主練習|練習/.test(summary);
 }
@@ -181,7 +189,7 @@ export async function GET() {
       const { date: firstDate, time: startTime } = parseDtstart(e.dtstart);
       const { time: endTime } = e.dtend ? parseDtstart(e.dtend) : { time: "" };
       const dates = expandRecurrence(firstDate, e.rrule, e.exdates);
-      const fullLocation = (e.location ?? "").trim();
+      const fullLocation = cleanAddress(e.location ?? "");
       const venue = fullLocation.split(/[,、\n]/)[0].trim();
       const type = detectPracticeType(e.summary);
       const postUrl = extractPostUrl(e);
