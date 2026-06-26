@@ -142,7 +142,8 @@ export default function Home() {
         ))}
       </div>
 
-      {/* BANDトーク */}
+      {/* BANDトーク（閲覧専用モードでは非表示） */}
+      {!VIEW_ONLY && (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -242,6 +243,7 @@ export default function Home() {
           ))}
         </div>
       </div>
+      )}
     </main>
   );
 }
