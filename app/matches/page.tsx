@@ -366,6 +366,32 @@ export default function MatchesPage() {
               const typeColor = TYPE_COLORS[m.matchType] ?? "bg-gray-100 text-gray-600";
               const isHome = m.venue.includes("かりがね") || m.address.includes("かりがね");
               const isPast = m.date < today;
+
+              // 子供用（閲覧モード）: 試合詳細カード相当の読み取り専用カード
+              if (VIEW_ONLY) {
+                return (
+                  <div className={`rounded-xl p-4 shadow-sm border block ${isPast ? "bg-gray-50 border-gray-100 opacity-75" : "bg-white border-gray-100"}`}>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeColor}`}>{m.matchType}</span>
+                    </div>
+                    <div className={`font-bold text-lg ${isPast ? "text-gray-500" : "text-gray-800"}`}>{fmtDate(m.date)}</div>
+                    {m.opponent && <div className="text-stone-700 font-semibold">vs {m.opponent}</div>}
+                    <div className="space-y-1 text-sm text-gray-600 mt-1">
+                      {m.matchName && <div>🏆 {m.matchName}</div>}
+                      {m.venue && <div>📍 {m.venue}</div>}
+                      {m.address && <div className="text-gray-400 text-xs pl-4">{m.address}</div>}
+                      {m.distanceKm > 0 && <div>🚗 往復 {m.distanceKm}km × {m.carCount}台</div>}
+                      {(m.bandUrl1 || m.bandUrl2) && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {m.bandUrl1 && <a href={m.bandUrl1} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">🎵 BAND投稿1 ›</a>}
+                          {m.bandUrl2 && <a href={m.bandUrl2} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">🎵 BAND投稿2 ›</a>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <Link href={`/matches/${m.id}`}
                   className={`rounded-xl p-4 shadow-sm border block ${isPast ? "bg-gray-50 border-gray-100 opacity-75" : "bg-white border-gray-100"}`}>
