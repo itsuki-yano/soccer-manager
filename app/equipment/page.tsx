@@ -203,19 +203,6 @@ export default function EquipmentPage() {
           return (
             <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="p-4">
-                {/* 写真 */}
-                {item.imageUrl && (
-                  <div className="relative mb-3">
-                    <div className="relative w-full h-40">
-                      <Image src={item.imageUrl} alt={item.name} fill className="rounded-lg object-cover" />
-                    </div>
-                    {editMode && (
-                      <button onClick={() => removeImage(item.id)}
-                        className="absolute top-1 right-1 bg-black/50 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">✕</button>
-                    )}
-                  </div>
-                )}
-
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     {/* 名前 */}
@@ -286,6 +273,17 @@ export default function EquipmentPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* 写真（右側・全体表示） */}
+                  {item.imageUrl && (
+                    <div className="relative w-24 h-24 flex-shrink-0 bg-gray-50 rounded-lg border border-gray-100">
+                      <Image src={item.imageUrl} alt={item.name} fill className="rounded-lg object-contain p-0.5" />
+                      {editMode && (
+                        <button onClick={() => removeImage(item.id)}
+                          className="absolute -top-1.5 -right-1.5 bg-black/60 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">✕</button>
+                      )}
+                    </div>
+                  )}
 
                   {/* 数量表示（一覧モード）& 削除ボタン */}
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -370,16 +368,18 @@ export default function EquipmentPage() {
                             )
                           )}
 
-                          {child.imageUrl && (
-                            <div className="relative mt-2 w-full h-24">
-                              <Image src={child.imageUrl} alt={child.name} fill className="rounded object-cover" />
-                              {editMode && (
-                                <button onClick={() => removeImage(child.id)}
-                                  className="absolute top-1 right-1 bg-black/50 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">✕</button>
-                              )}
-                            </div>
-                          )}
                         </div>
+
+                        {/* 子の写真（右側・全体表示） */}
+                        {child.imageUrl && (
+                          <div className="relative w-20 h-20 flex-shrink-0 bg-white rounded-lg border border-gray-100">
+                            <Image src={child.imageUrl} alt={child.name} fill className="rounded-lg object-contain p-0.5" />
+                            {editMode && (
+                              <button onClick={() => removeImage(child.id)}
+                                className="absolute -top-1.5 -right-1.5 bg-black/60 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">✕</button>
+                            )}
+                          </div>
+                        )}
 
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {!editMode && (
