@@ -4,9 +4,17 @@ interface ICalEvent {
   uid: string;
   summary: string;
   dtstart: string;
+  dtend: string;
   location: string;
   description: string;
   url: string;
+}
+
+// iCal日時値から時刻(HH:MM)を抽出（時刻なし=終日なら空）
+function extractTime(value: string): string {
+  const cleaned = (value ?? "").replace(/[TZ]/g, "");
+  const t = cleaned.slice(8, 12);
+  return t.length >= 4 ? `${t.slice(0, 2)}:${t.slice(2, 4)}` : "";
 }
 
 // BAND投稿URL（https://band.us/band/.../post/...）を抽出
@@ -77,7 +85,8 @@ function parseIcal(text: string): ICalEvent[] {
       if (keyPart === "UID") current.uid = value;
       else if (keyPart === "SUMMARY") current.summary = unescape(value);
       else if (keyPart === "LOCATION") current.location = unescape(value);
-      else if (keyPart === "DTSTART") current.dtstart = parseDtstart(value);
+      else if (keyPart === "DTSTART") current.dtstart = value;
+      else if (keyPart === "DTEND") current.dtend = value;
       else if (keyPart === "DESCRIPTION") current.description = unescape(value);
       else if (keyPart === "URL") current.url = value;
     }
@@ -124,7 +133,9 @@ export async function GET() {
         }
         return {
           bandUid: e.uid,
-          date: e.dtstart,
+          date: parseDtstart(e.dtstart),
+          startTime: extractTime(e.dtstart),
+          endTime: e.dtend ? extractTime(e.dtend) : "",
           matchType,
           matchName: e.summary,
           opponent: "",

@@ -28,7 +28,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [matchType, setMatchType] = useState("公式戦");
   const [needsSettlement, setNeedsSettlement] = useState(true);
   const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement" | "bandUid" | "equipmentBringIn" | "equipmentBringOut" | "settlementStatus" | "carCount" | "skippedDrivers">>({
-    date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0, bandUrl1: "", bandUrl2: "",
+    date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0, bandUrl1: "", bandUrl2: "", startTime: "", endTime: "",
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -45,7 +45,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         setMatch(m);
         setMatchType(m.matchType ?? "公式戦");
         setNeedsSettlement(m.needsSettlement ?? false);
-        setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm, bandUrl1: m.bandUrl1 ?? "", bandUrl2: m.bandUrl2 ?? "" });
+        const toTime = (s: string) => { const mm = (s ?? "").trim().match(/^(\d{1,2}):(\d{2})/); return mm ? `${mm[1].padStart(2, "0")}:${mm[2]}` : ""; };
+        setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm, bandUrl1: m.bandUrl1 ?? "", bandUrl2: m.bandUrl2 ?? "", startTime: toTime(m.startTime), endTime: toTime(m.endTime) });
       }
       setDrivers(drvList);
       setLoading(false);
@@ -150,6 +151,16 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
               <label className="block text-xs text-gray-500 mb-0.5">試合日</label>
               <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="input" />
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">開始時刻</label>
+                <input type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} className="input" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">終了時刻</label>
+                <input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className="input" />
+              </div>
+            </div>
             <div>
               <label className="block text-xs text-gray-500 mb-0.5">試合名</label>
               <input type="text" value={form.matchName} onChange={(e) => setForm((f) => ({ ...f, matchName: e.target.value }))} className="input" />
@@ -212,6 +223,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
             </div>
             <div className="space-y-1 text-sm text-gray-600">
               {match.matchName && <div>🏆 {match.matchName}</div>}
+              {match.startTime && <div>🕐 {match.startTime}{match.endTime ? `〜${match.endTime}` : ""}</div>}
               <div>📍 {match.venue}</div>
               {match.address && <div className="text-gray-400 text-xs pl-4">{match.address}</div>}
               {match.distanceKm > 0 && <div>🚗 往復 {match.distanceKm}km × {drivers.length}台</div>}

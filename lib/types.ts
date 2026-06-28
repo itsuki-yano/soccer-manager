@@ -16,6 +16,8 @@ export interface Match {
   skippedDrivers: string; // スキップした配車当番（カンマ区切り）
   bandUrl1: string; // BAND投稿リンク1
   bandUrl2: string; // BAND投稿リンク2
+  startTime: string; // 開始時刻 HH:MM
+  endTime: string;   // 終了時刻 HH:MM
 }
 
 export interface Driver {

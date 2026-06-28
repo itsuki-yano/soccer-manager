@@ -12,7 +12,7 @@ export default function NewMatchPage() {
   const [matchType, setMatchType] = useState("公式戦");
   const [needsSettlement, setNeedsSettlement] = useState(true);
   const [form, setForm] = useState({
-    date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: "", carCount: "",
+    date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: "", carCount: "", startTime: "", endTime: "",
   });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -97,6 +97,14 @@ export default function NewMatchPage() {
         <Field label="試合日 *">
           <input type="date" value={form.date} onChange={set("date")} className="input" />
         </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="開始時刻">
+            <input type="time" value={form.startTime} onChange={set("startTime")} className="input" />
+          </Field>
+          <Field label="終了時刻">
+            <input type="time" value={form.endTime} onChange={set("endTime")} className="input" />
+          </Field>
+        </div>
 
         <Field label="試合名">
           <input type="text" value={form.matchName} onChange={set("matchName")}

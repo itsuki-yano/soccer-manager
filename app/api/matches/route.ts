@@ -21,12 +21,14 @@ function rowToMatch(r: string[]): Match {
     skippedDrivers: r[14] ?? "",
     bandUrl1: r[15] ?? "",
     bandUrl2: r[16] ?? "",
+    startTime: r[17] ?? "",
+    endTime: r[18] ?? "",
   };
 }
 
 export async function GET() {
   try {
-    const rows = await getSheetData("matches!A:Q");
+    const rows = await getSheetData("matches!A:S");
     const matches = rows.slice(1).filter((r) => r[0]).map(rowToMatch);
     return NextResponse.json(matches);
   } catch (e) {
@@ -42,7 +44,7 @@ export async function POST(req: Request) {
     // 直前の試合の持ち帰り人を今回の持ってくる人に自動セット
     let equipmentBringIn = body.equipmentBringIn ?? "";
     if (!equipmentBringIn) {
-      const rows = await getSheetData("matches!A:Q");
+      const rows = await getSheetData("matches!A:S");
       const existing = rows.slice(1).filter((r) => r[0]).map(rowToMatch);
       const prev = existing
         .filter((m) => m.date < body.date && m.equipmentBringOut)
@@ -57,6 +59,7 @@ export async function POST(req: Request) {
       body.bandUid ?? "", equipmentBringIn, body.equipmentBringOut ?? "",
       body.settlementStatus ?? "", body.skippedDrivers ?? "",
       body.bandUrl1 ?? "", body.bandUrl2 ?? "",
+      body.startTime ?? "", body.endTime ?? "",
     ]);
     return NextResponse.json({ id, equipmentBringIn });
   } catch (e) {

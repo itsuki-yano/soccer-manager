@@ -28,7 +28,7 @@ type BandEvent = {
   bandUid: string; date: string; matchType: string; matchName: string;
   opponent: string; venue: string; address: string;
   distanceKm: number; carCount: number; needsSettlement: boolean; isHome: boolean;
-  postUrl?: string;
+  postUrl?: string; startTime?: string; endTime?: string;
 };
 
 export default function MatchesPage() {
@@ -101,6 +101,7 @@ export default function MatchesPage() {
           ...ev, matchName: ev.matchName, bandUid: ev.bandUid,
           equipmentBringIn: "", equipmentBringOut: "",
           bandUrl1: ev.postUrl ?? "",
+          startTime: ev.startTime ?? "", endTime: ev.endTime ?? "",
         }),
       });
       const data = await res.json();
@@ -117,6 +118,8 @@ export default function MatchesPage() {
         skippedDrivers: "",
         bandUrl1: ev.postUrl ?? "",
         bandUrl2: "",
+        startTime: ev.startTime ?? "",
+        endTime: ev.endTime ?? "",
       };
       setMatches((prev) => [...prev, newMatch]);
       setImportedUids((prev) => new Set(prev).add(ev.bandUid));
@@ -379,6 +382,7 @@ export default function MatchesPage() {
                     <div className={`font-bold text-lg ${isPast ? "text-gray-500" : "text-gray-800"}`}>{fmtDate(m.date)}</div>
                     {m.opponent && <div className="text-stone-700 font-semibold">vs {m.opponent}</div>}
                     <div className="space-y-1 text-sm text-gray-600 mt-1">
+                      {m.startTime && <div>🕐 {m.startTime}{m.endTime ? `〜${m.endTime}` : ""}</div>}
                       {m.matchName && <div>🏆 {m.matchName}</div>}
                       {m.venue && <div>📍 {m.venue}</div>}
                       {m.address && <div className="text-gray-400 text-xs pl-4">{m.address}</div>}
@@ -409,6 +413,7 @@ export default function MatchesPage() {
                         {fmtDate(m.date)}{m.opponent ? ` vs ${m.opponent}` : ` ${m.matchName}`}
                       </div>
                       <div className="text-sm text-gray-500 mt-1">{m.venue}</div>
+                      {m.startTime && <div className="text-sm text-gray-500">🕐 {m.startTime}{m.endTime ? `〜${m.endTime}` : ""}</div>}
                       {m.distanceKm > 0 && (
                         <div className="text-sm text-gray-500">往復 {m.distanceKm}km × {m.carCount}台</div>
                       )}
@@ -561,7 +566,7 @@ export default function MatchesPage() {
                             <div className={`font-bold text-sm ${isPast ? "text-gray-500" : "text-gray-800"}`}>
                               {fmtDate(m.date)}{m.opponent ? ` vs ${m.opponent}` : ` ${m.matchName}`}
                             </div>
-                            <div className="text-xs text-gray-500 mt-0.5">{m.venue}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{m.venue}{m.startTime ? `　🕐 ${m.startTime}${m.endTime ? `〜${m.endTime}` : ""}` : ""}</div>
                           </div>
                           {matchDrivers.length > 0 && (
                             <span className="text-xs bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full flex-shrink-0">
