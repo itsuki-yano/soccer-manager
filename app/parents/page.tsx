@@ -9,12 +9,12 @@ type EditForm = {
   playerName: string; furigana: string;
   jerseyNumber: string; uniformNumber: string;
   group: string; carCapacity: string; bucketOrder: string;
-  blueBibsNumber: string; yellowBibsNumber: string;
+  blueBibsNumber: string; yellowBibsNumber: string; blueBibsMemo: string;
 };
 const EMPTY_FORM: EditForm = {
   playerName: "", furigana: "", jerseyNumber: "", uniformNumber: "",
   group: "", carCapacity: "", bucketOrder: "",
-  blueBibsNumber: "", yellowBibsNumber: "",
+  blueBibsNumber: "", yellowBibsNumber: "", blueBibsMemo: "",
 };
 
 function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void }) {
@@ -51,6 +51,10 @@ function FormFields({ f, setter }: { f: EditForm; setter: (v: EditForm) => void 
           <label className="block text-xs text-gray-500 mb-0.5">🟡 黄ビブス番号</label>
           <input type="text" value={f.yellowBibsNumber} onChange={setF("yellowBibsNumber")} placeholder="例: 3" className="input" />
         </div>
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-0.5">🔵 青ビブスのメモ</label>
+        <input type="text" value={f.blueBibsMemo} onChange={setF("blueBibsMemo")} placeholder="例: 破れあり / 予備" className="input" />
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div>
@@ -134,7 +138,7 @@ export default function ParentsPage() {
       jerseyNumber: f.jerseyNumber, uniformNumber: f.uniformNumber,
       group: f.group, carCapacity: Number(f.carCapacity) || 0,
       bucketOrder: Number(f.bucketOrder) || 0,
-      blueBibsNumber: f.blueBibsNumber, yellowBibsNumber: f.yellowBibsNumber,
+      blueBibsNumber: f.blueBibsNumber, yellowBibsNumber: f.yellowBibsNumber, blueBibsMemo: f.blueBibsMemo,
     };
   }
 
@@ -160,7 +164,7 @@ export default function ParentsPage() {
       jerseyNumber: p.jerseyNumber, uniformNumber: p.uniformNumber ?? "",
       group: p.group, carCapacity: p.carCapacity ? String(p.carCapacity) : "",
       bucketOrder: p.bucketOrder ? String(p.bucketOrder) : "",
-      blueBibsNumber: p.blueBibsNumber ?? "", yellowBibsNumber: p.yellowBibsNumber ?? "",
+      blueBibsNumber: p.blueBibsNumber ?? "", yellowBibsNumber: p.yellowBibsNumber ?? "", blueBibsMemo: p.blueBibsMemo ?? "",
     });
   }
 
@@ -324,6 +328,11 @@ export default function ParentsPage() {
                     {p.blueBibsNumber && (
                       <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
                         🔵#{p.blueBibsNumber}
+                      </span>
+                    )}
+                    {p.blueBibsMemo && (
+                      <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">
+                        📝 {p.blueBibsMemo}
                       </span>
                     )}
                     {p.yellowBibsNumber && (

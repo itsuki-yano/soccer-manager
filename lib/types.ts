@@ -36,6 +36,7 @@ export interface Parent {
   bucketOrder: number;
   blueBibsNumber: string;    // 青ビブス番号
   yellowBibsNumber: string;  // 黄ビブス番号
+  blueBibsMemo: string;      // 青ビブスのメモ
 }
 
 export interface CoachExpense {
