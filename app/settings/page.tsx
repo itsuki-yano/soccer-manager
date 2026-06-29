@@ -189,6 +189,11 @@ export default function SettingsPage() {
         </button>
       </div>
 
+      <a href="/audit" className="mt-4 block bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between active:bg-gray-50">
+        <span className="font-medium text-gray-700">🕓 操作履歴</span>
+        <span className="text-gray-400">›</span>
+      </a>
+
       <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
         <h3 className="font-semibold text-amber-800 mb-2">Googleスプレッドシート連携</h3>
         <p className="text-sm text-amber-800">
