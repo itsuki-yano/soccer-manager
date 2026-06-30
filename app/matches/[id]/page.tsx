@@ -6,6 +6,7 @@ import BackHeader from "@/components/BackHeader";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Match, Driver, Parent } from "@/lib/types";
 import { VIEW_ONLY } from "@/lib/viewOnly";
+import { logDetail } from "@/lib/audit";
 
 const MATCH_TYPES = ["公式戦", "TM", "その他", "合宿"];
 
@@ -94,6 +95,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function deleteMatch() {
+    if (match) logDetail(`${fmtDate(match.date)} ${match.matchName || match.matchType}${match.opponent ? ` vs ${match.opponent}` : ""} を削除`);
     // 紐付く配車当番(drivers)を解除してから試合を削除（備品持帰りはmatch項目なので削除で消える）
     await fetch("/api/drivers", {
       method: "POST",

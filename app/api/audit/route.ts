@@ -7,10 +7,10 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     let rows: string[][];
-    try { rows = await getSheetData("audit_log!A:E"); }
-    catch { await ensureSheets(); rows = await getSheetData("audit_log!A:E"); }
+    try { rows = await getSheetData("audit_log!A:F"); }
+    catch { await ensureSheets(); rows = await getSheetData("audit_log!A:F"); }
     const logs = rows.slice(1).filter((r) => r[0]).map((r) => ({
-      time: r[0] ?? "", ip: r[1] ?? "", device: r[2] ?? "", method: r[3] ?? "", path: r[4] ?? "",
+      time: r[0] ?? "", ip: r[1] ?? "", device: r[2] ?? "", method: r[3] ?? "", path: r[4] ?? "", detail: r[5] ?? "",
     }));
     logs.reverse();
     return NextResponse.json(logs.slice(0, 300));

@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import type { Match, Driver, Parent, Practice, BucketDuty, Settings, DutySwap } from "@/lib/types";
+import { logDetail } from "@/lib/audit";
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -67,13 +68,8 @@ function DutyRosterInner() {
   const [skipOnlyNames, setSkipOnlyNames] = useState<string[]>([]);
   const [savingSkip, setSavingSkip] = useState(false);
 
-  // 未来スロットの試合紐づけ（localStorageで永続化）
-  const [slotMatchIds, setSlotMatchIds] = useState<(string | null)[]>(() => {
-    try {
-      const saved = localStorage.getItem("dutyRosterSlotMatchIds");
-      return saved ? JSON.parse(saved) : [null, null, null, null];
-    } catch { return [null, null, null, null]; }
-  });
+  // 当番一覧に紐付けた試合ID（サーバー保存・試合ID基準）
+  const [linkedMatchIds, setLinkedMatchIds] = useState<string[]>([]);
   const [pickingSlot, setPickingSlot] = useState<number | null>(null);
   // 編集しようとして未紐付けだったため試合選択を促している状態
   const [pickerNoticeSlot, setPickerNoticeSlot] = useState<number | null>(null);
@@ -84,10 +80,15 @@ function DutyRosterInner() {
   const [swapTo, setSwapTo] = useState("");
   const [savingSwap, setSavingSwap] = useState(false);
 
-  // slotMatchIds を localStorage に保存
-  useEffect(() => {
-    try { localStorage.setItem("dutyRosterSlotMatchIds", JSON.stringify(slotMatchIds)); } catch {}
-  }, [slotMatchIds]);
+  // 紐付け一覧をサーバーに保存（試合ID基準）
+  const persistLinks = useCallback((ids: string[]) => {
+    setLinkedMatchIds(ids);
+    fetch("/api/duty-links", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ matchIds: ids }),
+    }).catch(() => {});
+  }, []);
 
   // バケツ当番スロット（localStorageで永続化）
   const [slotBucketPracticeIds, setSlotBucketPracticeIds] = useState<(string | null)[]>(() => {
@@ -108,7 +109,7 @@ function DutyRosterInner() {
   const [savingBucket, setSavingBucket] = useState(false);
 
   const load = useCallback(async () => {
-    const [ms, drvs, prts, ps, bds, st, sw] = await Promise.all([
+    const [ms, drvs, prts, ps, bds, st, sw, dl] = await Promise.all([
       fetch("/api/matches").then((r) => r.json()),
       fetch("/api/drivers").then((r) => r.json()),
       fetch("/api/parents").then((r) => r.json()),
@@ -116,6 +117,7 @@ function DutyRosterInner() {
       fetch("/api/bucket-duties").then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()),
       fetch("/api/duty-swaps").then((r) => r.json()),
+      fetch("/api/duty-links").then((r) => r.json()),
     ]);
     setMatches(Array.isArray(ms) ? ms : []);
     setDrivers(Array.isArray(drvs) ? drvs : []);
@@ -124,6 +126,25 @@ function DutyRosterInner() {
     setDuties(Array.isArray(bds) ? bds : []);
     setSettings(st);
     setSwaps(Array.isArray(sw) ? sw : []);
+    let links: string[] = Array.isArray(dl) ? dl : [];
+    // 旧localStorage紐付けの一度きり移行（サーバーが空のときのみ）
+    if (links.length === 0) {
+      try {
+        const saved = localStorage.getItem("dutyRosterSlotMatchIds");
+        const old: (string | null)[] = saved ? JSON.parse(saved) : [];
+        const today = new Date().toISOString().slice(0, 10);
+        const valid = [...new Set(old.filter(Boolean) as string[])].filter((id) => {
+          const m = (Array.isArray(ms) ? ms : []).find((x: Match) => x.id === id);
+          return m && m.date >= today;
+        });
+        if (valid.length > 0) {
+          links = valid;
+          fetch("/api/duty-links", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ matchIds: valid }) }).catch(() => {});
+          localStorage.removeItem("dutyRosterSlotMatchIds");
+        }
+      } catch { /* 移行失敗は無視 */ }
+    }
+    setLinkedMatchIds(links);
     setLoading(false);
   }, []);
 
@@ -132,13 +153,11 @@ function DutyRosterInner() {
   // URL パラメータ ?matchId= / ?practiceId= があれば最初の空きスロットに自動リンク
   useEffect(() => {
     const matchId = searchParams.get("matchId");
-    if (matchId) {
-      setSlotMatchIds((prev) => {
+    if (matchId && !loading) {
+      setLinkedMatchIds((prev) => {
         if (prev.includes(matchId)) return prev;
-        const idx = prev.findIndex((v) => v === null);
-        if (idx < 0) return prev;
-        const next = [...prev];
-        next[idx] = matchId;
+        const next = [...prev, matchId];
+        fetch("/api/duty-links", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ matchIds: next }) }).catch(() => {});
         return next;
       });
     }
@@ -155,7 +174,7 @@ function DutyRosterInner() {
       setMobileTab("bucket");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, loading]);
 
   function normalizeGroup(g: string) {
     if (!g) return "";
@@ -378,19 +397,19 @@ function DutyRosterInner() {
       futureGroups.push(...Array(displayCount + 1).fill(""));
     }
 
-    const futureMatchesSorted = matches.filter((m) => m.date >= today).sort((a, b) => a.date.localeCompare(b.date));
-
-    // slotMatchIds を displayCount 長に揃える（不足分は null）
-    const paddedSlotMatchIds: (string | null)[] = Array.from(
+    // 紐付け済みの未来試合を日付順に並べる（スロットには日付順に詰める＝翌日ズレない）
+    const linkedFutureMatches = matches
+      .filter((m) => linkedMatchIds.includes(m.id) && m.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const effectiveSlotMatchIds: (string | null)[] = Array.from(
       { length: displayCount },
-      (_, i) => slotMatchIds[i] ?? null
+      (_, i) => linkedFutureMatches[i]?.id ?? null
     );
-    const effectiveSlotMatchIds = paddedSlotMatchIds.map((override) => {
-      if (!override || override === "") return null;
-      const m = matches.find((x) => x.id === override);
-      if (!m || m.date < today) return null;
-      return override;
-    });
+
+    // 試合選択ピッカーの候補: 未紐付けの未来試合のみ
+    const futureMatchesSorted = matches
+      .filter((m) => m.date >= today && !linkedMatchIds.includes(m.id))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     const activeSwaps = getActiveSwaps();
 
@@ -437,6 +456,7 @@ function DutyRosterInner() {
       const data = await res.json();
       const newSwap: DutySwap = { id: data.id, personA: swapFrom, personB: swapTo, appliedFromSlotIndex, fromDate, kind, returnSlotIndex };
       setSwaps((prev) => [...prev, newSwap]);
+      logDetail(`${fmtDate(fromDate)}分 ${swapFrom} ↔ ${swapTo} を当番変更（${kind === "driver" ? "配車起点" : "備品起点"}）`);
 
       // 起点〜代役の当番回までのスロットのDB済みデータに、このスワップを種別・フィールド別に反映
       const lastSlot = kind === "driver" ? Math.max(returnSlotIndex, appliedFromSlotIndex + 1) : appliedFromSlotIndex + 1;
@@ -644,8 +664,8 @@ function DutyRosterInner() {
                   <div className="flex items-center gap-2 flex-wrap min-w-0">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-bold shrink-0 ${i === 0 ? "bg-stone-700 text-white" : "bg-gray-200 text-gray-600"}`}>{slotLabel}</span>
                     {group && <span className={groupBadge(group)}>{groupDisplay(group)}</span>}
-                    {linkedMatch && (
-                      <span className="text-xs text-gray-500 truncate">{fmtDate(linkedMatch.date)}　{linkedMatch.matchName || linkedMatch.matchType}</span>
+                    {!linkedMatch && (
+                      <span className="text-xs text-gray-400">（試合未紐付け）</span>
                     )}
                   </div>
                   {!isEditing && !isPicking && swapSlot !== i && (
@@ -675,6 +695,21 @@ function DutyRosterInner() {
                     </div>
                   )}
                 </div>
+
+                {/* 紐付けた試合（強調表示） */}
+                {linkedMatch && (
+                  <div className="mb-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-1.5 py-0.5 rounded">🔗 紐付け試合</span>
+                      <span className="text-sm font-bold text-emerald-900">{fmtDate(linkedMatch.date)}</span>
+                      <span className="text-sm font-semibold text-emerald-800">{linkedMatch.matchName || linkedMatch.matchType}{linkedMatch.opponent ? ` vs ${linkedMatch.opponent}` : ""}</span>
+                    </div>
+                    <div className="text-xs text-emerald-700 mt-0.5">
+                      {linkedMatch.startTime && <span>🕐 {linkedMatch.startTime}{linkedMatch.endTime ? `〜${linkedMatch.endTime}` : ""}　</span>}
+                      {linkedMatch.venue && <span>📍 {linkedMatch.venue}</span>}
+                    </div>
+                  </div>
+                )}
 
                 {/* 当番変更フォーム */}
                 {swapSlot === i && (
@@ -748,7 +783,8 @@ function DutyRosterInner() {
                             });
                             setDrivers((prev) => prev.filter((d) => d.matchId !== linkedMatchId));
                             setMatches((prev) => prev.map((m) => m.id === linkedMatchId ? { ...m, equipmentBringOut: "", carCount: 0 } : m));
-                            const ids = [...paddedSlotMatchIds]; ids[i] = null; setSlotMatchIds(ids);
+                            persistLinks(linkedMatchIds.filter((x) => x !== linkedMatchId));
+                            logDetail(`${fmtDate(linkedMatch.date)} ${linkedMatch.matchName || linkedMatch.matchType} を当番から紐付け解除`);
                             setPickingSlot(null); setEditMatchId(null); setPickerNoticeSlot(null);
                           }}
                           className="text-xs text-left px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-500 font-medium"
@@ -756,18 +792,20 @@ function DutyRosterInner() {
                           紐づけ解除
                         </button>
                       )}
+                      {futureMatchesSorted.length === 0 && (
+                        <p className="text-xs text-gray-400 px-2 py-1.5">紐付け可能な未来の試合がありません</p>
+                      )}
                       {futureMatchesSorted.map((fm) => (
                         <button
                           key={fm.id}
                           onClick={() => {
-                            const ids = [...paddedSlotMatchIds];
-                            ids[i] = fm.id;
-                            setSlotMatchIds(ids);
+                            persistLinks([...linkedMatchIds, fm.id]);
+                            logDetail(`${fmtDate(fm.date)} ${fm.matchName || fm.matchType} を当番に紐付け`);
                             setPickingSlot(null);
                             setPickerNoticeSlot(null);
                             startEditMatch(fm, group, equipGroup, i);
                           }}
-                          className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedMatchId === fm.id ? "border-stone-600 bg-stone-100 text-stone-800" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                          className="text-xs text-left px-2 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                         >
                           {fmtDate(fm.date)}　{fm.matchName || fm.matchType}{fm.venue ? ` @ ${fm.venue}` : ""}
                         </button>

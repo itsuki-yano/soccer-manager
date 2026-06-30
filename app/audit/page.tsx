@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import BackHeader from "@/components/BackHeader";
 
-type Log = { time: string; ip: string; device: string; method: string; path: string };
+type Log = { time: string; ip: string; device: string; method: string; path: string; detail?: string };
 
 const RESOURCE_LABEL: { test: RegExp; label: string }[] = [
   { test: /^\/api\/matches/, label: "試合・合宿" },
@@ -66,7 +66,7 @@ export default function AuditPage() {
         {logs.map((l, i) => (
           <div key={i} className="bg-white rounded-xl border border-gray-100 p-3 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-sm font-medium text-gray-800">{actionLabel(l.method, l.path)}</div>
+              <div className="text-sm font-medium text-gray-800">{l.detail || actionLabel(l.method, l.path)}</div>
               <div className="text-xs text-gray-400 mt-0.5">{deviceLabel(l.device)}　IP: {l.ip || "不明"}</div>
             </div>
             <div className="text-xs text-gray-500 whitespace-nowrap shrink-0">{fmt(l.time)}</div>
