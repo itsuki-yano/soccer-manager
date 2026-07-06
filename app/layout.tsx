@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import AppLayout from "@/components/AppLayout";
 
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ja">
       <body className="bg-gray-50 min-h-screen">
         <AppLayout>{children}</AppLayout>
+        <Analytics />
       </body>
     </html>
   );
