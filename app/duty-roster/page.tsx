@@ -90,17 +90,17 @@ function DutyRosterInner() {
     }).catch(() => {});
   }, []);
 
-  // バケツ当番スロット（localStorageで永続化）
-  const [slotBucketPracticeIds, setSlotBucketPracticeIds] = useState<(string | null)[]>(() => {
-    try {
-      const saved = localStorage.getItem("dutyRosterSlotBucketPracticeIds");
-      return saved ? JSON.parse(saved) : [null, null, null, null];
-    } catch { return [null, null, null, null]; }
-  });
-  // slotBucketPracticeIds を localStorage に保存
-  useEffect(() => {
-    try { localStorage.setItem("dutyRosterSlotBucketPracticeIds", JSON.stringify(slotBucketPracticeIds)); } catch {}
-  }, [slotBucketPracticeIds]);
+  // バケツ当番の紐付けた自主練習ID（サーバー保存・練習ID基準）
+  const [linkedBucketPracticeIds, setLinkedBucketPracticeIds] = useState<string[]>([]);
+
+  const persistBucketLinks = useCallback((ids: string[]) => {
+    setLinkedBucketPracticeIds(ids);
+    fetch("/api/duty-bucket-links", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ practiceIds: ids }),
+    }).catch(() => {});
+  }, []);
 
   const [pickingBucketSlot, setPickingBucketSlot] = useState<number | null>(null);
   const [editBucketSlot, setEditBucketSlot] = useState<number | null>(null);
@@ -109,7 +109,7 @@ function DutyRosterInner() {
   const [savingBucket, setSavingBucket] = useState(false);
 
   const load = useCallback(async () => {
-    const [ms, drvs, prts, ps, bds, st, sw, dl] = await Promise.all([
+    const [ms, drvs, prts, ps, bds, st, sw, dl, dbl] = await Promise.all([
       fetch("/api/matches").then((r) => r.json()),
       fetch("/api/drivers").then((r) => r.json()),
       fetch("/api/parents").then((r) => r.json()),
@@ -118,6 +118,7 @@ function DutyRosterInner() {
       fetch("/api/settings").then((r) => r.json()),
       fetch("/api/duty-swaps").then((r) => r.json()),
       fetch("/api/duty-links").then((r) => r.json()),
+      fetch("/api/duty-bucket-links").then((r) => r.json()),
     ]);
     setMatches(Array.isArray(ms) ? ms : []);
     setDrivers(Array.isArray(drvs) ? drvs : []);
@@ -145,6 +146,26 @@ function DutyRosterInner() {
       } catch { /* 移行失敗は無視 */ }
     }
     setLinkedMatchIds(links);
+
+    let bLinks: string[] = Array.isArray(dbl) ? dbl : [];
+    // 旧localStorageバケツ紐付けの一度きり移行
+    if (bLinks.length === 0) {
+      try {
+        const saved = localStorage.getItem("dutyRosterSlotBucketPracticeIds");
+        const old: (string | null)[] = saved ? JSON.parse(saved) : [];
+        const today = new Date().toISOString().slice(0, 10);
+        const valid = [...new Set(old.filter(Boolean) as string[])].filter((id) => {
+          const p = (Array.isArray(ps) ? ps : []).find((x: Practice) => x.id === id);
+          return p && p.date >= today;
+        });
+        if (valid.length > 0) {
+          bLinks = valid;
+          fetch("/api/duty-bucket-links", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ practiceIds: valid }) }).catch(() => {});
+          localStorage.removeItem("dutyRosterSlotBucketPracticeIds");
+        }
+      } catch { /* 移行失敗は無視 */ }
+    }
+    setLinkedBucketPracticeIds(bLinks);
     setLoading(false);
   }, []);
 
@@ -162,13 +183,11 @@ function DutyRosterInner() {
       });
     }
     const practiceId = searchParams.get("practiceId");
-    if (practiceId) {
-      setSlotBucketPracticeIds((prev) => {
+    if (practiceId && !loading) {
+      setLinkedBucketPracticeIds((prev) => {
         if (prev.includes(practiceId)) return prev;
-        const idx = prev.findIndex((v) => v === null);
-        if (idx < 0) return prev;
-        const next = [...prev];
-        next[idx] = practiceId;
+        const next = [...prev, practiceId];
+        fetch("/api/duty-bucket-links", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ practiceIds: next }) }).catch(() => {});
         return next;
       });
       setMobileTab("bucket");
@@ -965,10 +984,16 @@ function DutyRosterInner() {
       practice: practices.find((p) => p.id === d.practiceId)!,
     })).filter((x) => x.practice);
 
-    // 自主練習（土曜日）のみを選択候補に
+    // 紐付け済みの未来の自主練習（土曜）を日付順にスロットへ詰める（過去は自動で外れる）
+    const linkedFuturePractices = practices
+      .filter((p) => linkedBucketPracticeIds.includes(p.id) && p.date >= today && new Date(p.date + "T00:00:00").getDay() === 6)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const effectiveSlotBucketPracticeIds: (string | null)[] = [0, 1, 2, 3].map((i) => linkedFuturePractices[i]?.id ?? null);
+
+    // 練習選択ピッカーの候補: 未紐付けの未来の自主練習（土曜）のみ
     const futurePractices = practices
       .filter((p) => {
-        if (p.date < today) return false;
+        if (p.date < today || linkedBucketPracticeIds.includes(p.id)) return false;
         return new Date(p.date + "T00:00:00").getDay() === 6; // 土曜日のみ
       })
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -992,7 +1017,7 @@ function DutyRosterInner() {
               {[0, 1, 2, 3].map((i) => {
                 const bringPerson = futurePeople[i] ?? "";
                 const returnPerson = futurePeople[i + 1] ?? "";
-                const linkedPracticeId = slotBucketPracticeIds[i];
+                const linkedPracticeId = effectiveSlotBucketPracticeIds[i];
                 const linkedPractice = linkedPracticeId ? practices.find((p) => p.id === linkedPracticeId) : null;
                 const existingDuty = linkedPracticeId ? duties.find((d) => d.practiceId === linkedPracticeId) : null;
                 const displayBring = existingDuty?.bringPersonName || bringPerson;
@@ -1043,9 +1068,8 @@ function DutyRosterInner() {
                                 // バケツ当番データをDBから削除
                                 await fetch(`/api/bucket-duties?practiceId=${linkedPracticeId}`, { method: "DELETE" });
                                 setDuties((prev) => prev.filter((d) => d.practiceId !== linkedPracticeId));
-                                const ids = [...slotBucketPracticeIds];
-                                ids[i] = null;
-                                setSlotBucketPracticeIds(ids);
+                                persistBucketLinks(linkedBucketPracticeIds.filter((x) => x !== linkedPracticeId));
+                                if (linkedPractice) logDetail(`${fmtDate(linkedPractice.date)} 自主練習 のバケツ当番を紐付け解除`);
                                 setPickingBucketSlot(null);
                               }}
                               className="text-xs text-left px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-500 font-medium"
@@ -1057,16 +1081,15 @@ function DutyRosterInner() {
                             <button
                               key={pr.id}
                               onClick={() => {
-                                const ids = [...slotBucketPracticeIds];
-                                ids[i] = pr.id;
-                                setSlotBucketPracticeIds(ids);
+                                persistBucketLinks([...linkedBucketPracticeIds, pr.id]);
+                                logDetail(`${fmtDate(pr.date)} 自主練習 をバケツ当番に紐付け`);
                                 setPickingBucketSlot(null);
                                 const existing = duties.find((d) => d.practiceId === pr.id);
                                 setEditBucketSlot(i);
                                 setEditBring(existing?.bringPersonName || bringPerson);
                                 setEditRet(existing?.returnPersonName || returnPerson);
                               }}
-                              className={`text-xs text-left px-2 py-1.5 rounded-lg border ${linkedPracticeId === pr.id ? "border-amber-400 bg-amber-50 text-amber-800" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                              className="text-xs text-left px-2 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                             >
                               {fmtDate(pr.date)}　自主練習
                             </button>

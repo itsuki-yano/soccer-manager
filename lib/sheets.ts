@@ -110,6 +110,7 @@ export async function ensureSheets(): Promise<void> {
     { title: "duty_swaps", headers: ["id", "personA", "personB"] },
     { title: "audit_log", headers: ["time", "ip", "device", "method", "path", "detail"] },
     { title: "duty_links", headers: ["matchId"] },
+    { title: "duty_bucket_links", headers: ["practiceId"] },
   ];
 
   const toCreate = required.filter((r) => !existing.includes(r.title));
