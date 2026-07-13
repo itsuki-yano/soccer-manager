@@ -71,9 +71,14 @@ export default function GuidePage() {
       <Section emoji="🔁" title="毎回の基本の流れ（まとめ役）">
         <Step n={1}><b>BAND予定取込み</b>：「試合・合宿管理」または「通常練習」で緑の<b>「🎵 BAND予定取込み」</b>を押し、出てきた予定を<b>「追加」</b>します。</Step>
         <Shot src="band-import.png" caption="BAND予定取込み → 追加" />
-        <Step n={2}><b>当番一覧で紐付け</b>：当番一覧の各回で<b>「試合選択／練習選択」</b>を押し、その回に対応する試合・練習を選びます。</Step>
+        <Step n={2}><b>種別・精算・BAND投稿リンクを確認</b>：取込み直後は種別が「その他」・精算が「精算なし」のままなので、試合詳細の<b>「編集」</b>から実際の種別（公式戦／TM／合宿）と精算あり・なしを設定してください。</Step>
+        <Shot src="edit-match.jpg" caption="試合詳細 →「編集」" />
+        <Shot src="edit-match-form.jpg" caption="種別・精算・BAND投稿リンクを入力" />
+        <p>BAND投稿リンクは、BANDの該当予定を開き右上の<b>「⋮」→「URLをコピーする」</b>でコピーしたものを「BAND投稿リンク1」に貼り付けます。</p>
+        <Shot src="band-url-copy.jpg" caption="BAND側で「⋮」→「URLをコピーする」" />
+        <Step n={3}><b>当番一覧で紐付け</b>：当番一覧の各回で<b>「試合選択／練習選択」</b>を押し、その回に対応する試合・練習を選びます。</Step>
         <Shot src="link.png" caption="当番一覧で試合・練習を紐付け" />
-        <Step n={3}><b>担当を確認・編集</b>：配車当番・備品持帰り・バケツ当番を確認し、必要なら<b>「変更」</b>や<b>「当番変更」</b>で編集します。</Step>
+        <Step n={4}><b>担当を確認・編集</b>：配車当番・備品持帰り・バケツ当番を確認し、必要なら<b>「変更」</b>や<b>「当番変更」</b>で編集します。</Step>
         <Shot src="edit-duty.png" caption="紐付けた当番の確認・編集" />
         <Warn>配車当番・バケツ当番は、<b>試合日／練習日が「紐付け」されていないと変更できません</b>。まず紐付けをしてください。</Warn>
       </Section>
