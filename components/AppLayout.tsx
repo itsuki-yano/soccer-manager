@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: "/equipment",      icon: "🎒", label: "備品管理" },
   { href: "/fees",           icon: "💰", label: "費用徴収管理" },
   { href: "/memo",           icon: "📝", label: "備忘録" },
+  { href: "/guide",          icon: "📖", label: "使い方ガイド" },
   { href: "/settings",       icon: "⚙️",  label: "設定" },
 ];
 

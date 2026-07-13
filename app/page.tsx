@@ -17,6 +17,7 @@ const menu = [
   { href: "/equipment",      label: "備品管理",       icon: "🎒", desc: "備品・救急セットの在庫管理" },
   { href: "/fees",           label: "費用徴収管理",   icon: "💰", desc: "合宿費・クラブ費の徴収状況" },
   { href: "/memo",           label: "備忘録",         icon: "📝", desc: "連絡事項・メモの記録" },
+  { href: "/guide",          label: "使い方ガイド",   icon: "📖", desc: "アプリの使い方・当番運用ルール" },
   { href: "/settings",       label: "設定",           icon: "⚙️", desc: "チーム名・会計担当者" },
 ];
 
