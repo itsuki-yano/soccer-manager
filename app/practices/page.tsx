@@ -4,7 +4,8 @@ import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import { VIEW_ONLY } from "@/lib/viewOnly";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
-import type { Practice, BucketDuty, Settings } from "@/lib/types";
+import type { Practice, BucketDuty, Settings, Parent } from "@/lib/types";
+import { computeBucketPredictions } from "@/lib/bucketDuty";
 
 type View = "list" | "cal";
 
@@ -35,12 +36,18 @@ function BucketDutyCard({
   practice,
   duty,
   bucketActive,
+  prediction,
 }: {
   practice: Practice;
   duty: BucketDuty | null;
   bucketActive: boolean;
+  prediction?: { bringPersonName: string; returnPersonName: string } | null;
 }) {
   if (!bucketActive) return null;
+
+  const displayBring = duty?.bringPersonName || prediction?.bringPersonName || "";
+  const displayReturn = duty?.returnPersonName || prediction?.returnPersonName || "";
+  const isConfirmed = !!duty;
 
   return (
     <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -55,16 +62,21 @@ function BucketDutyCard({
           </Link>
         )}
       </div>
-      {duty ? (
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-stone-50 border border-stone-200 rounded-lg p-2 text-center">
-            <div className="text-xs text-stone-500 mb-0.5">持っていく</div>
-            <div className="text-sm font-semibold text-stone-800">{duty.bringPersonName || "未設定"}</div>
+      {(displayBring || displayReturn) ? (
+        <div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-stone-50 border border-stone-200 rounded-lg p-2 text-center">
+              <div className="text-xs text-stone-500 mb-0.5">持っていく</div>
+              <div className="text-sm font-semibold text-stone-800">{displayBring || "未設定"}</div>
+            </div>
+            <div className="bg-stone-50 border border-stone-200 rounded-lg p-2 text-center">
+              <div className="text-xs text-stone-500 mb-0.5">持って帰る</div>
+              <div className="text-sm font-semibold text-stone-800">{displayReturn || "未設定"}</div>
+            </div>
           </div>
-          <div className="bg-stone-50 border border-stone-200 rounded-lg p-2 text-center">
-            <div className="text-xs text-stone-500 mb-0.5">持って帰る</div>
-            <div className="text-sm font-semibold text-stone-800">{duty.returnPersonName || "未設定"}</div>
-          </div>
+          {!isConfirmed && (
+            <p className="text-xs text-amber-700 text-center mt-1.5">※ ローテーション順の予定です（未確定）</p>
+          )}
         </div>
       ) : (
         <p className="text-xs text-amber-700 text-center py-1">バケツ当番が未設定です</p>
@@ -76,6 +88,8 @@ function BucketDutyCard({
 export default function PracticesPage() {
   const [practices, setPractices] = useState<Practice[]>([]);
   const [duties, setDuties] = useState<BucketDuty[]>([]);
+  const [parents, setParents] = useState<Parent[]>([]);
+  const [linkedBucketPracticeIds, setLinkedBucketPracticeIds] = useState<string[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("list");
@@ -122,14 +136,18 @@ export default function PracticesPage() {
   }
 
   const load = useCallback(async () => {
-    const [ps, ds, st] = await Promise.all([
+    const [ps, ds, st, prts, dbl] = await Promise.all([
       fetch("/api/practices").then((r) => r.json()),
       fetch("/api/bucket-duties").then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()),
+      fetch("/api/parents").then((r) => r.json()),
+      fetch("/api/duty-bucket-links").then((r) => r.json()),
     ]);
     setPractices(Array.isArray(ps) ? ps : []);
     setDuties(Array.isArray(ds) ? ds : []);
     setSettings(st);
+    setParents(Array.isArray(prts) ? prts : []);
+    setLinkedBucketPracticeIds(Array.isArray(dbl) ? dbl : []);
     setLoading(false);
   }, []);
 
@@ -237,6 +255,8 @@ export default function PracticesPage() {
   const sorted = [...practices].sort((a, b) => a.date.localeCompare(b.date));
   const upcoming = sorted.filter((p) => p.date >= today);
   const past = sorted.filter((p) => p.date < today).reverse();
+  // 当番一覧と同じロジックで未確定スロットのローテーション予測を算出（表示を一致させる）
+  const bucketPredictions = computeBucketPredictions(parents, practices, duties, linkedBucketPracticeIds, today);
 
   // カレンダー用
   const firstDay = new Date(calYear, calMonth, 1).getDay();
@@ -484,6 +504,7 @@ export default function PracticesPage() {
                             practice={p}
                             duty={duty}
                             bucketActive={active}
+                            prediction={bucketPredictions.get(p.id) ?? null}
                           />
                         )}
                       </>
@@ -574,6 +595,9 @@ export default function PracticesPage() {
               if (monthPractices.length === 0) return <p className="text-xs text-gray-400 text-center py-2">この月の練習はありません</p>;
               return monthPractices.map((p) => {
                 const duty = duties.find((d) => d.practiceId === p.id);
+                const prediction = bucketPredictions.get(p.id);
+                const bring = duty?.bringPersonName || prediction?.bringPersonName || "";
+                const ret = duty?.returnPersonName || prediction?.returnPersonName || "";
                 const active = isBucketActive(p, bucketStart, bucketEnd);
                 return (
                   <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
@@ -584,9 +608,9 @@ export default function PracticesPage() {
                       </div>
                       {p.venue && <div className="text-xs text-gray-500 mt-0.5 truncate">📍 {p.venue}</div>}
                     </div>
-                    {!VIEW_ONLY && active && duty && (
+                    {!VIEW_ONLY && active && (bring || ret) && (
                       <div className="text-xs text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                        🪣 {duty.bringPersonName || "−"} / {duty.returnPersonName || "−"}
+                        🪣 {bring || "−"} / {ret || "−"}
                       </div>
                     )}
                   </div>

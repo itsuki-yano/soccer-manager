@@ -5,6 +5,7 @@ import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import type { Match, Driver, Parent, Practice, BucketDuty, Settings, DutySwap } from "@/lib/types";
 import { logDetail } from "@/lib/audit";
+import { computeBucketPredictions } from "@/lib/bucketDuty";
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -965,18 +966,6 @@ function DutyRosterInner() {
         const pb = practices.find((p) => p.id === b.practiceId);
         return (pb?.date ?? "").localeCompare(pa?.date ?? "");
       });
-    const lastBringPerson = pastDuties[0]?.bringPersonName ?? "";
-    const lastIdx = lastBringPerson && bucketPeople.length > 0
-      ? bucketPeople.indexOf(lastBringPerson)
-      : -1;
-
-    // 次の5人（スロット4回分＋持って帰る人用1人）
-    const futurePeople: string[] = [];
-    if (bucketPeople.length > 0) {
-      for (let i = 0; i < 5; i++) {
-        futurePeople.push(bucketPeople[(lastIdx + 1 + i) % bucketPeople.length]);
-      }
-    }
 
     // 過去の自主練習（duty有り）を新→旧で表示
     const pastBucketRecords = pastDuties.map((d) => ({
@@ -989,6 +978,8 @@ function DutyRosterInner() {
       .filter((p) => linkedBucketPracticeIds.includes(p.id) && p.date >= today && new Date(p.date + "T00:00:00").getDay() === 6)
       .sort((a, b) => a.date.localeCompare(b.date));
     const effectiveSlotBucketPracticeIds: (string | null)[] = [0, 1, 2, 3].map((i) => linkedFuturePractices[i]?.id ?? null);
+    // 未確定スロットのローテーション予測（通常練習ページと同じロジックで一致させる）
+    const bucketPredictions = computeBucketPredictions(parents, practices, duties, linkedBucketPracticeIds, today);
 
     // 練習選択ピッカーの候補: 未紐付けの未来の自主練習（土曜）のみ
     const futurePractices = practices
@@ -1015,13 +1006,15 @@ function DutyRosterInner() {
             <p className="text-xs font-semibold text-gray-400 tracking-wide mb-2">今後の当番（次4回）</p>
             <div className="grid gap-2 mb-5">
               {[0, 1, 2, 3].map((i) => {
-                const bringPerson = futurePeople[i] ?? "";
-                const returnPerson = futurePeople[i + 1] ?? "";
                 const linkedPracticeId = effectiveSlotBucketPracticeIds[i];
                 const linkedPractice = linkedPracticeId ? practices.find((p) => p.id === linkedPracticeId) : null;
                 const existingDuty = linkedPracticeId ? duties.find((d) => d.practiceId === linkedPracticeId) : null;
+                const prediction = linkedPracticeId ? bucketPredictions.get(linkedPracticeId) : null;
+                const bringPerson = prediction?.bringPersonName ?? "";
+                const returnPerson = prediction?.returnPersonName ?? "";
                 const displayBring = existingDuty?.bringPersonName || bringPerson;
                 const displayReturn = existingDuty?.returnPersonName || returnPerson;
+                const isConfirmed = !!existingDuty;
                 const isEditing = editBucketSlot === i;
                 const isPicking = pickingBucketSlot === i;
                 const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
@@ -1148,15 +1141,20 @@ function DutyRosterInner() {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-lg p-2 bg-stone-50 border border-stone-100">
-                          <p className="text-xs text-gray-400 mb-0.5">持っていく</p>
-                          <p className="text-sm font-semibold text-stone-800">{displayBring || "−"}</p>
+                      <div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-lg p-2 bg-stone-50 border border-stone-100">
+                            <p className="text-xs text-gray-400 mb-0.5">持っていく</p>
+                            <p className="text-sm font-semibold text-stone-800">{displayBring || "−"}</p>
+                          </div>
+                          <div className="rounded-lg p-2 bg-stone-50 border border-stone-100">
+                            <p className="text-xs text-gray-400 mb-0.5">持って帰る</p>
+                            <p className="text-sm font-semibold text-stone-800">{displayReturn || "−"}</p>
+                          </div>
                         </div>
-                        <div className="rounded-lg p-2 bg-stone-50 border border-stone-100">
-                          <p className="text-xs text-gray-400 mb-0.5">持って帰る</p>
-                          <p className="text-sm font-semibold text-stone-800">{displayReturn || "−"}</p>
-                        </div>
+                        {!isConfirmed && linkedPracticeId && (displayBring || displayReturn) && (
+                          <p className="text-xs text-amber-600 mt-1.5">※ ローテーション順からの予定表示です。「変更」で確定保存すると通常練習ページにも反映されます。</p>
+                        )}
                       </div>
                     )}
                   </div>
