@@ -99,6 +99,38 @@ function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// BYDAY のエントリ。MONTHLY の "1SU"(第1日曜) のような序数付き指定に対応する。
+type ByDayEntry = { ordinal: number | null; weekday: number };
+
+function parseByDay(value: string | undefined): ByDayEntry[] {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((raw): ByDayEntry | null => {
+      const m = raw.trim().toUpperCase().match(/^([+-]?\d+)?([A-Z]{2})$/);
+      if (!m) return null;
+      const weekday = WEEKDAY_MAP[m[2]];
+      if (weekday === undefined) return null;
+      return { ordinal: m[1] ? parseInt(m[1], 10) : null, weekday };
+    })
+    .filter((x): x is ByDayEntry => x !== null);
+}
+
+// 指定年月の「第n曜日」の日付。ordinal が負なら月末から数える（-1SU = 最終日曜）。
+function nthWeekdayOfMonth(year: number, month: number, weekday: number, ordinal: number): Date | null {
+  if (ordinal > 0) {
+    const first = new Date(year, month, 1);
+    const day = 1 + ((weekday - first.getDay() + 7) % 7) + (ordinal - 1) * 7;
+    const d = new Date(year, month, day);
+    return d.getMonth() === month ? d : null;
+  }
+  const last = new Date(year, month + 1, 0);
+  const day = last.getDate() - ((last.getDay() - weekday + 7) % 7) + (ordinal + 1) * 7;
+  if (day < 1) return null;
+  const d = new Date(year, month, day);
+  return d.getMonth() === month ? d : null;
+}
+
 // RRULE を展開して開催日(YYYY-MM-DD)の配列を返す。FREQ=WEEKLY/DAILY/MONTHLY に対応。
 function expandRecurrence(startDate: string, rrule: string | undefined, exdates: string[] | undefined): string[] {
   if (!rrule) return [startDate];
@@ -115,7 +147,7 @@ function expandRecurrence(startDate: string, rrule: string | undefined, exdates:
   const until = rules.UNTIL
     ? (() => { const c = rules.UNTIL.replace(/[TZ]/g, "").slice(0, 8); return `${c.slice(0, 4)}-${c.slice(4, 6)}-${c.slice(6, 8)}`; })()
     : undefined;
-  const byday = rules.BYDAY ? rules.BYDAY.split(",").map((d) => WEEKDAY_MAP[d.trim().slice(-2)]).filter((n) => n !== undefined) : [];
+  const bydayEntries = parseByDay(rules.BYDAY);
 
   const start = new Date(startDate + "T00:00:00");
   // 終了境界: UNTIL があればそれ、なければ開始から1年後を上限
@@ -134,7 +166,7 @@ function expandRecurrence(startDate: string, rrule: string | undefined, exdates:
   };
 
   if (freq === "WEEKLY") {
-    const days = (byday.length > 0 ? byday : [start.getDay()]).sort((a, b) => a - b);
+    const days = (bydayEntries.length > 0 ? bydayEntries.map((e) => e.weekday) : [start.getDay()]).sort((a, b) => a - b);
     // 開始週の日曜日を基準に interval 週ごとに進める
     const weekStart = new Date(start);
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
@@ -162,11 +194,29 @@ function expandRecurrence(startDate: string, rrule: string | undefined, exdates:
       d.setDate(d.getDate() + interval);
     }
   } else if (freq === "MONTHLY") {
-    const d = new Date(start);
-    for (let i = 0; out.length < limit; i++) {
-      if (!pushDate(d)) break;
-      if (count && out.length >= count) break;
-      d.setMonth(d.getMonth() + interval);
+    if (bydayEntries.length > 0) {
+      // 「毎月第n曜日」形式（例: BYDAY=1SU）。日付番号ではなく曜日の並びで決まる。
+      for (let i = 0; i < limit; i++) {
+        const base = new Date(start.getFullYear(), start.getMonth() + i * interval, 1);
+        if (base > horizon) break;
+        let stop = false;
+        for (const e of bydayEntries) {
+          const d = nthWeekdayOfMonth(base.getFullYear(), base.getMonth(), e.weekday, e.ordinal ?? 1);
+          if (!d || d < start || d > horizon) continue;
+          const s = ymd(d);
+          if (until && s > until) { stop = true; break; }
+          if (!exSet.has(s)) out.push(s);
+          if (count && out.length >= count) { stop = true; break; }
+        }
+        if (stop) break;
+      }
+    } else {
+      const d = new Date(start);
+      for (let i = 0; out.length < limit; i++) {
+        if (!pushDate(d)) break;
+        if (count && out.length >= count) break;
+        d.setMonth(d.getMonth() + interval);
+      }
     }
   } else {
     return [startDate];
