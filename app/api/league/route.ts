@@ -49,13 +49,20 @@ function parseLeagueHtml(html: string, url: string): LeagueData {
     .filter((r) => r.length >= 2 && r[1])
     .map((r) => ({ rank: parseInt(r[0], 10) || 0, name: r[1] }));
 
-  const matrixRows = tables[1] ? getRows(tables[1]) : [];
+  // 星取表。ブラウザ上のDOMを送ると空の行が混ざることがあるため、セルを持つ行だけを使う
+  const matrixRows = (tables[1] ? getRows(tables[1]) : []).filter((r) => r.length > 0);
   const teams = matrixRows[0] ?? [];
+  // データ行は「チーム数」分のセルを持つ行のみ。行頭に見出しセルが付く場合は末尾側を採用
+  const matrix = matrixRows
+    .slice(1)
+    .filter((r) => r.length >= teams.length)
+    .map((r) => (r.length > teams.length ? r.slice(r.length - teams.length) : r))
+    .slice(0, teams.length);
+
   const stats: Record<string, TeamStat> = {};
   teams.forEach((t, i) => {
     stats[t] = { rank: 0, name: t, played: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0, gd: 0, points: 0 };
-    // 各チームの対戦結果（行 i+1）
-    const row = matrixRows[i + 1] ?? [];
+    const row = matrix[i] ?? [];
     row.forEach((cell, j) => {
       if (i === j || !cell || cell === "-") return;
       const m = cell.match(/(\d+)([○●△])(\d+)/);
@@ -77,8 +84,12 @@ function parseLeagueHtml(html: string, url: string): LeagueData {
   );
 
   if (standings.length === 0 && teams.length === 0) throw new Error("表を解析できませんでした");
+  // 行とチームの数が合わない＝表を読み違えているので、ずれたまま保存しない
+  if (teams.length > 0 && matrix.length !== teams.length) {
+    throw new Error(`星取表を正しく読み取れませんでした（チーム${teams.length}・行${matrix.length}）`);
+  }
 
-  return { leagueName, url, standings, teams, matrix: matrixRows.slice(1), fetchedAt: new Date().toISOString() };
+  return { leagueName, url, standings, teams, matrix, fetchedAt: new Date().toISOString() };
 }
 
 async function getLeagueUrl(): Promise<string> {
