@@ -27,6 +27,18 @@ export async function GET() {
     requestBody: { values: [[`=IMPORTHTML("${URL_TARGET}?t=${stamp}","table",2)`]] },
   });
 
+  // エラーの詳細メッセージを取得
+  await new Promise((r) => setTimeout(r, 4000));
+  const detail = await sheets.spreadsheets.get({
+    spreadsheetId: SPREADSHEET_ID,
+    ranges: [`${TITLE}!A1:B2`],
+    includeGridData: true,
+  });
+  const cell = detail.data.sheets?.[0]?.data?.[0]?.rowData?.[0]?.values?.[0];
+  const errMsg = cell?.effectiveValue?.errorValue?.message ?? null;
+  const errType = cell?.effectiveValue?.errorValue?.type ?? null;
+  const gridProps = detail.data.sheets?.[0]?.properties?.gridProperties ?? null;
+
   const tries: string[] = [];
   for (let i = 0; i < 8; i++) {
     await new Promise((r) => setTimeout(r, 2500));
@@ -39,9 +51,9 @@ export async function GET() {
     tries.push(`${i + 1}: ${first.slice(0, 60)}`);
     const isError = first.startsWith("#");
     const isLoading = !first || first.includes("Loading") || first.includes("読み込");
-    if (!isError && !isLoading) return NextResponse.json({ ok: true, tries, rows: v });
-    if (isError && !first.startsWith("#N/A") ) return NextResponse.json({ ok: false, tries, note: `error: ${first}` });
-    if (first.startsWith("#N/A") && i >= 4) return NextResponse.json({ ok: false, tries, note: "IMPORTHTML failed (#N/A)" });
+    if (!isError && !isLoading) return NextResponse.json({ ok: true, tries, errMsg, errType, gridProps, rows: v });
+    if (isError && !first.startsWith("#N/A") ) return NextResponse.json({ ok: false, tries, errMsg, errType, gridProps, note: `error: ${first}` });
+    if (first.startsWith("#N/A") && i >= 4) return NextResponse.json({ ok: false, tries, errMsg, errType, gridProps, note: "IMPORTHTML failed (#N/A)" });
   }
-  return NextResponse.json({ ok: false, tries, note: "timeout" });
+  return NextResponse.json({ ok: false, tries, errMsg, errType, gridProps, note: "timeout" });
 }
