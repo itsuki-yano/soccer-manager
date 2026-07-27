@@ -14,22 +14,29 @@ type LeagueData = {
   teams: string[];
   matrix: string[][];
   fetchedAt: string;
+  stale?: boolean;      // 取得元サイトから取れず、直近データを表示している
+  unavailable?: boolean; // 取得元サイトから取れず、直近データも無い
 };
+
+const SOURCE_URL = "https://junior-soccer.jp/sp/tokai/aichi/league/table/163446";
 
 export default function LeaguePage() {
   const [data, setData] = useState<LeagueData | null>(null);
   const [myTeam, setMyTeam] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [unavailable, setUnavailable] = useState<{ url: string } | null>(null);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/league").then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()).catch(() => ({})),
     ]).then(([d, s]) => {
-      if (d.error) setError(d.error);
+      if (d.unavailable || d.error) setUnavailable({ url: d.url ?? SOURCE_URL });
       else setData(d);
       setMyTeam(s?.teamName ?? "");
+      setLoading(false);
+    }).catch(() => {
+      setUnavailable({ url: SOURCE_URL });
       setLoading(false);
     });
   }, []);
@@ -55,11 +62,22 @@ export default function LeaguePage() {
 
       {loading && <div className="text-center text-gray-400 py-12">読み込み中...</div>}
 
-      {!loading && error && (
-        <div className="text-center text-gray-500 py-12">
+      {!loading && unavailable && (
+        <div className="text-center text-gray-500 py-10">
           <div className="text-3xl mb-2">⚠️</div>
-          <p className="text-sm">戦績の取得に失敗しました</p>
-          <p className="text-xs text-gray-400 mt-1">{error}</p>
+          <p className="text-sm font-semibold text-gray-700">戦績を取得できませんでした</p>
+          <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+            元サイト（少年サッカー応援団）がアプリからの自動取得を<br />
+            受け付けなくなったためです。下のリンクから直接ご確認ください。
+          </p>
+          <a
+            href={unavailable.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block mt-4 text-sm text-white bg-emerald-700 px-4 py-2 rounded-xl font-medium"
+          >
+            少年サッカー応援団で見る ›
+          </a>
         </div>
       )}
 
@@ -69,6 +87,17 @@ export default function LeaguePage() {
             <h2 className="font-bold text-gray-800">{data.leagueName}</h2>
             <a href={data.url} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-700">元データ（少年サッカー応援団）›</a>
           </div>
+
+          {data.stale && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-4 text-xs text-amber-800 leading-relaxed">
+              <span className="font-bold">⚠️ 最新ではない可能性があります　</span>
+              元サイトが自動取得を受け付けないため、
+              <b>{new Date(data.fetchedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}時点</b>
+              の内容を表示しています。最新は
+              <a href={data.url} target="_blank" rel="noopener noreferrer" className="underline font-medium">元サイト</a>
+              でご確認ください。
+            </div>
+          )}
 
           {/* 順位表 */}
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden mb-5">
@@ -147,7 +176,9 @@ export default function LeaguePage() {
             </div>
           )}
 
-          <p className="text-xs text-gray-300 text-center mt-4">取得: {new Date(data.fetchedAt).toLocaleString("ja-JP")}</p>
+          <p className="text-xs text-gray-300 text-center mt-4">
+            {data.stale ? "データ時点" : "取得"}: {new Date(data.fetchedAt).toLocaleString("ja-JP")}
+          </p>
         </>
       )}
     </main>
