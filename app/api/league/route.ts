@@ -134,18 +134,50 @@ export async function GET() {
   }
 }
 
-// 取得元サイトのHTMLを渡して戦績を更新する（サーバーから直接取得できない場合の手動更新用）
+// 取得元サイトのHTMLから戦績を更新する
+async function updateFromHtml(html: string) {
+  if (!html || html.length < 200) throw new Error("内容が空、または短すぎます");
+  const url = await getLeagueUrl();
+  const data = parseLeagueHtml(html, url);
+  if (data.teams.length < 2) throw new Error("順位表・星取表を読み取れませんでした");
+  await writeCache(data);
+  return data;
+}
+
+// アプリ内の貼り付け欄からの更新（JSON）
 export async function PUT(req: Request) {
   try {
     const { html } = (await req.json()) as { html?: string };
-    if (!html || html.length < 200) {
-      return NextResponse.json({ error: "html が空、または短すぎます" }, { status: 400 });
-    }
-    const url = await getLeagueUrl();
-    const data = parseLeagueHtml(html, url);
-    await writeCache(data);
+    const data = await updateFromHtml(html ?? "");
     return NextResponse.json({ ok: true, leagueName: data.leagueName, teams: data.teams.length, fetchedAt: data.fetchedAt });
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return NextResponse.json({ error: String(e instanceof Error ? e.message : e) }, { status: 400 });
+  }
+}
+
+// ブックマークレットからの更新（取得元サイト上で実行されるため text/plain + CORS）
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS });
+}
+
+export async function POST(req: Request) {
+  try {
+    const html = await req.text();
+    const data = await updateFromHtml(html);
+    return NextResponse.json(
+      { ok: true, leagueName: data.leagueName, teams: data.teams.length, fetchedAt: data.fetchedAt },
+      { headers: CORS }
+    );
+  } catch (e) {
+    return NextResponse.json(
+      { error: String(e instanceof Error ? e.message : e) },
+      { status: 400, headers: CORS }
+    );
   }
 }

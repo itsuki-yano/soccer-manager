@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
+import { VIEW_ONLY } from "@/lib/viewOnly";
 
 type TeamStat = {
   rank: number; name: string; played: number;
@@ -70,22 +72,36 @@ export default function LeaguePage() {
             元サイト（少年サッカー応援団）がアプリからの自動取得を<br />
             受け付けなくなったためです。下のリンクから直接ご確認ください。
           </p>
-          <a
-            href={unavailable.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block mt-4 text-sm text-white bg-emerald-700 px-4 py-2 rounded-xl font-medium"
-          >
-            少年サッカー応援団で見る ›
-          </a>
+          <div className="flex flex-col items-center gap-2 mt-4">
+            <a
+              href={unavailable.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-white bg-emerald-700 px-4 py-2 rounded-xl font-medium"
+            >
+              少年サッカー応援団で見る ›
+            </a>
+            {!VIEW_ONLY && (
+              <Link href="/league/update" className="text-xs text-stone-700 border border-stone-300 px-3 py-1.5 rounded-lg font-medium">
+                🔄 戦績を手動で更新する
+              </Link>
+            )}
+          </div>
         </div>
       )}
 
       {!loading && data && (
         <>
-          <div className="mb-4">
-            <h2 className="font-bold text-gray-800">{data.leagueName}</h2>
-            <a href={data.url} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-700">元データ（少年サッカー応援団）›</a>
+          <div className="mb-4 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="font-bold text-gray-800">{data.leagueName}</h2>
+              <a href={data.url} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-700">元データ（少年サッカー応援団）›</a>
+            </div>
+            {!VIEW_ONLY && (
+              <Link href="/league/update" className="shrink-0 text-xs text-stone-700 bg-stone-100 border border-stone-300 px-2.5 py-1.5 rounded-lg font-medium">
+                🔄 更新
+              </Link>
+            )}
           </div>
 
           {data.stale && (
