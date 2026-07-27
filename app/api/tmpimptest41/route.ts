@@ -16,6 +16,9 @@ export async function GET() {
     });
   } catch { /* 既存 */ }
 
+  // 前回のスピル結果を消してから書く（残っていると #REF! になる）
+  await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `${TITLE}!A1:Z200` });
+
   const stamp = Date.now();
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
@@ -34,12 +37,11 @@ export async function GET() {
     const v = (res.data.values as string[][]) || [];
     const first = String(v[0]?.[0] ?? "");
     tries.push(`${i + 1}: ${first.slice(0, 60)}`);
-    if (first && !first.startsWith("#N/A") && !first.includes("Loading") && !first.includes("読み込")) {
-      return NextResponse.json({ ok: true, tries, rows: v });
-    }
-    if (first.startsWith("#N/A") && i >= 3) {
-      return NextResponse.json({ ok: false, tries, note: "IMPORTHTML failed (#N/A)" });
-    }
+    const isError = first.startsWith("#");
+    const isLoading = !first || first.includes("Loading") || first.includes("読み込");
+    if (!isError && !isLoading) return NextResponse.json({ ok: true, tries, rows: v });
+    if (isError && !first.startsWith("#N/A") ) return NextResponse.json({ ok: false, tries, note: `error: ${first}` });
+    if (first.startsWith("#N/A") && i >= 4) return NextResponse.json({ ok: false, tries, note: "IMPORTHTML failed (#N/A)" });
   }
   return NextResponse.json({ ok: false, tries, note: "timeout" });
 }
