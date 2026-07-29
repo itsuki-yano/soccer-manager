@@ -12,6 +12,8 @@ export const metadata: Metadata = {
     title: "マネジメント",
     statusBarStyle: "default",
   },
+  // Next.jsは新名称のmobile-web-app-capableのみ出力するため、旧iOS向けに明示
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {
