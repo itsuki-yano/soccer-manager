@@ -959,7 +959,7 @@ function DutyRosterInner() {
       .filter((d) => {
         const pr = practices.find((p) => p.id === d.practiceId);
         if (!pr || pr.date >= today) return false;
-        return new Date(pr.date + "T00:00:00").getDay() === 6; // 土曜日のみ
+        return pr.type === "自主練習"; // 曜日ではなく種別で判定
       })
       .sort((a, b) => {
         const pa = practices.find((p) => p.id === a.practiceId);
@@ -973,19 +973,19 @@ function DutyRosterInner() {
       practice: practices.find((p) => p.id === d.practiceId)!,
     })).filter((x) => x.practice);
 
-    // 紐付け済みの未来の自主練習（土曜）を日付順にスロットへ詰める（過去は自動で外れる）
+    // 紐付け済みの未来の自主練習を日付順にスロットへ詰める（過去は自動で外れる）
     const linkedFuturePractices = practices
-      .filter((p) => linkedBucketPracticeIds.includes(p.id) && p.date >= today && new Date(p.date + "T00:00:00").getDay() === 6)
+      .filter((p) => linkedBucketPracticeIds.includes(p.id) && p.date >= today && p.type === "自主練習")
       .sort((a, b) => a.date.localeCompare(b.date));
     const effectiveSlotBucketPracticeIds: (string | null)[] = [0, 1, 2, 3].map((i) => linkedFuturePractices[i]?.id ?? null);
     // 未確定スロットのローテーション予測（通常練習ページと同じロジックで一致させる）
     const bucketPredictions = computeBucketPredictions(parents, practices, duties, linkedBucketPracticeIds, today);
 
-    // 練習選択ピッカーの候補: 未紐付けの未来の自主練習（土曜）のみ
+    // 練習選択ピッカーの候補: 未紐付けの未来の自主練習のみ（曜日は問わない）
     const futurePractices = practices
       .filter((p) => {
         if (p.date < today || linkedBucketPracticeIds.includes(p.id)) return false;
-        return new Date(p.date + "T00:00:00").getDay() === 6; // 土曜日のみ
+        return p.type === "自主練習";
       })
       .sort((a, b) => a.date.localeCompare(b.date));
 

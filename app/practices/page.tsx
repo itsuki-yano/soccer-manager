@@ -24,10 +24,9 @@ function fmtDate(d: string) {
   return `${d.replace(/-/g, "/")}（${DOW[dt.getDay()]}）`;
 }
 
+// バケツ当番の対象かどうか。曜日は問わず「自主練習」に切り替えた時点で対象になる
 function isBucketActive(practice: Practice, start: string, end: string): boolean {
   if (practice.type !== "自主練習") return false;
-  const dow = new Date(practice.date + "T00:00:00").getDay();
-  if (dow !== 6) return false; // 土曜日のみ
   if (!start || !end) return true; // 期間未設定の場合は全て対象
   return practice.date >= start && practice.date <= end;
 }

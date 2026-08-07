@@ -19,7 +19,7 @@ export function computeBucketPredictions(
     .filter((d) => {
       const pr = practices.find((p) => p.id === d.practiceId);
       if (!pr || pr.date >= today) return false;
-      return new Date(pr.date + "T00:00:00").getDay() === 6;
+      return pr.type === "自主練習"; // 曜日ではなく種別で判定
     })
     .sort((a, b) => {
       const pa = practices.find((p) => p.id === a.practiceId);
@@ -39,7 +39,7 @@ export function computeBucketPredictions(
   }
 
   const linkedFuturePractices = practices
-    .filter((p) => linkedBucketPracticeIds.includes(p.id) && p.date >= today && new Date(p.date + "T00:00:00").getDay() === 6)
+    .filter((p) => linkedBucketPracticeIds.includes(p.id) && p.date >= today && p.type === "自主練習")
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const predictions = new Map<string, { bringPersonName: string; returnPersonName: string }>();
