@@ -26,10 +26,13 @@ export function computeBucketPredictions(
       const pb = practices.find((p) => p.id === b.practiceId);
       return (pb?.date ?? "").localeCompare(pa?.date ?? "");
     });
-  const lastBringPerson = pastDuties[0]?.bringPersonName ?? "";
-  const lastIdx = lastBringPerson && bucketPeople.length > 0
-    ? bucketPeople.indexOf(lastBringPerson)
-    : -1;
+  // 直近にバケツ当番をした人の位置。退団などでマスタに居ない人だった場合は
+  // ローテーションが先頭に戻ってしまうため、さらに前の回までさかのぼって基準を決める
+  let lastIdx = -1;
+  for (const d of pastDuties) {
+    const i = bucketPeople.indexOf(d.bringPersonName ?? "");
+    if (i >= 0) { lastIdx = i; break; }
+  }
 
   const futurePeople: string[] = [];
   if (bucketPeople.length > 0) {

@@ -208,7 +208,10 @@ function DutyRosterInner() {
 
   // 有効期限内（自動非表示になっていない）のスワップ一覧
   function getActiveSwaps(): DutySwap[] {
+    // 退団などで選手マスタから消えた人が絡む交代は無効（ローテーションに名前を戻さない）
+    const known = new Set(parents.map((p) => p.playerName));
     return swaps.filter((s) => {
+      if (!known.has(s.personA) || !known.has(s.personB)) return false;
       if (!s.fromDate) return true;
       const past = pastMatches.filter((m) => m.date >= s.fromDate).length;
       return past < swapCoverage(s);
