@@ -111,7 +111,6 @@ export async function ensureSheets(): Promise<void> {
     { title: "audit_log", headers: ["time", "ip", "device", "method", "path", "detail"] },
     { title: "duty_links", headers: ["matchId"] },
     { title: "duty_bucket_links", headers: ["practiceId"] },
-    { title: "bucket_skips", headers: ["practiceId", "names"] },
     { title: "league_cache", headers: ["json", "fetchedAt"] },
   ];
 

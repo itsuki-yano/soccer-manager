@@ -5,7 +5,7 @@ import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import type { Match, Driver, Parent, Practice, BucketDuty, Settings, DutySwap } from "@/lib/types";
 import { logDetail } from "@/lib/audit";
-import { computeBucketPredictions, type BucketSkip } from "@/lib/bucketDuty";
+import { computeBucketPredictions } from "@/lib/bucketDuty";
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -109,14 +109,8 @@ function DutyRosterInner() {
   const [editRet, setEditRet] = useState("");
   const [savingBucket, setSavingBucket] = useState(false);
 
-  // バケツ当番のスキップ（今回だけお休み）
-  const [bucketSkips, setBucketSkips] = useState<BucketSkip[]>([]);
-  const [skipBucketSlot, setSkipBucketSlot] = useState<number | null>(null);
-  const [skipBucketNames, setSkipBucketNames] = useState<string[]>([]);
-  const [savingBucketSkip, setSavingBucketSkip] = useState(false);
-
   const load = useCallback(async () => {
-    const [ms, drvs, prts, ps, bds, st, sw, dl, dbl, bsk] = await Promise.all([
+    const [ms, drvs, prts, ps, bds, st, sw, dl, dbl] = await Promise.all([
       fetch("/api/matches").then((r) => r.json()),
       fetch("/api/drivers").then((r) => r.json()),
       fetch("/api/parents").then((r) => r.json()),
@@ -126,9 +120,7 @@ function DutyRosterInner() {
       fetch("/api/duty-swaps").then((r) => r.json()),
       fetch("/api/duty-links").then((r) => r.json()),
       fetch("/api/duty-bucket-links").then((r) => r.json()),
-      fetch("/api/bucket-skips").then((r) => r.json()),
     ]);
-    setBucketSkips(Array.isArray(bsk) ? bsk : []);
     setMatches(Array.isArray(ms) ? ms : []);
     setDrivers(Array.isArray(drvs) ? drvs : []);
     setParents(Array.isArray(prts) ? prts : []);
@@ -375,29 +367,6 @@ function DutyRosterInner() {
     }
     setEditBucketSlot(null);
     setSavingBucket(false);
-  }
-
-  // バケツ当番のスキップ（今回だけお休み）を保存。名前が空なら解除
-  async function saveBucketSkip(practiceId: string, names: string[], practiceDate?: string) {
-    setSavingBucketSkip(true);
-    await fetch("/api/bucket-skips", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ practiceId, names }),
-    });
-    setBucketSkips((prev) => {
-      const others = prev.filter((s) => s.practiceId !== practiceId);
-      return names.length > 0 ? [...others, { practiceId, names }] : others;
-    });
-    if (practiceDate) {
-      logDetail(
-        names.length > 0
-          ? `${fmtDate(practiceDate)} 自主練習 のバケツ当番をスキップ: ${names.join("、")}`
-          : `${fmtDate(practiceDate)} 自主練習 のバケツ当番スキップを解除`
-      );
-    }
-    setSkipBucketSlot(null);
-    setSavingBucketSkip(false);
   }
 
   if (loading) return <div className="max-w-5xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
@@ -1013,7 +982,7 @@ function DutyRosterInner() {
       .sort((a, b) => a.date.localeCompare(b.date));
     const effectiveSlotBucketPracticeIds: (string | null)[] = [0, 1, 2, 3].map((i) => linkedFuturePractices[i]?.id ?? null);
     // 未確定スロットのローテーション予測（通常練習ページと同じロジックで一致させる）
-    const bucketPredictions = computeBucketPredictions(parents, practices, duties, linkedBucketPracticeIds, today, bucketSkips);
+    const bucketPredictions = computeBucketPredictions(parents, practices, duties, linkedBucketPracticeIds, today);
 
     // 練習選択ピッカーの候補: 未紐付けの未来の自主練習のみ（曜日は問わない）
     const futurePractices = practices
@@ -1051,10 +1020,6 @@ function DutyRosterInner() {
                 const isConfirmed = !!existingDuty;
                 const isEditing = editBucketSlot === i;
                 const isPicking = pickingBucketSlot === i;
-                const isSkipping = skipBucketSlot === i;
-                const slotSkips = linkedPracticeId
-                  ? (bucketSkips.find((s) => s.practiceId === linkedPracticeId)?.names ?? [])
-                  : [];
                 const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
 
                 return (
@@ -1068,14 +1033,8 @@ function DutyRosterInner() {
                           <span className="text-xs text-gray-400">日付未定</span>
                         )}
                       </div>
-                      {!isEditing && !isPicking && !isSkipping && (
+                      {!isEditing && !isPicking && (
                         <div className="flex gap-1.5 shrink-0">
-                          {linkedPracticeId && (
-                            <button
-                              onClick={() => { setSkipBucketSlot(i); setSkipBucketNames(slotSkips); setEditBucketSlot(null); setPickingBucketSlot(null); }}
-                              className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg"
-                            >スキップ</button>
-                          )}
                           <button
                             onClick={() => {
                               setEditBucketSlot(i);
@@ -1104,8 +1063,6 @@ function DutyRosterInner() {
                               onClick={async () => {
                                 // バケツ当番データをDBから削除
                                 await fetch(`/api/bucket-duties?practiceId=${linkedPracticeId}`, { method: "DELETE" });
-                                await fetch(`/api/bucket-skips?practiceId=${linkedPracticeId}`, { method: "DELETE" }).catch(() => {});
-                                setBucketSkips((prev) => prev.filter((s) => s.practiceId !== linkedPracticeId));
                                 setDuties((prev) => prev.filter((d) => d.practiceId !== linkedPracticeId));
                                 persistBucketLinks(linkedBucketPracticeIds.filter((x) => x !== linkedPracticeId));
                                 if (linkedPractice) logDetail(`${fmtDate(linkedPractice.date)} 自主練習 のバケツ当番を紐付け解除`);
@@ -1186,28 +1143,6 @@ function DutyRosterInner() {
                           </button>
                         </div>
                       </div>
-                    ) : isSkipping ? (
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-500">
-                          今回だけお休みにする人（次の人へ順番が回ります）
-                        </p>
-                        <MultiSelect names={bucketPeople} selected={skipBucketNames} onChange={setSkipBucketNames} />
-                        <p className="text-xs text-gray-400">
-                          お休みにした人は順番を保ったまま、次の巡で担当します。この回が終わると自動で元に戻ります。
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => saveBucketSkip(linkedPracticeId!, skipBucketNames, linkedPractice?.date)}
-                            disabled={savingBucketSkip}
-                            className="flex-1 bg-gray-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
-                          >
-                            {savingBucketSkip ? "保存中..." : "スキップ保存"}
-                          </button>
-                          <button onClick={() => setSkipBucketSlot(null)} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-sm">
-                            キャンセル
-                          </button>
-                        </div>
-                      </div>
                     ) : (
                       <div>
                         <div className="grid grid-cols-2 gap-2">
@@ -1220,14 +1155,6 @@ function DutyRosterInner() {
                             <p className="text-sm font-semibold text-stone-800">{displayReturn || "−"}</p>
                           </div>
                         </div>
-                        {slotSkips.length > 0 && (
-                          <div className="flex items-center gap-1 flex-wrap mt-1.5">
-                            <span className="text-xs text-gray-400">今回お休み:</span>
-                            {slotSkips.map((n) => (
-                              <span key={n} className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full line-through">{n}</span>
-                            ))}
-                          </div>
-                        )}
                         {!isConfirmed && linkedPracticeId && (displayBring || displayReturn) && (
                           <p className="text-xs text-amber-600 mt-1.5">※ ローテーション順からの予定表示です。「変更」で確定保存すると通常練習ページにも反映されます。</p>
                         )}

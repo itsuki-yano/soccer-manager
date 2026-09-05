@@ -5,7 +5,7 @@ import BackHeader from "@/components/BackHeader";
 import { VIEW_ONLY } from "@/lib/viewOnly";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Practice, BucketDuty, Settings, Parent } from "@/lib/types";
-import { computeBucketPredictions, type BucketSkip } from "@/lib/bucketDuty";
+import { computeBucketPredictions } from "@/lib/bucketDuty";
 
 type View = "list" | "cal";
 
@@ -89,7 +89,6 @@ export default function PracticesPage() {
   const [duties, setDuties] = useState<BucketDuty[]>([]);
   const [parents, setParents] = useState<Parent[]>([]);
   const [linkedBucketPracticeIds, setLinkedBucketPracticeIds] = useState<string[]>([]);
-  const [bucketSkips, setBucketSkips] = useState<BucketSkip[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("list");
@@ -136,20 +135,18 @@ export default function PracticesPage() {
   }
 
   const load = useCallback(async () => {
-    const [ps, ds, st, prts, dbl, bsk] = await Promise.all([
+    const [ps, ds, st, prts, dbl] = await Promise.all([
       fetch("/api/practices").then((r) => r.json()),
       fetch("/api/bucket-duties").then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()),
       fetch("/api/parents").then((r) => r.json()),
       fetch("/api/duty-bucket-links").then((r) => r.json()),
-      fetch("/api/bucket-skips").then((r) => r.json()),
     ]);
     setPractices(Array.isArray(ps) ? ps : []);
     setDuties(Array.isArray(ds) ? ds : []);
     setSettings(st);
     setParents(Array.isArray(prts) ? prts : []);
     setLinkedBucketPracticeIds(Array.isArray(dbl) ? dbl : []);
-    setBucketSkips(Array.isArray(bsk) ? bsk : []);
     setLoading(false);
   }, []);
 
@@ -178,7 +175,6 @@ export default function PracticesPage() {
     try {
       for (const p of pendingDeletes) {
         await fetch(`/api/bucket-duties?practiceId=${encodeURIComponent(p.id)}`, { method: "DELETE" });
-        await fetch(`/api/bucket-skips?practiceId=${encodeURIComponent(p.id)}`, { method: "DELETE" }).catch(() => {});
         await fetch(`/api/practices/${p.id}`, { method: "DELETE" });
       }
       const goneIds = new Set(pendingDeletes.map((p) => p.id));
@@ -243,7 +239,6 @@ export default function PracticesPage() {
   async function deletePractice(id: string) {
     // 紐付くバケツ当番(bucket-duties)も解除してから練習を削除
     await fetch(`/api/bucket-duties?practiceId=${encodeURIComponent(id)}`, { method: "DELETE" });
-    await fetch(`/api/bucket-skips?practiceId=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
     await fetch(`/api/practices/${id}`, { method: "DELETE" });
     setPractices((prev) => prev.filter((p) => p.id !== id));
     setDuties((prev) => prev.filter((d) => d.practiceId !== id));
@@ -260,7 +255,7 @@ export default function PracticesPage() {
   const upcoming = sorted.filter((p) => p.date >= today);
   const past = sorted.filter((p) => p.date < today).reverse();
   // 当番一覧と同じロジックで未確定スロットのローテーション予測を算出（表示を一致させる）
-  const bucketPredictions = computeBucketPredictions(parents, practices, duties, linkedBucketPracticeIds, today, bucketSkips);
+  const bucketPredictions = computeBucketPredictions(parents, practices, duties, linkedBucketPracticeIds, today);
 
   // カレンダー用
   const firstDay = new Date(calYear, calMonth, 1).getDay();
