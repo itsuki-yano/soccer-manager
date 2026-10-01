@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { isStillInFeed } from "@/lib/ical";
 import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import type { Match, Driver, Parent } from "@/lib/types";
@@ -80,7 +81,10 @@ export default function MatchesPage() {
         const feedUids = new Set<string>(data.map((e: BandEvent) => e.bandUid));
         const today = new Date().toISOString().slice(0, 10);
         const bandLinkedFuture = matches.filter((m) => m.bandUid && m.date >= today);
-        const gone = bandLinkedFuture.filter((m) => !feedUids.has(m.bandUid));
+        // 取得が空のときは全件が削除候補になってしまうので、削除提案そのものを出さない
+        const gone = data.length === 0
+          ? []
+          : bandLinkedFuture.filter((m) => !isStillInFeed(m.bandUid, feedUids));
         setPendingDeletes(gone);
         setSyncSummary(`BAND取得${data.length}件／アプリのBAND予定(未来)${bandLinkedFuture.length}件／削除候補${gone.length}件`);
       } else {

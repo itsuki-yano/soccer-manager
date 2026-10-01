@@ -1,98 +1,13 @@
 import { NextResponse } from "next/server";
-
-interface ICalEvent {
-  uid: string;
-  summary: string;
-  dtstart: string;
-  dtend: string;
-  location: string;
-  description: string;
-  url: string;
-}
-
-// iCal日時値から時刻(HH:MM)を抽出（時刻なし=終日なら空）
-function extractTime(value: string): string {
-  const cleaned = (value ?? "").replace(/[TZ]/g, "");
-  const t = cleaned.slice(8, 12);
-  return t.length >= 4 ? `${t.slice(0, 2)}:${t.slice(2, 4)}` : "";
-}
-
-// BAND投稿URL（https://band.us/band/.../post/...）を抽出
-function extractPostUrl(e: Partial<ICalEvent>): string {
-  const re = /https?:\/\/band\.us\/\S+/i;
-  if (e.url && re.test(e.url)) return e.url.match(re)![0];
-  if (e.description) { const m = e.description.match(re); if (m) return m[0]; }
-  if (e.url) return e.url; // URLプロパティがband.us以外でも一応返す
-  return "";
-}
-
-// 「日本、〒448-0011 愛知県…」→「愛知県…」（郵便番号より後だけ採用）
-function cleanAddress(raw: string): string {
-  const s = (raw ?? "").trim();
-  const m = s.match(/〒?\s*\d{3}-?\d{4}\s*(.+)$/);
-  if (m && m[1].trim()) return m[1].trim();
-  return s.replace(/^日本[、,\s]*/, "").trim();
-}
-
-function shouldSkip(summary: string): boolean {
-  return summary.includes("練習");
-}
+import {
+  parseIcal, parseDate, parseTime, cleanAddress, extractPostUrl,
+  expandRecurrence, buildBandUid, isPracticeSummary,
+} from "@/lib/ical";
 
 function detectMatchType(summary: string): string {
   if (/トレーニングマッチ|TM|トレマ/i.test(summary)) return "TM";
   if (/合宿/.test(summary)) return "合宿";
   return "公式戦";
-}
-
-function parseDtstart(value: string): string {
-  const cleaned = value.replace(/[TZ]/g, "");
-  const d = cleaned.slice(0, 8);
-  return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-}
-
-function parseIcal(text: string): ICalEvent[] {
-  const events: ICalEvent[] = [];
-  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-
-  // unfold continuation lines
-  const unfolded: string[] = [];
-  for (const line of lines) {
-    if ((line.startsWith(" ") || line.startsWith("\t")) && unfolded.length > 0) {
-      unfolded[unfolded.length - 1] += line.slice(1);
-    } else {
-      unfolded.push(line);
-    }
-  }
-
-  let inEvent = false;
-  let current: Partial<ICalEvent> = {};
-
-  for (const line of unfolded) {
-    if (line.trim() === "BEGIN:VEVENT") {
-      inEvent = true;
-      current = {};
-    } else if (line.trim() === "END:VEVENT") {
-      inEvent = false;
-      if (current.uid && current.summary && current.dtstart) {
-        events.push(current as ICalEvent);
-      }
-    } else if (inEvent) {
-      const colonIdx = line.indexOf(":");
-      if (colonIdx < 0) continue;
-      const keyPart = line.slice(0, colonIdx).split(";")[0].toUpperCase();
-      const value = line.slice(colonIdx + 1).trim();
-      const unescape = (s: string) => s.replace(/\\n/g, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
-      if (keyPart === "UID") current.uid = value;
-      else if (keyPart === "SUMMARY") current.summary = unescape(value);
-      else if (keyPart === "LOCATION") current.location = unescape(value);
-      else if (keyPart === "DTSTART") current.dtstart = value;
-      else if (keyPart === "DTEND") current.dtend = value;
-      else if (keyPart === "DESCRIPTION") current.description = unescape(value);
-      else if (keyPart === "URL") current.url = value;
-    }
-  }
-
-  return events;
 }
 
 async function calcDistance(address: string): Promise<number> {
@@ -118,37 +33,42 @@ export async function GET() {
     const res = await fetch(icalUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(`iCal fetch failed: ${res.status}`);
     const text = await res.text();
-    const events = parseIcal(text);
+    const events = parseIcal(text).filter((e) => !isPracticeSummary(e.summary));
 
-    const filtered = events.filter((e) => !shouldSkip(e.summary));
+    const results = (
+      await Promise.all(
+        events.map(async (e) => {
+          const matchType = detectMatchType(e.summary);
+          const address = cleanAddress(e.location ?? "");
+          const isHome = address.includes("かりがね") || e.summary.includes("かりがね");
+          // 距離は会場ごとに1回だけ計算する。繰り返し予定を日付ごとに展開してから
+          // 計算すると、同じ会場に対して何十回も距離APIを叩くことになるため。
+          const distanceKm = address && !isHome ? await calcDistance(address) : 0;
 
-    const results = await Promise.all(
-      filtered.map(async (e) => {
-        const matchType = detectMatchType(e.summary);
-        let distanceKm = 0;
-        const address = cleanAddress(e.location ?? "");
-        const isHome = address.includes("かりがね") || e.summary.includes("かりがね");
-        if (address && !isHome) {
-          distanceKm = await calcDistance(address);
-        }
-        return {
-          bandUid: e.uid,
-          date: parseDtstart(e.dtstart),
-          startTime: extractTime(e.dtstart),
-          endTime: e.dtend ? extractTime(e.dtend) : "",
-          matchType,
-          matchName: e.summary,
-          opponent: "",
-          venue: address.split(/[,、\n]/)[0].trim(),
-          address,
-          distanceKm,
-          carCount: isHome ? 0 : 1,
-          needsSettlement: matchType !== "TM",
-          isHome,
-          postUrl: extractPostUrl(e),
-        };
-      })
-    );
+          const startTime = parseTime(e.dtstart);
+          const endTime = e.dtend ? parseTime(e.dtend) : "";
+          // 繰り返し登録された試合も1回ずつ取り込めるように展開する
+          const dates = expandRecurrence(parseDate(e.dtstart), e.rrule, e.exdates);
+
+          return dates.map((date) => ({
+            bandUid: buildBandUid(e.uid, date, !!e.rrule),
+            date,
+            startTime,
+            endTime,
+            matchType,
+            matchName: e.summary,
+            opponent: "",
+            venue: address.split(/[,、\n]/)[0].trim(),
+            address,
+            distanceKm,
+            carCount: isHome ? 0 : 1,
+            needsSettlement: matchType !== "TM",
+            isHome,
+            postUrl: extractPostUrl(e),
+          }));
+        })
+      )
+    ).flat();
 
     results.sort((a, b) => a.date.localeCompare(b.date));
     return NextResponse.json(results);

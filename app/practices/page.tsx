@@ -6,6 +6,7 @@ import { VIEW_ONLY } from "@/lib/viewOnly";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Practice, BucketDuty, Settings, Parent } from "@/lib/types";
 import { computeBucketPredictions } from "@/lib/bucketDuty";
+import { isStillInFeed } from "@/lib/ical";
 
 type View = "list" | "cal";
 
@@ -163,7 +164,10 @@ export default function PracticesPage() {
       // BAND側で削除された練習を検出（BAND由来かつ未来で、最新フィードに存在しないもの）
       const feedUids = new Set<string>(data.map((e: Practice) => e.bandUid));
       const t = new Date().toISOString().slice(0, 10);
-      const gone = practices.filter((p) => p.bandUid && p.date >= t && !feedUids.has(p.bandUid));
+      // 取得が空のときは全件が削除候補になってしまうので、削除提案そのものを出さない
+      const gone = data.length === 0
+        ? []
+        : practices.filter((p) => p.bandUid && p.date >= t && !isStillInFeed(p.bandUid, feedUids));
       setPendingDeletes(gone);
     }
     setSyncing(false);
