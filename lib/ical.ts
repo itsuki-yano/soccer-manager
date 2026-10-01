@@ -208,14 +208,48 @@ export function expandRecurrence(
     }
   } else if (freq === "MONTHLY") {
     if (bydayEntries.length > 0) {
-      // 「毎月第n曜日」形式（例: BYDAY=1SU）。日付番号ではなく曜日の並びで決まる。
+      // 「毎月第n曜日」形式。指定のしかたは3通りあり、取り違えると
+      // もっともらしい別の日付になってしまうので分けて扱う。
+      //   BYDAY=2SU            → 第2日曜
+      //   BYDAY=SU;BYSETPOS=2  → 第2日曜（Googleカレンダー等がこの形で出す）
+      //   BYDAY=SU             → その月の日曜すべて
+      const bysetpos = (rules.BYSETPOS ?? "")
+        .split(",")
+        .map((n) => parseInt(n.trim(), 10))
+        .filter((n) => !Number.isNaN(n) && n !== 0);
+
       for (let i = 0; i < limit; i++) {
         const base = new Date(start.getFullYear(), start.getMonth() + i * interval, 1);
         if (base > horizon) break;
-        let stop = false;
+
+        // その月でBYDAYに該当する日を全て洗い出す
+        let cands: Date[] = [];
         for (const e of bydayEntries) {
-          const d = nthWeekdayOfMonth(base.getFullYear(), base.getMonth(), e.weekday, e.ordinal ?? 1);
-          if (!d || d < start || d > horizon) continue;
+          if (e.ordinal !== null) {
+            const d = nthWeekdayOfMonth(base.getFullYear(), base.getMonth(), e.weekday, e.ordinal);
+            if (d) cands.push(d);
+          } else {
+            for (let n = 1; n <= 5; n++) {
+              const d = nthWeekdayOfMonth(base.getFullYear(), base.getMonth(), e.weekday, n);
+              if (d) cands.push(d);
+            }
+          }
+        }
+        cands.sort((a, b) => a.getTime() - b.getTime());
+
+        // BYSETPOS があれば「何番目か」で絞る（-1 なら最後）
+        if (bysetpos.length > 0) {
+          const picked: Date[] = [];
+          for (const pos of bysetpos) {
+            const idx = pos > 0 ? pos - 1 : cands.length + pos;
+            if (idx >= 0 && idx < cands.length) picked.push(cands[idx]);
+          }
+          cands = picked.sort((a, b) => a.getTime() - b.getTime());
+        }
+
+        let stop = false;
+        for (const d of cands) {
+          if (d < start || d > horizon) continue;
           const s = ymd(d);
           if (until && s > until) { stop = true; break; }
           if (!exSet.has(s)) out.push(s);
