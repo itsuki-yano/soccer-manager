@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { isStillInFeed } from "@/lib/ical";
+import { isStillInFeed, occurrenceKey } from "@/lib/ical";
 import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import type { Match, Driver, Parent } from "@/lib/types";
@@ -79,12 +79,16 @@ export default function MatchesPage() {
         setBandEvents(data);
         // BAND側で削除された予定を検出（BAND由来かつ未来の予定で、最新フィードに存在しないもの）
         const feedUids = new Set<string>(data.map((e: BandEvent) => e.bandUid));
+        // BANDが繰り返し予定のUIDを振り直すことがあるため、日付＋試合名でも突き合わせる
+        const feedKeys = new Set<string>(data.map((e: BandEvent) => occurrenceKey(e.date, e.matchName)));
         const today = new Date().toISOString().slice(0, 10);
         const bandLinkedFuture = matches.filter((m) => m.bandUid && m.date >= today);
         // 取得が空のときは全件が削除候補になってしまうので、削除提案そのものを出さない
         const gone = data.length === 0
           ? []
-          : bandLinkedFuture.filter((m) => !isStillInFeed(m.bandUid, feedUids));
+          : bandLinkedFuture.filter((m) =>
+              !isStillInFeed(m.bandUid, feedUids) && !feedKeys.has(occurrenceKey(m.date, m.matchName))
+            );
         setPendingDeletes(gone);
         setSyncSummary(`BAND取得${data.length}件／アプリのBAND予定(未来)${bandLinkedFuture.length}件／削除候補${gone.length}件`);
       } else {
@@ -175,7 +179,11 @@ export default function MatchesPage() {
     return true;
   });
 
-  const newBandEvents = bandEvents.filter((e) => !importedUids.has(e.bandUid));
+  // IDが振り直されても取り込み済みと分かるよう、日付＋試合名でも判定する
+  const importedKeys = new Set(matches.map((m) => occurrenceKey(m.date, m.matchName)));
+  const newBandEvents = bandEvents.filter(
+    (e) => !importedUids.has(e.bandUid) && !importedKeys.has(occurrenceKey(e.date, e.matchName))
+  );
 
   // カレンダー計算
   const firstDay = new Date(calYear, calMonth, 1);

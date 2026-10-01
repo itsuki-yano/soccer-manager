@@ -281,6 +281,15 @@ export function isPracticeSummary(summary: string): boolean {
 // BANDで単発予定を後から繰り返しに変更すると、feed側のIDが "uid" から "uid_YYYY-MM-DD" に
 // 変わるため、そのままでは「BANDで削除された」と誤判定してしまう。日付サフィックス付きの
 // IDが1つでもあれば生存とみなす（BANDのUID自体に "_" を含む場合があるので形式で判定する）。
+// BANDは繰り返し予定を編集すると系列のUID自体を振り直す
+//（例: .../999924992/20260725@band.us → .../999924992/20260905@band.us）。
+// そのためIDだけで突き合わせると、取り込み済みの予定が「新規」として再掲され、
+// 追加すると重複ができてしまう。IDが変わっても同じ回だと分かるよう
+// 「日付＋名称」でも突き合わせるためのキー。
+export function occurrenceKey(date: string, label: string): string {
+  return `${date}|${(label ?? "").trim()}`;
+}
+
 export function isStillInFeed(bandUid: string, feedUids: Set<string>): boolean {
   if (!bandUid) return false;
   if (feedUids.has(bandUid)) return true;

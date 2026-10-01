@@ -6,7 +6,7 @@ import { VIEW_ONLY } from "@/lib/viewOnly";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Practice, BucketDuty, Settings, Parent } from "@/lib/types";
 import { computeBucketPredictions } from "@/lib/bucketDuty";
-import { isStillInFeed } from "@/lib/ical";
+import { isStillInFeed, occurrenceKey } from "@/lib/ical";
 
 type View = "list" | "cal";
 
@@ -103,6 +103,7 @@ export default function PracticesPage() {
   // BANDで削除された練習（アプリからも削除する候補）
   const [pendingDeletes, setPendingDeletes] = useState<Practice[]>([]);
   const [deletingBand, setDeletingBand] = useState(false);
+  const [syncError, setSyncError] = useState("");
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [form, setForm] = useState({ date: "", type: "通常練習", venue: "", address: "", startTime: "", endTime: "", bandUrl: "" });
@@ -155,22 +156,42 @@ export default function PracticesPage() {
 
   async function syncBand() {
     setSyncing(true);
-    const res = await fetch("/api/band-practices");
-    const data = await res.json();
-    if (Array.isArray(data)) {
-      const existing = practices.map((p) => p.bandUid).filter(Boolean);
-      setBandEvents(data.filter((e: Practice) => !existing.includes(e.bandUid)));
+    setSyncError("");
+    try {
+      const res = await fetch("/api/band-practices");
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        // 以前は何も表示せず終了していたため「押しても動かない」状態になっていた
+        setSyncError(data?.error ? `取得に失敗しました: ${data.error}` : "取得に失敗しました");
+        return;
+      }
+      const existingUids = new Set(practices.map((p) => p.bandUid).filter(Boolean));
+      // BANDが繰り返し予定のUIDを振り直すことがあるため、日付＋種別でも取り込み済みを判定する
+      const existingKeys = new Set(practices.map((p) => occurrenceKey(p.date, p.type)));
+      setBandEvents(
+        data.filter((e: Practice) =>
+          !existingUids.has(e.bandUid) && !existingKeys.has(occurrenceKey(e.date, e.type))
+        )
+      );
       setShowBand(true);
       // BAND側で削除された練習を検出（BAND由来かつ未来で、最新フィードに存在しないもの）
       const feedUids = new Set<string>(data.map((e: Practice) => e.bandUid));
+      const feedKeys = new Set<string>(data.map((e: Practice) => occurrenceKey(e.date, e.type)));
       const t = new Date().toISOString().slice(0, 10);
       // 取得が空のときは全件が削除候補になってしまうので、削除提案そのものを出さない
       const gone = data.length === 0
         ? []
-        : practices.filter((p) => p.bandUid && p.date >= t && !isStillInFeed(p.bandUid, feedUids));
+        : practices.filter((p) =>
+            p.bandUid && p.date >= t &&
+            !isStillInFeed(p.bandUid, feedUids) &&
+            !feedKeys.has(occurrenceKey(p.date, p.type))
+          );
       setPendingDeletes(gone);
+    } catch (e) {
+      setSyncError(`取得に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSyncing(false);
     }
-    setSyncing(false);
   }
 
   // BANDで削除された練習をアプリからも削除（紐付くバケツ当番も連動削除）
@@ -420,6 +441,12 @@ export default function PracticesPage() {
       )}
       {showBand && bandEvents.length === 0 && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 text-sm text-emerald-800 text-center">新しい練習はありません</div>
+      )}
+      {syncError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700">
+          <span className="font-bold">⚠️ </span>{syncError}
+          <br /><span className="text-xs text-red-500">通信が不安定な可能性があります。少し待ってからもう一度お試しください。</span>
+        </div>
       )}
 
       {/* リスト表示 */}
