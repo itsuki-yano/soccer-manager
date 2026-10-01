@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   parseIcal, parseDate, parseTime, cleanAddress, extractPostUrl,
-  expandRecurrence, buildBandUid, isPracticeSummary,
+  expandRecurrence, buildBandUid, isPracticeSummary, isCancelledSummary,
 } from "@/lib/ical";
 
 function detectMatchType(summary: string): string {
@@ -33,7 +33,8 @@ export async function GET() {
     const res = await fetch(icalUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(`iCal fetch failed: ${res.status}`);
     const text = await res.text();
-    const events = parseIcal(text).filter((e) => !isPracticeSummary(e.summary));
+    const events = parseIcal(text)
+      .filter((e) => !isPracticeSummary(e.summary) && !isCancelledSummary(e.summary));
 
     const results = (
       await Promise.all(

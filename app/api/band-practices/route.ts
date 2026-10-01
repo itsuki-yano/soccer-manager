@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import {
   parseIcal, parseDate, parseTime, cleanAddress, extractPostUrl,
-  expandRecurrence, buildBandUid, isPracticeSummary,
+  expandRecurrence, buildBandUid, isPracticeSummary, isCancelledSummary,
 } from "@/lib/ical";
 
 function detectPracticeType(summary: string): string {
-  if (/自主練習/.test(summary)) return "自主練習";
+  // BANDでは「自主トレ」と書かれることがある
+  if (/自主練習|自主トレ/.test(summary)) return "自主練習";
   return "通常練習";
 }
 
@@ -16,7 +17,7 @@ function detectPracticeType(summary: string): string {
 const VENUES: { pattern: RegExp; venue: string; address: string }[] = [
   { pattern: /かりがね小/, venue: "刈谷市立かりがね小学校", address: "愛知県刈谷市築地町２丁目１５−１" },
   { pattern: /平成小/, venue: "刈谷市立平成小学校", address: "愛知県刈谷市一ツ木町３丁目１８−１" },
-  { pattern: /総合\s*[GgＧｇ]|総合グラウンド/, venue: "総合グラウンド", address: "愛知県刈谷市築地町３丁目１０−１１" },
+  { pattern: /総合\s*[GgＧｇ]|総合グラウンド|総グラ/, venue: "総合グラウンド", address: "愛知県刈谷市築地町３丁目１０−１１" },
 ];
 
 function venueFromSummary(summary: string) {
@@ -31,7 +32,8 @@ export async function GET() {
     const res = await fetch(icalUrl, { cache: "no-store" });
     if (!res.ok) throw new Error(`iCal fetch failed: ${res.status}`);
     const text = await res.text();
-    const events = parseIcal(text).filter((e) => isPracticeSummary(e.summary));
+    const events = parseIcal(text)
+      .filter((e) => isPracticeSummary(e.summary) && !isCancelledSummary(e.summary));
 
     const results = events.flatMap((e) => {
       const startTime = parseTime(e.dtstart);

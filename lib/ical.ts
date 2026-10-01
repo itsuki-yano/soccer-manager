@@ -272,9 +272,18 @@ export function expandRecurrence(
   return [...new Set(out)].sort();
 }
 
-// 予定名から試合か練習かを振り分ける。ここを1箇所にして取りこぼしを防ぐ
+// 予定名から試合か練習かを振り分ける。ここを1箇所にして取りこぼしを防ぐ。
+// BANDでは「自主練習」が「自主トレ」と書かれることがあり、「練習」だけで
+// 判定すると試合側に流れてしまうため両方を見る。
+// 「トレーニングマッチ」は試合なので巻き込まないこと。
 export function isPracticeSummary(summary: string): boolean {
-  return /練習/.test(summary ?? "");
+  return /練習|自主トレ/.test(summary ?? "");
+}
+
+// 「自主練習　お休み」のような、その回が無いことを知らせる予定。
+// 予定として取り込むと実在しない練習ができてしまうため除外する。
+export function isCancelledSummary(summary: string): boolean {
+  return /お休み|中止/.test(summary ?? "");
 }
 
 // 取り込み済みの予定がBAND側にまだ存在するか。
