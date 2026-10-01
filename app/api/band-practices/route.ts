@@ -9,16 +9,18 @@ function detectPracticeType(summary: string): string {
   return "通常練習";
 }
 
-// 通常練習はBAND側に場所が入っておらず、代わりにタイトルへ
-// 「かりがね小」「平成小」と学校名が入っている。会場名と住所をここで補う。
-// 住所はアプリに登録済みの過去データから確認したもの。
-const SCHOOLS: { pattern: RegExp; venue: string; address: string }[] = [
+// BANDの練習予定はタイトルに会場（「かりがね小」「平成小」「総合Ｇ」）が入っており、
+// 場所欄は空のことが多い。タイトルから会場名と住所をここで補う。
+// 住所はアプリに登録済みの過去データおよびユーザー確認済みのもの。
+// 「Ｇ」は全角・半角どちらの表記も拾う。
+const VENUES: { pattern: RegExp; venue: string; address: string }[] = [
   { pattern: /かりがね小/, venue: "刈谷市立かりがね小学校", address: "愛知県刈谷市築地町２丁目１５−１" },
   { pattern: /平成小/, venue: "刈谷市立平成小学校", address: "愛知県刈谷市一ツ木町３丁目１８−１" },
+  { pattern: /総合\s*[GgＧｇ]|総合グラウンド/, venue: "総合グラウンド", address: "愛知県刈谷市築地町３丁目１０−１１" },
 ];
 
-function schoolFromSummary(summary: string) {
-  return SCHOOLS.find((s) => s.pattern.test(summary ?? "")) ?? null;
+function venueFromSummary(summary: string) {
+  return VENUES.find((v) => v.pattern.test(summary ?? "")) ?? null;
 }
 
 export async function GET() {
@@ -36,11 +38,11 @@ export async function GET() {
       const endTime = e.dtend ? parseTime(e.dtend) : "";
       const dates = expandRecurrence(parseDate(e.dtstart), e.rrule, e.exdates);
       const fullLocation = cleanAddress(e.location ?? "");
-      // タイトルから学校を判別できたら会場名に使う。住所はBAND側にあればそれを優先し、
-      // 無ければ学校の住所で補う。
-      const school = schoolFromSummary(e.summary);
-      const venue = school ? school.venue : fullLocation.split(/[,、\n]/)[0].trim();
-      const address = fullLocation || school?.address || "";
+      // タイトルから会場を判別できたらその名称を使う。住所はBAND側にあればそれを優先し、
+      // 無ければ会場の住所で補う。
+      const known = venueFromSummary(e.summary);
+      const venue = known ? known.venue : fullLocation.split(/[,、\n]/)[0].trim();
+      const address = fullLocation || known?.address || "";
       const type = detectPracticeType(e.summary);
       const postUrl = extractPostUrl(e);
       return dates.map((date) => ({
