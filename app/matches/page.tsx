@@ -5,6 +5,7 @@ import Link from "next/link";
 import BackHeader from "@/components/BackHeader";
 import type { Match, Driver, Parent } from "@/lib/types";
 import { VIEW_ONLY } from "@/lib/viewOnly";
+import { todayJst } from "@/lib/today";
 
 const TYPE_COLORS: Record<string, string> = {
   "公式戦": "bg-stone-100 text-stone-700",
@@ -81,7 +82,7 @@ export default function MatchesPage() {
         const feedUids = new Set<string>(data.map((e: BandEvent) => e.bandUid));
         // BANDが繰り返し予定のUIDを振り直すことがあるため、日付＋試合名でも突き合わせる
         const feedKeys = new Set<string>(data.map((e: BandEvent) => occurrenceKey(e.date, e.matchName)));
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayJst();
         const bandLinkedFuture = matches.filter((m) => m.bandUid && m.date >= today);
         // 取得が空のときは全件が削除候補になってしまうので、削除提案そのものを出さない
         const gone = data.length === 0
@@ -369,7 +370,7 @@ export default function MatchesPage() {
             <p className="text-center text-gray-400 py-8">該当する試合がありません</p>
           )}
           {(() => {
-            const today = new Date().toISOString().slice(0, 10);
+            const today = todayJst();
             const upcoming = filtered.filter((m) => m.date >= today);
             const past = filtered.filter((m) => m.date < today).reverse();
 
@@ -521,7 +522,7 @@ export default function MatchesPage() {
                 const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const dayMatches = matchesByDay[dateStr] ?? [];
                 const isSelected = selectedDay === dateStr;
-                const isToday = dateStr === new Date().toISOString().slice(0, 10);
+                const isToday = dateStr === todayJst();
                 const weekday = (startWeekday + i) % 7;
                 return (
                   <button key={day} onClick={() => setSelectedDay(isSelected ? null : dateStr)}
@@ -563,7 +564,7 @@ export default function MatchesPage() {
                   {monthMatches.map((m) => {
                     const typeColor = TYPE_COLORS[m.matchType] ?? "bg-gray-100 text-gray-600";
                     const matchDrivers = drivers.filter((d) => d.matchId === m.id);
-                    const today = new Date().toISOString().slice(0, 10);
+                    const today = todayJst();
                     const isPast = m.date < today;
                     return (
                       <Link key={m.id} href={`/matches/${m.id}`}

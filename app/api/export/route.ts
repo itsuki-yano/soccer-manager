@@ -3,6 +3,7 @@ import { getSheetData, appendRow, getSheetsClient } from "@/lib/sheets";
 import ExcelJS from "exceljs";
 import type { Match, Driver, CoachExpense, Settings } from "@/lib/types";
 import { fetchRouteMapImage } from "@/lib/routeMap";
+import { todayJst } from "@/lib/today";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -355,7 +356,7 @@ export async function POST(req: Request) {
       settled: "精算済み",
       all: "全データ",
     };
-    const filename = `配車請求_${typeLabels[exportType] ?? exportType}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const filename = `配車請求_${typeLabels[exportType] ?? exportType}_${todayJst()}.xlsx`;
 
     return new NextResponse(buf, {
       headers: {

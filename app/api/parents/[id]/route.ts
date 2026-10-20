@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSheetData, updateRow, deleteRow } from "@/lib/sheets";
 import type { Parent } from "@/lib/types";
+import { todayJst } from "@/lib/today";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -22,7 +23,7 @@ async function cleanupReferences(playerName: string): Promise<{ swaps: number; d
   const result = { swaps: 0, drivers: 0, bucketDuties: 0 };
   if (!playerName) return result;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayJst();
 
   // 1) 当番交代(duty_swaps): 今後のローテーションに名前を戻してしまうため、関わる交代は全て削除
   try {

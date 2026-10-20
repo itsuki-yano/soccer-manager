@@ -6,6 +6,7 @@ import BackHeader from "@/components/BackHeader";
 import type { Match, Driver, Parent, Practice, BucketDuty, Settings, DutySwap } from "@/lib/types";
 import { logDetail } from "@/lib/audit";
 import { computeBucketPredictions } from "@/lib/bucketDuty";
+import { todayJst } from "@/lib/today";
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -134,7 +135,7 @@ function DutyRosterInner() {
       try {
         const saved = localStorage.getItem("dutyRosterSlotMatchIds");
         const old: (string | null)[] = saved ? JSON.parse(saved) : [];
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayJst();
         const valid = [...new Set(old.filter(Boolean) as string[])].filter((id) => {
           const m = (Array.isArray(ms) ? ms : []).find((x: Match) => x.id === id);
           return m && m.date >= today;
@@ -154,7 +155,7 @@ function DutyRosterInner() {
       try {
         const saved = localStorage.getItem("dutyRosterSlotBucketPracticeIds");
         const old: (string | null)[] = saved ? JSON.parse(saved) : [];
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayJst();
         const valid = [...new Set(old.filter(Boolean) as string[])].filter((id) => {
           const p = (Array.isArray(ps) ? ps : []).find((x: Practice) => x.id === id);
           return p && p.date >= today;
@@ -371,7 +372,7 @@ function DutyRosterInner() {
 
   if (loading) return <div className="max-w-5xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayJst();
   const parentNames = [...parents].sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName)).map((p) => p.playerName);
 
   const futureMatches = matches.filter((m) => m.date >= today).sort((a, b) => a.date.localeCompare(b.date));

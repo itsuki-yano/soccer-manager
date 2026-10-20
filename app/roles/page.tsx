@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import BackHeader from "@/components/BackHeader";
 import type { Parent, Match, Driver, Practice, BucketDuty } from "@/lib/types";
+import { todayJst } from "@/lib/today";
 
 const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -99,7 +100,7 @@ export default function RolesPage() {
   }
 
   const roles = selectedName ? getRoles(selectedName) : [];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayJst();
 
   // カレンダー用
   const firstDay = new Date(calYear, calMonth, 1).getDay();

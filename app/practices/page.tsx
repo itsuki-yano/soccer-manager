@@ -7,6 +7,7 @@ import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Practice, BucketDuty, Settings, Parent } from "@/lib/types";
 import { computeBucketPredictions } from "@/lib/bucketDuty";
 import { isStillInFeed, occurrenceKey } from "@/lib/ical";
+import { todayJst } from "@/lib/today";
 
 type View = "list" | "cal";
 
@@ -177,7 +178,7 @@ export default function PracticesPage() {
       // BAND側で削除された練習を検出（BAND由来かつ未来で、最新フィードに存在しないもの）
       const feedUids = new Set<string>(data.map((e: Practice) => e.bandUid));
       const feedKeys = new Set<string>(data.map((e: Practice) => occurrenceKey(e.date, e.type)));
-      const t = new Date().toISOString().slice(0, 10);
+      const t = todayJst();
       // 取得が空のときは全件が削除候補になってしまうので、削除提案そのものを出さない
       const gone = data.length === 0
         ? []
@@ -273,7 +274,7 @@ export default function PracticesPage() {
 
   if (loading) return <div className="max-w-lg md:max-w-4xl mx-auto px-4 py-8 text-center text-gray-400">読み込み中...</div>;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayJst();
   const bucketStart = settings?.bucketDutyStartDate ?? "";
   const bucketEnd = settings?.bucketDutyEndDate ?? "";
   const sorted = [...practices].sort((a, b) => a.date.localeCompare(b.date));
