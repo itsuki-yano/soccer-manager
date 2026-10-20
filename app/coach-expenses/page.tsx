@@ -6,7 +6,7 @@ import type { CoachExpense, Parent } from "@/lib/types";
 
 // 精算ステータス（claimed列に保存）
 const STATUS_CYCLE = ["", "請求中", "精算済み"] as const;
-const STATUS_LABEL: Record<string, string> = { "": "未精算", "請求中": "請求中", "精算済み": "精算済み" };
+const STATUS_LABEL: Record<string, string> = { "": "未請求", "請求中": "請求中", "精算済み": "精算済み" };
 const STATUS_COLOR: Record<string, string> = {
   "": "bg-gray-100 text-gray-500 border-gray-200",
   "請求中": "bg-amber-100 text-amber-800 border-amber-300",
@@ -17,6 +17,59 @@ const STATUS_BORDER: Record<string, string> = {
   "請求中": "border-amber-300",
   "精算済み": "border-emerald-300",
 };
+
+// 費用1件のカード。未精算リストと「精算済み」を開いたときの両方で使う
+function ExpenseCard({ e, updating, onCycle, onEdit, onDelete, onZoom }: {
+  e: CoachExpense;
+  updating: boolean;
+  onCycle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onZoom: (url: string) => void;
+}) {
+  const st = e.claimed ?? "";
+  return (
+    <div className={`bg-white rounded-xl shadow-sm border border-gray-100 border-l-4 ${STATUS_BORDER[st]} p-3 flex items-center gap-3`}>
+      {e.receiptUrl ? (
+        <button onClick={() => onZoom(e.receiptUrl)} className="shrink-0">
+          <img src={e.receiptUrl} alt="レシート" className="h-12 w-12 object-cover rounded-lg border border-gray-200" />
+        </button>
+      ) : null}
+      <div className="flex-1 min-w-0">
+        <div className="text-xs text-gray-400">{e.date}</div>
+        <div className="text-sm font-medium text-gray-800 truncate">{e.description}</div>
+        {e.purchaserName && <div className="text-xs text-stone-500 mt-0.5">購入: {e.purchaserName}</div>}
+      </div>
+      <div className="text-right shrink-0">
+        <div className="font-bold text-gray-800 whitespace-nowrap">{e.amount.toLocaleString()}円</div>
+        <button
+          onClick={onCycle}
+          disabled={updating}
+          className={`mt-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[st]} ${updating ? "opacity-40" : ""}`}
+        >
+          {STATUS_LABEL[st]}
+        </button>
+      </div>
+      <div className="flex flex-col gap-1">
+        <button onClick={onEdit} className="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded">編集</button>
+        <button onClick={onDelete} className="text-xs text-red-400 border border-red-100 px-2 py-1 rounded">削除</button>
+      </div>
+    </div>
+  );
+}
+
+// 「精算済み N件」の開閉バー
+function SettledToggle({ count, open, onClick }: { count: number; open: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full px-4 py-2.5 flex items-center justify-between bg-emerald-50/60 border border-emerald-100 rounded-xl text-xs font-semibold text-emerald-800 active:bg-emerald-100"
+    >
+      <span>✅ 精算済み {count}件</span>
+      <span className="text-emerald-600">{open ? "閉じる ▲" : "表示する ▼"}</span>
+    </button>
+  );
+}
 
 export default function CoachExpensesPage() {
   const [expenses, setExpenses] = useState<CoachExpense[]>([]);
@@ -30,6 +83,8 @@ export default function CoachExpensesPage() {
   const [uploading, setUploading] = useState(false);
   const [zoomReceipt, setZoomReceipt] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  // 初期表示は未精算（未請求・請求中）のみ。精算済みは畳んでおく
+  const [showSettled, setShowSettled] = useState(false);
 
   // 精算ステータスを順送り（未精算→請求中→精算済→未精算）
   async function cycleStatus(e: CoachExpense) {
@@ -37,12 +92,16 @@ export default function CoachExpensesPage() {
     const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
     setUpdatingId(e.id);
     try {
-      await fetch(`/api/coach-expenses/${e.id}`, {
+      const res = await fetch(`/api/coach-expenses/${e.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...e, claimed: next }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setExpenses((prev) => prev.map((x) => x.id === e.id ? { ...x, claimed: next } : x));
+    } catch {
+      // 精算済みにすると行が一覧から消えるので、保存できていない状態を黙って通さない
+      alert("精算状況を保存できませんでした。通信状況を確認してもう一度お試しください。");
     } finally {
       setUpdatingId(null);
     }
@@ -120,6 +179,10 @@ export default function CoachExpensesPage() {
 
   const total = expenses.reduce((s, e) => s + e.amount, 0);
   const sorted = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
+  // 一覧は未精算（未請求・請求中）と精算済みに分ける
+  const openList = sorted.filter((e) => (e.claimed ?? "") !== "精算済み");
+  const settledList = sorted.filter((e) => (e.claimed ?? "") === "精算済み");
+  const openTotal = openList.reduce((s, e) => s + e.amount, 0);
   const parentNames = [...parents]
     .sort((a, b) => (a.furigana || a.playerName).localeCompare(b.furigana || b.playerName))
     .map((p) => p.playerName);
@@ -143,15 +206,18 @@ export default function CoachExpensesPage() {
       )}
 
       <div className="bg-stone-50 rounded-xl p-4 mb-3 flex justify-between items-center">
-        <span className="text-gray-600 font-medium">合計</span>
-        <span className="text-2xl font-bold text-stone-800">{total.toLocaleString()}円</span>
+        <span className="text-gray-600 font-medium">未精算 合計</span>
+        <div className="text-right">
+          <div className="text-2xl font-bold text-stone-800">{openTotal.toLocaleString()}円</div>
+          <div className="text-xs text-gray-400 mt-0.5">全体 {total.toLocaleString()}円</div>
+        </div>
       </div>
 
       {/* 精算進捗 */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden mb-4">
         <div className="grid grid-cols-3 divide-x divide-gray-100">
           <div className="p-3 text-center">
-            <div className="text-xs text-gray-400 mb-0.5">未精算</div>
+            <div className="text-xs text-gray-400 mb-0.5">未請求</div>
             <div className="text-base font-bold text-gray-500">{expenses.filter((e) => !e.claimed).length}件</div>
           </div>
           <div className="p-3 text-center">
@@ -159,7 +225,7 @@ export default function CoachExpensesPage() {
             <div className="text-base font-bold text-amber-800">{expenses.filter((e) => e.claimed === "請求中").length}件</div>
           </div>
           <div className="p-3 text-center">
-            <div className="text-xs text-emerald-700 mb-0.5">精算済</div>
+            <div className="text-xs text-emerald-700 mb-0.5">精算済み</div>
             <div className="text-base font-bold text-emerald-700">{expenses.filter((e) => e.claimed === "精算済み").length}件</div>
           </div>
         </div>
@@ -232,35 +298,44 @@ export default function CoachExpensesPage() {
       )}
 
       <div className="grid gap-2">
-        {sorted.map((e) => (
-          <div key={e.id} className={`bg-white rounded-xl shadow-sm border border-gray-100 border-l-4 ${STATUS_BORDER[e.claimed ?? ""]} p-3 flex items-center gap-3`}>
-            {e.receiptUrl ? (
-              <button onClick={() => setZoomReceipt(e.receiptUrl)} className="shrink-0">
-                <img src={e.receiptUrl} alt="レシート" className="h-12 w-12 object-cover rounded-lg border border-gray-200" />
-              </button>
-            ) : null}
-            <div className="flex-1 min-w-0">
-              <div className="text-xs text-gray-400">{e.date}</div>
-              <div className="text-sm font-medium text-gray-800 truncate">{e.description}</div>
-              {e.purchaserName && <div className="text-xs text-stone-500 mt-0.5">購入: {e.purchaserName}</div>}
-            </div>
-            <div className="text-right shrink-0">
-              <div className="font-bold text-gray-800 whitespace-nowrap">{e.amount.toLocaleString()}円</div>
-              <button
-                onClick={() => cycleStatus(e)}
-                disabled={updatingId === e.id}
-                className={`mt-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[e.claimed ?? ""]} ${updatingId === e.id ? "opacity-40" : ""}`}
-              >
-                {STATUS_LABEL[e.claimed ?? ""]}
-              </button>
-            </div>
-            <div className="flex flex-col gap-1">
-              <button onClick={() => startEdit(e)} className="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded">編集</button>
-              <button onClick={() => setDeleteConfirm(e.id)} className="text-xs text-red-400 border border-red-100 px-2 py-1 rounded">削除</button>
-            </div>
-          </div>
+        {openList.map((e) => (
+          <ExpenseCard
+            key={e.id}
+            e={e}
+            updating={updatingId === e.id}
+            onCycle={() => cycleStatus(e)}
+            onEdit={() => startEdit(e)}
+            onDelete={() => setDeleteConfirm(e.id)}
+            onZoom={setZoomReceipt}
+          />
         ))}
-        {sorted.length === 0 && <p className="text-center text-gray-400 py-8">費用が登録されていません</p>}
+        {openList.length === 0 && (
+          <p className="text-center text-gray-400 py-8">
+            {sorted.length === 0 ? "費用が登録されていません" : "未精算の費用はありません 🎉"}
+          </p>
+        )}
+
+        {/* 精算済みは畳んでおく */}
+        {settledList.length > 0 && (
+          <>
+            <SettledToggle
+              count={settledList.length}
+              open={showSettled}
+              onClick={() => setShowSettled((v) => !v)}
+            />
+            {showSettled && settledList.map((e) => (
+              <ExpenseCard
+                key={e.id}
+                e={e}
+                updating={updatingId === e.id}
+                onCycle={() => cycleStatus(e)}
+                onEdit={() => startEdit(e)}
+                onDelete={() => setDeleteConfirm(e.id)}
+                onZoom={setZoomReceipt}
+              />
+            ))}
+          </>
+        )}
       </div>
     </main>
   );
