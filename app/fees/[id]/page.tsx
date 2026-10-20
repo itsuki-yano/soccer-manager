@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import BackHeader from "@/components/BackHeader";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import type { Fee, FeePayment, Parent } from "@/lib/types";
+import { jstDateLabel } from "@/lib/today";
 
 const CATEGORIES = ["合宿費用", "クラブ費", "イベント費用", "その他"];
 const CAT_COLORS: Record<string, string> = {
@@ -288,7 +289,7 @@ export default function FeeDetailPage({ params }: { params: Promise<{ id: string
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {paid && payment?.paidAt && payment.paidAt !== "不参加" && (
-                    <span className="text-xs text-gray-400">{payment.paidAt.slice(0, 10).replace(/-/g, "/")}</span>
+                    <span className="text-xs text-gray-400">{jstDateLabel(payment.paidAt)}</span>
                   )}
                   {!notJoiningIds.has(p.id) && (
                     <button

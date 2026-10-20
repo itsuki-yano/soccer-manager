@@ -260,15 +260,19 @@ export default function ExportPage() {
     const next = STATUS_OPTIONS[(idx + 1) % STATUS_OPTIONS.length];
     setUpdatingId(matchId);
     try {
-      await fetch(`/api/matches/${matchId}/settlement-status`, {
+      const res = await fetch(`/api/matches/${matchId}/settlement-status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ settlementStatus: next }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setPreview((prev) => prev ? {
         ...prev,
         matches: prev.matches.map((m) => m.id === matchId ? { ...m, settlementStatus: next } : m),
       } : prev);
+    } catch {
+      // 精算済みにすると行が一覧から消えるので、保存できていない状態を黙って通さない
+      alert("ステータスを保存できませんでした。通信状況を確認してもう一度お試しください。");
     } finally {
       setUpdatingId(null);
     }
@@ -280,15 +284,18 @@ export default function ExportPage() {
     const next = cycle[(cycle.indexOf(e.claimed ?? "") + 1) % cycle.length];
     setUpdatingId(e.id);
     try {
-      await fetch(`/api/coach-expenses/${e.id}`, {
+      const res = await fetch(`/api/coach-expenses/${e.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...e, claimed: next }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setPreview((prev) => prev ? {
         ...prev,
         coachExpenses: prev.coachExpenses.map((x) => x.id === e.id ? { ...x, claimed: next } : x),
       } : prev);
+    } catch {
+      alert("精算状況を保存できませんでした。通信状況を確認してもう一度お試しください。");
     } finally {
       setUpdatingId(null);
     }
@@ -385,7 +392,7 @@ export default function ExportPage() {
             </div>
             <div className="grid grid-cols-3 divide-x divide-gray-100">
               <div className="p-3 text-center">
-                <div className="text-xs text-gray-400 mb-0.5">未精算</div>
+                <div className="text-xs text-gray-400 mb-0.5">未請求</div>
                 <div className="text-base font-bold text-gray-500">{coachUnclaimedCount}件</div>
               </div>
               <div className="p-3 text-center">
@@ -393,7 +400,7 @@ export default function ExportPage() {
                 <div className="text-base font-bold text-amber-800">{coachBillingCount}件</div>
               </div>
               <div className="p-3 text-center">
-                <div className="text-xs text-emerald-700 mb-0.5">精算済</div>
+                <div className="text-xs text-emerald-700 mb-0.5">精算済み</div>
                 <div className="text-base font-bold text-emerald-700">{coachPaidCount}件</div>
               </div>
             </div>
