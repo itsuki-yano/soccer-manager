@@ -112,11 +112,87 @@ function DoneModal({ message, onClose }: { message: string; onClose: () => void 
   );
 }
 
+// 試合1件の行。未精算リストと「精算済み」を開いたときの両方で使う
+function MatchRow({ m, updating, onCycle }: { m: MatchPreview; updating: boolean; onCycle: () => void }) {
+  const st = m.settlementStatus ?? "";
+  return (
+    <div className={`p-4 border-l-4 ${STATUS_BORDER[st]}`}>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-xs text-gray-400">{m.date}</div>
+          <div className="text-sm font-semibold text-gray-800 truncate">{m.matchName}</div>
+          <div className="text-xs text-gray-500 truncate">{m.venue}</div>
+        </div>
+        <button
+          onClick={onCycle}
+          disabled={updating}
+          className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border transition-opacity ${STATUS_COLOR[st]} ${STATUS_BORDER[st]} ${updating ? "opacity-40" : ""}`}
+        >
+          {STATUS_LABEL[st]}
+        </button>
+      </div>
+      <div className="bg-gray-50 rounded-lg p-3 grid gap-1 text-xs text-gray-600">
+        <div className="flex justify-between">
+          <span>往復距離</span><span className="font-medium">{m.distanceKm} km</span>
+        </div>
+        <div className="flex justify-between">
+          <span>台数</span><span className="font-medium">{m.carCount} 台</span>
+        </div>
+      </div>
+      {m.drivers.length > 0 && (
+        <div className="mt-2 text-xs text-stone-700">当番: {m.drivers.join("・")}</div>
+      )}
+    </div>
+  );
+}
+
+// コーチ飲食費1件の行
+function ExpenseRow({ e, updating, onToggle }: {
+  e: PreviewData["coachExpenses"][number];
+  updating: boolean;
+  onToggle: () => void;
+}) {
+  const st = e.claimed ?? "";
+  return (
+    <div className={`px-4 py-3 flex items-center gap-3 border-l-4 ${STATUS_BORDER[st]}`}>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs text-gray-400">{e.date}</div>
+        <div className="text-sm font-medium text-gray-800 truncate">{e.description}</div>
+        {e.purchaserName && <div className="text-xs text-stone-500">購入: {e.purchaserName}</div>}
+      </div>
+      <div className="text-sm font-bold text-gray-800 shrink-0">{e.amount.toLocaleString()}円</div>
+      <button
+        onClick={onToggle}
+        disabled={updating}
+        className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border transition-opacity ${STATUS_COLOR[st]} ${STATUS_BORDER[st]} ${updating ? "opacity-40" : ""}`}
+      >
+        {STATUS_LABEL[st]}
+      </button>
+    </div>
+  );
+}
+
+// 「精算済み N件」の開閉バー
+function SettledToggle({ count, open, onClick }: { count: number; open: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full px-4 py-2.5 flex items-center justify-between bg-emerald-50/60 border-t border-emerald-100 text-xs font-semibold text-emerald-800 active:bg-emerald-100"
+    >
+      <span>✅ 精算済み {count}件</span>
+      <span className="text-emerald-600">{open ? "閉じる ▲" : "表示する ▼"}</span>
+    </button>
+  );
+}
+
 export default function ExportPage() {
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [loadingType, setLoadingType] = useState<string | null>(null);
+  // 初期表示は未精算（未請求・請求中）のみ。精算済みは畳んでおく
+  const [showSettledMatches, setShowSettledMatches] = useState(false);
+  const [showSettledExpenses, setShowSettledExpenses] = useState(false);
 
   // モーダル状態
   const [modal, setModal] = useState<
@@ -223,6 +299,12 @@ export default function ExportPage() {
   const coachUnclaimedCount = preview?.coachExpenses.filter((e) => !e.claimed).length ?? 0;
   const coachTotalCount = preview?.coachExpenses.length ?? 0;
 
+  // 一覧は未精算と精算済みに分けて表示する
+  const openMatches = preview?.matches.filter((m) => m.settlementStatus !== "精算済み") ?? [];
+  const settledMatches = preview?.matches.filter((m) => m.settlementStatus === "精算済み") ?? [];
+  const openExpenses = preview?.coachExpenses.filter((e) => (e.claimed ?? "") !== "精算済み") ?? [];
+  const settledExpenses = preview?.coachExpenses.filter((e) => (e.claimed ?? "") === "精算済み") ?? [];
+
   const unbilledCount = preview?.matches.filter((m) => !m.settlementStatus).length ?? 0;
   const billingCount = preview?.matches.filter((m) => m.settlementStatus === "請求中").length ?? 0;
   const settledCount = preview?.matches.filter((m) => m.settlementStatus === "精算済み").length ?? 0;
@@ -317,80 +399,73 @@ export default function ExportPage() {
             </div>
           </div>
 
-          {/* 試合一覧 */}
+          {/* 試合一覧（初期表示は未精算のみ。精算済みは畳んでおく） */}
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">🚗 精算あり試合</span>
-              <span className="text-xs text-gray-400">{preview.matches.length}件</span>
+              <span className="text-xs text-gray-400">未精算 {openMatches.length}件 / 全{preview.matches.length}件</span>
             </div>
-            {preview.matches.length === 0 ? (
-              <div className="px-4 py-8 text-center text-gray-400 text-sm">精算対象の試合がありません</div>
+            {openMatches.length === 0 ? (
+              <div className="px-4 py-8 text-center text-gray-400 text-sm">
+                {preview.matches.length === 0 ? "精算対象の試合がありません" : "未精算の試合はありません 🎉"}
+              </div>
             ) : (
               <div className="divide-y divide-gray-50">
-                {preview.matches.map((m) => (
-                  <div key={m.id} className={`p-4 border-l-4 ${STATUS_BORDER[m.settlementStatus ?? ""]}`}>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs text-gray-400">{m.date}</div>
-                        <div className="text-sm font-semibold text-gray-800 truncate">{m.matchName}</div>
-                        <div className="text-xs text-gray-500 truncate">{m.venue}</div>
-                      </div>
-                      <button
-                        onClick={() => cycleStatus(m.id, m.settlementStatus ?? "")}
-                        disabled={updatingId === m.id}
-                        className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border transition-opacity ${STATUS_COLOR[m.settlementStatus ?? ""]} ${STATUS_BORDER[m.settlementStatus ?? ""]} ${updatingId === m.id ? "opacity-40" : ""}`}
-                      >
-                        {STATUS_LABEL[m.settlementStatus ?? ""]}
-                      </button>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3 grid gap-1 text-xs text-gray-600">
-                      <div className="flex justify-between">
-                        <span>往復距離</span><span className="font-medium">{m.distanceKm} km</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>台数</span><span className="font-medium">{m.carCount} 台</span>
-                      </div>
-                    </div>
-                    {m.drivers.length > 0 && (
-                      <div className="mt-2 text-xs text-stone-700">当番: {m.drivers.join("・")}</div>
-                    )}
-                  </div>
+                {openMatches.map((m) => (
+                  <MatchRow key={m.id} m={m} updating={updatingId === m.id} onCycle={() => cycleStatus(m.id, m.settlementStatus ?? "")} />
                 ))}
               </div>
             )}
+            {settledMatches.length > 0 && (
+              <>
+                <SettledToggle
+                  count={settledMatches.length}
+                  open={showSettledMatches}
+                  onClick={() => setShowSettledMatches((v) => !v)}
+                />
+                {showSettledMatches && (
+                  <div className="divide-y divide-gray-50 border-t border-gray-100">
+                    {settledMatches.map((m) => (
+                      <MatchRow key={m.id} m={m} updating={updatingId === m.id} onCycle={() => cycleStatus(m.id, m.settlementStatus ?? "")} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
-          {/* コーチ飲食費 */}
+          {/* コーチ飲食費（初期表示は未精算のみ。精算済みは畳んでおく） */}
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">🧃 コーチ飲食費</span>
-              <span className="text-xs text-gray-400">{coachPaidCount}/{coachTotalCount}件 精算済み</span>
+              <span className="text-xs text-gray-400">未精算 {openExpenses.length}件 / 全{coachTotalCount}件</span>
             </div>
-            {preview.coachExpenses.length === 0 ? (
-              <div className="px-4 py-6 text-center text-gray-400 text-sm">費用が登録されていません</div>
+            {openExpenses.length === 0 ? (
+              <div className="px-4 py-6 text-center text-gray-400 text-sm">
+                {coachTotalCount === 0 ? "費用が登録されていません" : "未精算の費用はありません 🎉"}
+              </div>
             ) : (
               <div className="divide-y divide-gray-50">
-                {preview.coachExpenses.map((e) => {
-                  const st = e.claimed ?? "";
-                  return (
-                    <div key={e.id} className={`px-4 py-3 flex items-center gap-3 border-l-4 ${STATUS_BORDER[st]}`}>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs text-gray-400">{e.date}</div>
-                        <div className="text-sm font-medium text-gray-800 truncate">{e.description}</div>
-                        {e.purchaserName && <div className="text-xs text-stone-500">購入: {e.purchaserName}</div>}
-                      </div>
-                      <div className="text-sm font-bold text-gray-800 shrink-0">{e.amount.toLocaleString()}円</div>
-                      <button
-                        onClick={() => toggleClaimed(e)}
-                        disabled={updatingId === e.id}
-                        className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border transition-opacity ${STATUS_COLOR[st]} ${STATUS_BORDER[st]} ${updatingId === e.id ? "opacity-40" : ""}`}
-                      >
-                        {STATUS_LABEL[st]}
-                      </button>
-                    </div>
-                  );
-                })}
+                {openExpenses.map((e) => (
+                  <ExpenseRow key={e.id} e={e} updating={updatingId === e.id} onToggle={() => toggleClaimed(e)} />
+                ))}
               </div>
+            )}
+            {settledExpenses.length > 0 && (
+              <>
+                <SettledToggle
+                  count={settledExpenses.length}
+                  open={showSettledExpenses}
+                  onClick={() => setShowSettledExpenses((v) => !v)}
+                />
+                {showSettledExpenses && (
+                  <div className="divide-y divide-gray-50 border-t border-gray-100">
+                    {settledExpenses.map((e) => (
+                      <ExpenseRow key={e.id} e={e} updating={updatingId === e.id} onToggle={() => toggleClaimed(e)} />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
