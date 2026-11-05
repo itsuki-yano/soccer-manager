@@ -39,54 +39,78 @@ const STATUS_BORDER: Record<string, string> = {
   "精算済み": "border-emerald-300",
 };
 
-// 日付範囲モーダル
-function DateRangeModal({ title, onConfirm, onCancel }: {
+// 飲み物代シートに載せる範囲
+type DrinkScope = "open" | "settled" | "all" | "none";
+const DRINK_SCOPES: { value: DrinkScope; label: string; desc: string }[] = [
+  { value: "open", label: "未精算のみ", desc: "未請求・請求中の費用だけ（精算済みは載せない）" },
+  { value: "settled", label: "精算済みのみ", desc: "すでに精算した費用だけ" },
+  { value: "all", label: "全件", desc: "精算済みも含めて全部" },
+  { value: "none", label: "含めない", desc: "飲み物代シートを作らない" },
+];
+
+// 出力オプションモーダル（期間と飲み物代の範囲をここで選ぶ）
+function ExportOptionsModal({ title, message, showDateRange, defaultDrinkScope, onConfirm, onCancel }: {
   title: string;
-  onConfirm: (from: string, to: string) => void;
+  message?: string;
+  showDateRange: boolean;
+  defaultDrinkScope: DrinkScope;
+  onConfirm: (from: string, to: string, drinkScope: DrinkScope) => void;
   onCancel: () => void;
 }) {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [drinkScope, setDrinkScope] = useState<DrinkScope>(defaultDrinkScope);
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-base font-bold text-gray-800 mb-4">{title}</h3>
-        <div className="grid gap-3 mb-6">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">開始日</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input w-full" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">終了日</label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input w-full" />
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => onConfirm(from, to)} className="flex-1 bg-stone-700 text-white py-2.5 rounded-xl font-semibold">
-            出力
-          </button>
-          <button onClick={onCancel} className="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-semibold">
-            キャンセル
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-// 確認モーダル
-function ConfirmModal({ message, onConfirm, onCancel }: {
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <p className="text-sm text-gray-700 mb-6 whitespace-pre-line">{message}</p>
+        {message && (
+          <p className="text-sm text-gray-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 whitespace-pre-line">
+            {message}
+          </p>
+        )}
+
+        {showDateRange && (
+          <div className="grid gap-3 mb-5">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">開始日</label>
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input w-full" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">終了日</label>
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input w-full" />
+            </div>
+          </div>
+        )}
+
+        <div className="mb-5">
+          <div className="text-xs font-semibold text-gray-600 mb-1">🧃 飲み物代シートに載せる費用</div>
+          <p className="text-xs text-gray-400 mb-2">※ 期間の指定は試合のみに効きます</p>
+          <div className="grid gap-1.5">
+            {DRINK_SCOPES.map((o) => (
+              <button
+                key={o.value}
+                onClick={() => setDrinkScope(o.value)}
+                className={`text-left px-3 py-2 rounded-lg border ${
+                  drinkScope === o.value
+                    ? "border-stone-700 bg-stone-50"
+                    : "border-gray-200 bg-white"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${drinkScope === o.value ? "border-stone-700 bg-stone-700" : "border-gray-300"}`} />
+                  <span className="text-sm font-semibold text-gray-800">{o.label}</span>
+                </div>
+                <div className="text-xs text-gray-500 pl-5.5 mt-0.5">{o.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex gap-2">
-          <button onClick={onConfirm} className="flex-1 bg-amber-600 text-white py-2.5 rounded-xl font-semibold">
-            OK
+          <button onClick={() => onConfirm(from, to, drinkScope)} className="flex-1 bg-stone-700 text-white py-2.5 rounded-xl font-semibold">
+            出力
           </button>
           <button onClick={onCancel} className="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl font-semibold">
             キャンセル
@@ -196,8 +220,7 @@ export default function ExportPage() {
 
   // モーダル状態
   const [modal, setModal] = useState<
-    | { type: "confirm-issue" }
-    | { type: "date-range"; exportType: "settled" | "all" }
+    | { type: "options"; exportType: "billing" | "issue-unbilled" | "settled" | "all" }
     | { type: "done"; message: string }
     | null
   >(null);
@@ -212,13 +235,13 @@ export default function ExportPage() {
 
   useEffect(() => { loadPreview(); }, [loadPreview]);
 
-  async function doExport(exportType: string, dateFrom = "", dateTo = "") {
+  async function doExport(exportType: string, dateFrom = "", dateTo = "", drinkScope: DrinkScope = "open") {
     setLoadingType(exportType);
     try {
       const res = await fetch("/api/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ exportType, dateFrom, dateTo }),
+        body: JSON.stringify({ exportType, dateFrom, dateTo, drinkScope }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -243,9 +266,10 @@ export default function ExportPage() {
         settled: "精算済み",
         all: "全データ",
       };
+      const scopeLabel = DRINK_SCOPES.find((o) => o.value === drinkScope)?.label ?? "";
       setModal({
         type: "done",
-        message: `【${typeLabel[exportType] ?? exportType}】\n${count}件を出力しました\n出力日時: ${now}`,
+        message: `【${typeLabel[exportType] ?? exportType}】\n試合 ${count}件を出力しました\n飲み物代: ${scopeLabel}\n出力日時: ${now}`,
       });
 
       // 未請求発行後はプレビューを再読み込み
@@ -324,7 +348,7 @@ export default function ExportPage() {
       <div className="grid gap-3 mb-5">
 
         <button
-          onClick={() => doExport("billing")}
+          onClick={() => setModal({ type: "options", exportType: "billing" })}
           disabled={!!loadingType}
           className="w-full bg-amber-600 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
         >
@@ -333,7 +357,7 @@ export default function ExportPage() {
         </button>
 
         <button
-          onClick={() => setModal({ type: "confirm-issue" })}
+          onClick={() => setModal({ type: "options", exportType: "issue-unbilled" })}
           disabled={!!loadingType || unbilledCount === 0}
           className="w-full bg-amber-600 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
         >
@@ -342,7 +366,7 @@ export default function ExportPage() {
         </button>
 
         <button
-          onClick={() => setModal({ type: "date-range", exportType: "settled" })}
+          onClick={() => setModal({ type: "options", exportType: "settled" })}
           disabled={!!loadingType}
           className="w-full bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
         >
@@ -351,7 +375,7 @@ export default function ExportPage() {
         </button>
 
         <button
-          onClick={() => setModal({ type: "date-range", exportType: "all" })}
+          onClick={() => setModal({ type: "options", exportType: "all" })}
           disabled={!!loadingType}
           className="w-full bg-stone-700 text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-between px-4"
         >
@@ -479,20 +503,24 @@ export default function ExportPage() {
       )}
 
       {/* モーダル */}
-      {modal?.type === "confirm-issue" && (
-        <ConfirmModal
-          message={`${unbilledCount}件の未請求を「請求中」に変更してExcelを出力します。\nよろしいですか？`}
-          onConfirm={() => { setModal(null); doExport("issue-unbilled"); }}
-          onCancel={() => setModal(null)}
-        />
-      )}
-      {modal?.type === "date-range" && (
-        <DateRangeModal
-          title={modal.exportType === "settled" ? "精算済発行 — 出力期間を選択" : "全て出力 — 出力期間を選択"}
-          onConfirm={(from, to) => { setModal(null); doExport(modal.exportType, from, to); }}
-          onCancel={() => setModal(null)}
-        />
-      )}
+      {modal?.type === "options" && (() => {
+        const conf = {
+          billing: { title: "請求中作成 — 出力内容を選択", message: undefined as string | undefined, dates: false, drink: "open" as DrinkScope },
+          "issue-unbilled": { title: "未請求発行 — 出力内容を選択", message: `${unbilledCount}件の未請求を「請求中」に変更して出力します。`, dates: false, drink: "open" as DrinkScope },
+          settled: { title: "精算済発行 — 出力内容を選択", message: undefined, dates: true, drink: "settled" as DrinkScope },
+          all: { title: "全て出力 — 出力内容を選択", message: undefined, dates: true, drink: "all" as DrinkScope },
+        }[modal.exportType];
+        return (
+          <ExportOptionsModal
+            title={conf.title}
+            message={conf.message}
+            showDateRange={conf.dates}
+            defaultDrinkScope={conf.drink}
+            onConfirm={(from, to, scope) => { setModal(null); doExport(modal.exportType, from, to, scope); }}
+            onCancel={() => setModal(null)}
+          />
+        );
+      })()}
       {modal?.type === "done" && (
         <DoneModal message={modal.message} onClose={() => setModal(null)} />
       )}

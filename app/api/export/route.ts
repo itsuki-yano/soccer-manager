@@ -213,7 +213,25 @@ async function logExport(exportType: string, dateFrom: string, dateTo: string, m
   await appendRow("export_history", [id, exportType, id, dateFrom, dateTo, matchCount]);
 }
 
-async function buildWorkbook(wb: ExcelJS.Workbook, exportType: string, settlementMatches: MatchWithDrivers[], settings: Settings, expenses: CoachExpense[]) {
+// 飲み物代シートに載せるコーチ飲食費の範囲。出力ボタンを押したときにユーザーが選ぶ。
+// 既定は未精算のみ（精算済みを請求書に載せて二重請求にならないようにする）。
+export type DrinkScope = "open" | "settled" | "all" | "none";
+
+const DRINK_SCOPE_NOTE: Record<DrinkScope, string> = {
+  open: "※未精算（未請求・請求中）分のみ",
+  settled: "※精算済み分のみ",
+  all: "※全件（精算済みを含む）",
+  none: "",
+};
+
+function filterExpenses(expenses: CoachExpense[], scope: DrinkScope): CoachExpense[] {
+  if (scope === "none") return [];
+  if (scope === "all") return expenses;
+  if (scope === "settled") return expenses.filter((e) => (e.claimed ?? "") === "精算済み");
+  return expenses.filter((e) => (e.claimed ?? "") !== "精算済み");
+}
+
+async function buildWorkbook(wb: ExcelJS.Workbook, exportType: string, settlementMatches: MatchWithDrivers[], settings: Settings, expenses: CoachExpense[], drinkScope: DrinkScope = "open") {
   // ルート地図画像を事前取得（GEOAPIFY_API_KEY設定時のみ）
   const imageCache = await fetchRouteImages(settlementMatches);
 
@@ -234,13 +252,15 @@ async function buildWorkbook(wb: ExcelJS.Workbook, exportType: string, settlemen
   // 配車担当者明細（別シート）
   buildDriverDetailSheet(wb, settlementMatches);
 
-  // 飲み物代
-  const drinkSheet = wb.addWorksheet("飲み物代請求");
-  buildDrinkSheet(drinkSheet, expenses, settings);
+  // 飲み物代（「含めない」が選ばれたらシート自体を作らない）
+  if (drinkScope !== "none") {
+    const drinkSheet = wb.addWorksheet("飲み物代請求");
+    buildDrinkSheet(drinkSheet, filterExpenses(expenses, drinkScope), settings, DRINK_SCOPE_NOTE[drinkScope]);
+  }
 }
 
 // 飲み物代・食事代シートを構築（日付・内容・購入者・金額・レシート）
-function buildDrinkSheet(sheet: ExcelJS.Worksheet, expenses: CoachExpense[], settings: Settings) {
+function buildDrinkSheet(sheet: ExcelJS.Worksheet, expenses: CoachExpense[], settings: Settings, scopeNote = "") {
   setA4Portrait(sheet, "3:3"); // 見出し行(3行目)を各ページに繰り返す
   sheet.getColumn(1).width = 12;
   sheet.getColumn(2).width = 30;
@@ -252,7 +272,8 @@ function buildDrinkSheet(sheet: ExcelJS.Worksheet, expenses: CoachExpense[], set
 
   const title = sheet.addRow([`${settings.teamName}　コーチ飲み物代・食事代請求`]);
   title.font = { bold: true, size: 14 };
-  sheet.addRow([]);
+  const note = sheet.addRow([scopeNote]);
+  note.font = { size: 9, color: { argb: "FF808080" } };
   const header = sheet.addRow(["日付", "内容", "購入者", "金額", "レシート"]);
   header.font = { bold: true };
   header.eachCell((c) => { c.border = box; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE9E9E9" } }; });
@@ -303,8 +324,12 @@ export async function GET() {
 // POST: 種別指定出力
 export async function POST(req: Request) {
   try {
-    const body = await req.json() as { exportType: string; dateFrom?: string; dateTo?: string };
+    const body = await req.json() as { exportType: string; dateFrom?: string; dateTo?: string; drinkScope?: DrinkScope };
     const { exportType, dateFrom = "", dateTo = "" } = body;
+    // 飲み物代シートの範囲は画面で選ばせる。未指定なら未精算のみ（安全側）
+    const drinkScope: DrinkScope = (["open", "settled", "all", "none"] as const).includes(body.drinkScope as DrinkScope)
+      ? body.drinkScope as DrinkScope
+      : "open";
 
     const { settings, matches, matchRows, drivers, expenses } = await loadData();
 
@@ -347,7 +372,7 @@ export async function POST(req: Request) {
     await logExport(exportType, dateFrom, dateTo, settlementMatches.length).catch(() => {});
 
     const wb = new ExcelJS.Workbook();
-    await buildWorkbook(wb, exportType, settlementMatches, settings, expenses);
+    await buildWorkbook(wb, exportType, settlementMatches, settings, expenses, drinkScope);
     const buf = await wb.xlsx.writeBuffer();
 
     const typeLabels: Record<string, string> = {
