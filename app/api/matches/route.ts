@@ -55,16 +55,20 @@ export async function POST(req: Request) {
       if (prev) equipmentBringIn = prev.equipmentBringOut;
     }
 
+    // 配車当番なしなら台数は0、備品持帰りなしなら持帰りは空（PUTと同じ正規化）
+    const noDriverDuty = !!body.noDriverDuty;
+    const noEquipDuty = !!body.noEquipDuty;
+
     await appendRow("matches", [
       id, body.date, body.matchType ?? "公式戦", body.matchName, body.opponent,
-      body.venue, body.address, body.distanceKm, body.carCount,
+      body.venue, body.address, body.distanceKm, noDriverDuty ? 0 : body.carCount,
       body.needsSettlement ? "true" : "false",
-      body.bandUid ?? "", equipmentBringIn, body.equipmentBringOut ?? "",
+      body.bandUid ?? "", equipmentBringIn, noEquipDuty ? "" : (body.equipmentBringOut ?? ""),
       body.settlementStatus ?? "", body.skippedDrivers ?? "",
       body.bandUrl1 ?? "", body.bandUrl2 ?? "",
       body.startTime ?? "", body.endTime ?? "",
-      body.noDriverDuty ? "true" : "false",
-      body.noEquipDuty ? "true" : "false",
+      noDriverDuty ? "true" : "false",
+      noEquipDuty ? "true" : "false",
     ]);
     return NextResponse.json({ id, equipmentBringIn });
   } catch (e) {
