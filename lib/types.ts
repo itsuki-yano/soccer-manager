@@ -18,6 +18,10 @@ export interface Match {
   bandUrl2: string; // BAND投稿リンク2
   startTime: string; // 開始時刻 HH:MM
   endTime: string;   // 終了時刻 HH:MM
+  // 試合によっては当番そのものが不要（会場が近い・現地集合・備品を置いたまま等）。
+  // 不要にした試合は班のローテーションを消費しない（その班は次の試合で当番に回る）
+  noDriverDuty: boolean; // 配車当番が不要
+  noEquipDuty: boolean;  // 備品持帰りが不要
 }
 
 export interface Driver {

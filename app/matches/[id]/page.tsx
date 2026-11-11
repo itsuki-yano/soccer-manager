@@ -28,7 +28,9 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
   const [editing, setEditing] = useState(false);
   const [matchType, setMatchType] = useState("公式戦");
   const [needsSettlement, setNeedsSettlement] = useState(true);
-  const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement" | "bandUid" | "equipmentBringIn" | "equipmentBringOut" | "settlementStatus" | "carCount" | "skippedDrivers">>({
+  const [noDriverDuty, setNoDriverDuty] = useState(false);
+  const [noEquipDuty, setNoEquipDuty] = useState(false);
+  const [form, setForm] = useState<Omit<Match, "id" | "matchType" | "needsSettlement" | "bandUid" | "equipmentBringIn" | "equipmentBringOut" | "settlementStatus" | "carCount" | "skippedDrivers" | "noDriverDuty" | "noEquipDuty">>({
     date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: 0, bandUrl1: "", bandUrl2: "", startTime: "", endTime: "",
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -46,6 +48,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
         setMatch(m);
         setMatchType(m.matchType ?? "公式戦");
         setNeedsSettlement(m.needsSettlement ?? false);
+        setNoDriverDuty(m.noDriverDuty ?? false);
+        setNoEquipDuty(m.noEquipDuty ?? false);
         const toTime = (s: string) => { const mm = (s ?? "").trim().match(/^(\d{1,2}):(\d{2})/); return mm ? `${mm[1].padStart(2, "0")}:${mm[2]}` : ""; };
         setForm({ date: m.date, matchName: m.matchName, opponent: m.opponent, venue: m.venue, address: m.address, distanceKm: m.distanceKm, bandUrl1: m.bandUrl1 ?? "", bandUrl2: m.bandUrl2 ?? "", startTime: toTime(m.startTime), endTime: toTime(m.endTime) });
       }
@@ -82,14 +86,16 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
       body: JSON.stringify({
         ...form,
         carCount: drivers.length,
-        matchType, needsSettlement,
-        bandUid: match?.bandUid ?? "",
+        matchType, needsSettlement, noDriverDuty, noEquipDuty,
         equipmentBringIn: match?.equipmentBringIn ?? "",
         equipmentBringOut: match?.equipmentBringOut ?? "",
         settlementStatus: match?.settlementStatus ?? "",
+        // 送り忘れるとPUTの全行上書きで消えてしまう
+        skippedDrivers: match?.skippedDrivers ?? "",
+        bandUid: match?.bandUid ?? "",
       }),
     });
-    setMatch((prev) => prev ? { ...prev, ...form, carCount: drivers.length, matchType, needsSettlement } : prev);
+    setMatch((prev) => prev ? { ...prev, ...form, carCount: drivers.length, matchType, needsSettlement, noDriverDuty, noEquipDuty } : prev);
     setEditing(false);
     setSaving(false);
   }
@@ -147,6 +153,30 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                       needsSettlement === value ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"
                     }`}>{label}</button>
                 ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">当番</label>
+              <div className="grid gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {[{ label: "🚗 配車当番あり", value: false }, { label: "配車当番なし", value: true }].map(({ label, value }) => (
+                    <button key={label} type="button" onClick={() => setNoDriverDuty(value)}
+                      className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        noDriverDuty === value ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"
+                      }`}>{label}</button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[{ label: "🎒 備品持帰りあり", value: false }, { label: "備品持帰りなし", value: true }].map(({ label, value }) => (
+                    <button key={label} type="button" onClick={() => setNoEquipDuty(value)}
+                      className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        noEquipDuty === value ? "bg-stone-700 text-white border-stone-700" : "bg-gray-50 text-gray-600 border-gray-200"
+                      }`}>{label}</button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400">
+                  「なし」にすると当番一覧に出ず、班の順番も消費しません（その班は次の試合で当番に回ります）。
+                </p>
               </div>
             </div>
             <div>
@@ -216,6 +246,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full">{match.matchType}</span>
                   {match.needsSettlement && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">精算あり</span>}
+                  {match.noDriverDuty && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">🚗 配車当番なし</span>}
+                  {match.noEquipDuty && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">🎒 備品持帰りなし</span>}
                   {isHomeVenue && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム</span>}
                 </div>
                 <div className="font-bold text-gray-800 text-lg">{fmtDate(match.date)}</div>
@@ -257,6 +289,8 @@ export default function MatchDetailPage({ params }: { params: Promise<{ id: stri
           <div className="flex items-center gap-2">
             <h2 className="font-bold text-gray-700">配車当番</h2>
             {match.needsSettlement && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">💴 精算あり</span>}
+            {match.noDriverDuty && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">🚗 配車当番なし</span>}
+            {match.noEquipDuty && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">🎒 備品持帰りなし</span>}
           </div>
           {!VIEW_ONLY && (
             <Link href={`/duty-roster?matchId=${id}`}

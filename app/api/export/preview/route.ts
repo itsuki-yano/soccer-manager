@@ -9,7 +9,7 @@ function calcFee(distanceKm: number, gasPricePerKm: number): number {
 export async function GET() {
   try {
     const [matchRows, driverRows, expenseRows, settingsRows] = await Promise.all([
-      getSheetData("matches!A:S"),
+      getSheetData("matches!A:U"),
       getSheetData("drivers!A:B"),
       getSheetData("coach_expenses!A:G"),
       getSheetData("settings!A:B"),
@@ -37,6 +37,7 @@ export async function GET() {
       settlementStatus: r[13] ?? "",
       skippedDrivers: r[14] ?? "",
     bandUrl1: r[15] ?? "", bandUrl2: r[16] ?? "", startTime: r[17] ?? "", endTime: r[18] ?? "",
+    noDriverDuty: r[19]?.toLowerCase() === "true" || r[19] === "1", noEquipDuty: r[20]?.toLowerCase() === "true" || r[20] === "1",
     })).sort((a, b) => a.date.localeCompare(b.date));
 
     const drivers: Driver[] = driverRows.slice(1).filter((r) => r[0]).map((r) => ({
@@ -51,7 +52,8 @@ export async function GET() {
 
     const matchPreviews = settlementMatches.map((m) => {
       const matchDrivers = drivers.filter((d) => d.matchId === m.id);
-      const effectiveCarCount = matchDrivers.length > 0 ? matchDrivers.length : m.carCount;
+      // 配車当番なしの試合は台数0（古い carCount が残っていても請求しない）
+      const effectiveCarCount = m.noDriverDuty ? 0 : (matchDrivers.length > 0 ? matchDrivers.length : m.carCount);
       const feePerCar = calcFee(m.distanceKm, settings.gasPricePerKm);
       const totalFee = feePerCar * effectiveCarCount;
       return {

@@ -23,12 +23,15 @@ function rowToMatch(r: string[]): Match {
     bandUrl2: r[16] ?? "",
     startTime: r[17] ?? "",
     endTime: r[18] ?? "",
+    // 既存の行には列が無いので、空欄は「当番あり」(false) として扱う
+    noDriverDuty: r[19]?.toLowerCase() === "true" || r[19] === "1",
+    noEquipDuty: r[20]?.toLowerCase() === "true" || r[20] === "1",
   };
 }
 
 export async function GET() {
   try {
-    const rows = await getSheetData("matches!A:S");
+    const rows = await getSheetData("matches!A:U");
     const matches = rows.slice(1).filter((r) => r[0]).map(rowToMatch);
     return NextResponse.json(matches);
   } catch (e) {
@@ -44,7 +47,7 @@ export async function POST(req: Request) {
     // 直前の試合の持ち帰り人を今回の持ってくる人に自動セット
     let equipmentBringIn = body.equipmentBringIn ?? "";
     if (!equipmentBringIn) {
-      const rows = await getSheetData("matches!A:S");
+      const rows = await getSheetData("matches!A:U");
       const existing = rows.slice(1).filter((r) => r[0]).map(rowToMatch);
       const prev = existing
         .filter((m) => m.date < body.date && m.equipmentBringOut)
@@ -60,6 +63,8 @@ export async function POST(req: Request) {
       body.settlementStatus ?? "", body.skippedDrivers ?? "",
       body.bandUrl1 ?? "", body.bandUrl2 ?? "",
       body.startTime ?? "", body.endTime ?? "",
+      body.noDriverDuty ? "true" : "false",
+      body.noEquipDuty ? "true" : "false",
     ]);
     return NextResponse.json({ id, equipmentBringIn });
   } catch (e) {

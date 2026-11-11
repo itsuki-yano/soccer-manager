@@ -214,7 +214,10 @@ function DutyRosterInner() {
     return swaps.filter((s) => {
       if (!known.has(s.personA) || !known.has(s.personB)) return false;
       if (!s.fromDate) return true;
-      const past = pastMatches.filter((m) => m.date >= s.fromDate).length;
+      // 当番なしの試合で期限を消費させない（一度も使われずに消えてしまうため）
+      const past = pastMatches.filter((m) =>
+        m.date >= s.fromDate && (s.kind === "driver" ? !m.noDriverDuty : !m.noEquipDuty)
+      ).length;
       return past < swapCoverage(s);
     });
   }
@@ -230,8 +233,10 @@ function DutyRosterInner() {
       if (j > i && slotIndex === j - 1 && field === "equip" && name === s.personB) return s.personA;
       if (j > i && slotIndex === j && field === "driver" && name === s.personB) return s.personA;
     } else {
+      // 備品スワップ: 代役Bはその班の配車も担当する。
+      // 配車当番なしの試合は飛ばして「次に配車があるスロット」に連動させる
       if (slotIndex === i && field === "equip" && name === s.personA) return s.personB;
-      if (slotIndex === i + 1 && field === "driver" && name === s.personA) return s.personB;
+      if (slotIndex === nextDriverSlot(i) && field === "driver" && name === s.personA) return s.personB;
     }
     return name;
   }
@@ -258,7 +263,10 @@ function DutyRosterInner() {
     const currentDrivers = drivers.filter((d) => d.matchId === m.id).map((d) => d.parentName);
     const currentEquip = m.equipmentBringOut ? m.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean) : [];
 
-    if (currentDrivers.length === 0 && expectedGroup) {
+    // 当番なしの試合には自動セットも引継ぎ提案もしない
+    if (m.noDriverDuty) {
+      setEditDriverNames([]);
+    } else if (currentDrivers.length === 0 && expectedGroup) {
       const normG = normalizeGroup(expectedGroup);
       const groupMembers = applySwaps(
         parents
@@ -273,7 +281,9 @@ function DutyRosterInner() {
       setEditDriverNames(currentDrivers);
     }
 
-    if (currentEquip.length === 0 && expectedEquipGroup) {
+    if (m.noEquipDuty) {
+      setEditEquipOut([]);
+    } else if (currentEquip.length === 0 && expectedEquipGroup) {
       // 備品持帰り: 次の班メンバーを自動セット
       const normEG = normalizeGroup(expectedEquipGroup);
       const equipMembers = applySwaps(
@@ -290,7 +300,7 @@ function DutyRosterInner() {
     }
 
     // 備品持帰り未設定の場合: 前回の配車当番を引継ぎ候補に
-    if (currentEquip.length === 0 && !expectedEquipGroup) {
+    if (!m.noEquipDuty && currentEquip.length === 0 && !expectedEquipGroup) {
       const prev = matches
         .filter((x) => x.id !== m.id && x.date < m.date)
         .sort((a, b) => b.date.localeCompare(a.date))[0];
@@ -379,62 +389,87 @@ function DutyRosterInner() {
   const pastMatches = matches.filter((m) => m.date < today).sort((a, b) => b.date.localeCompare(a.date));
 
   // ────────── 配車・荷物当番パネル ──────────
-  const DriverPanel = () => {
-    const sortedGroups = [...new Set(parents.map((p) => normalizeGroup(p.group)).filter(Boolean))].sort();
+  // ────────── 当番スロットと班のローテーション ──────────
+  // 1スロット = 今後の試合1回。スロットには紐付け済みの未来試合を日付順に詰める。
+  const sortedGroups = [...new Set(parents.map((p) => normalizeGroup(p.group)).filter(Boolean))].sort();
 
-    function normN(s: string) { return s.replace(/[\s　]/g, ""); }
+  function normN(s: string) { return s.replace(/[\s　]/g, ""); }
 
-    function getMatchGroup(matchId: string): string {
-      const mDrivers = drivers.filter((d) => d.matchId === matchId);
-      if (mDrivers.length === 0) return "";
-      const cnt: Record<string, number> = {};
-      mDrivers.forEach((d) => {
-        const p = parents.find((px) => normN(px.playerName) === normN(d.parentName));
-        if (p?.group) {
-          const ng = normalizeGroup(p.group);
-          cnt[ng] = (cnt[ng] || 0) + 1;
-        }
-      });
-      return Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
-    }
-
-    const lastGroupMatch = pastMatches.find((m) => drivers.some((d) => d.matchId === m.id));
-    const lastGroup = lastGroupMatch ? getMatchGroup(lastGroupMatch.id) : "";
-
-    // 表示するスロット数: デフォルト4回。今後の試合数が4以上ならその数だけ表示
-    const displayCount = Math.max(4, futureMatches.length);
-
-    function nextInRotation(g: string): string {
-      if (!sortedGroups.length) return "";
-      const idx = g ? sortedGroups.indexOf(g) : -1;
-      return sortedGroups[(idx + 1) % sortedGroups.length];
-    }
-    const futureGroups: string[] = [];
-    if (sortedGroups.length > 0) {
-      let g = lastGroup;
-      // 備品持帰り用に +1 回分多く生成（futureGroups[i+1] を参照するため）
-      for (let i = 0; i < displayCount + 1; i++) {
-        g = nextInRotation(g);
-        futureGroups.push(g);
+  function getMatchGroup(matchId: string): string {
+    const mDrivers = drivers.filter((d) => d.matchId === matchId);
+    if (mDrivers.length === 0) return "";
+    const cnt: Record<string, number> = {};
+    mDrivers.forEach((d) => {
+      const p = parents.find((px) => normN(px.playerName) === normN(d.parentName));
+      if (p?.group) {
+        const ng = normalizeGroup(p.group);
+        cnt[ng] = (cnt[ng] || 0) + 1;
       }
-    } else {
-      futureGroups.push(...Array(displayCount + 1).fill(""));
+    });
+    return Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+  }
+
+  // 表示するスロット数: デフォルト4回。今後の試合数が4以上ならその数だけ表示
+  const displayCount = Math.max(4, futureMatches.length);
+
+  // 紐付け済みの未来試合を日付順に並べる（スロットには日付順に詰める＝翌日ズレない）
+  const linkedFutureMatches = matches
+    .filter((m) => linkedMatchIds.includes(m.id) && m.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const effectiveSlotMatchIds: (string | null)[] = Array.from(
+    { length: displayCount },
+    (_, i) => linkedFutureMatches[i]?.id ?? null
+  );
+
+  // 試合選択ピッカーの候補: 未紐付けの未来試合のみ
+  const futureMatchesSorted = matches
+    .filter((m) => m.date >= today && !linkedMatchIds.includes(m.id))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  function slotMatch(i: number): Match | null {
+    const id = effectiveSlotMatchIds[i];
+    return id ? (matches.find((m) => m.id === id) ?? null) : null;
+  }
+  // 試合がまだ決まっていないスロットは「当番あり」として扱う
+  function slotNeedsDriver(i: number): boolean { return !slotMatch(i)?.noDriverDuty; }
+  function slotNeedsEquip(i: number): boolean { return !slotMatch(i)?.noEquipDuty; }
+
+  // ローテーションの起点: 直近で実際に配車当番をした過去試合。
+  // 「配車当番なし」に変えた試合に古い当番が残っていても起点にしない
+  const lastGroupMatch = pastMatches.find((m) => !m.noDriverDuty && drivers.some((d) => d.matchId === m.id));
+  const lastGroup = lastGroupMatch ? getMatchGroup(lastGroupMatch.id) : "";
+
+  function nextInRotation(g: string): string {
+    if (!sortedGroups.length) return "";
+    const idx = g ? sortedGroups.indexOf(g) : -1;
+    return sortedGroups[(idx + 1) % sortedGroups.length];
+  }
+
+  // 班は「配車当番が必要なスロット」でだけ次へ進める。
+  // 不要な試合で進めてしまうとその班が1回飛ばされて不公平になるため、
+  // 配車当番なしのスロットは空（""）にして順番を消費させない。
+  // 備品持帰りは「次に配車する班」を参照するので、先読み分を多めに作る。
+  const SLOT_LOOKAHEAD = 8;
+  const futureGroups: string[] = [];
+  if (sortedGroups.length > 0) {
+    let g = lastGroup;
+    for (let i = 0; i < displayCount + SLOT_LOOKAHEAD; i++) {
+      if (!slotNeedsDriver(i)) { futureGroups.push(""); continue; }
+      g = nextInRotation(g);
+      futureGroups.push(g);
     }
+  } else {
+    futureGroups.push(...Array(displayCount + SLOT_LOOKAHEAD).fill(""));
+  }
 
-    // 紐付け済みの未来試合を日付順に並べる（スロットには日付順に詰める＝翌日ズレない）
-    const linkedFutureMatches = matches
-      .filter((m) => linkedMatchIds.includes(m.id) && m.date >= today)
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const effectiveSlotMatchIds: (string | null)[] = Array.from(
-      { length: displayCount },
-      (_, i) => linkedFutureMatches[i]?.id ?? null
-    );
+  // i より後で最初に配車当番があるスロット番号（見つからなければ -1）
+  function nextDriverSlot(i: number): number {
+    for (let k = i + 1; k < futureGroups.length; k++) if (futureGroups[k]) return k;
+    return -1;
+  }
 
-    // 試合選択ピッカーの候補: 未紐付けの未来試合のみ
-    const futureMatchesSorted = matches
-      .filter((m) => m.date >= today && !linkedMatchIds.includes(m.id))
-      .sort((a, b) => a.date.localeCompare(b.date));
 
+  const DriverPanel = () => {
     const activeSwaps = getActiveSwaps();
 
     function getGroupMembers(g: string, slotIndex: number, field: "driver" | "equip"): string[] {
@@ -483,7 +518,10 @@ function DutyRosterInner() {
       logDetail(`${fmtDate(fromDate)}分 ${swapFrom} ↔ ${swapTo} を当番変更（${kind === "driver" ? "配車起点" : "備品起点"}）`);
 
       // 起点〜代役の当番回までのスロットのDB済みデータに、このスワップを種別・フィールド別に反映
-      const lastSlot = kind === "driver" ? Math.max(returnSlotIndex, appliedFromSlotIndex + 1) : appliedFromSlotIndex + 1;
+      // 配車当番なしのスロットを飛ばして、次に配車がある回までを反映範囲にする
+      const nextDrv = nextDriverSlot(appliedFromSlotIndex);
+      const followSlot = nextDrv >= 0 ? nextDrv : appliedFromSlotIndex + 1;
+      const lastSlot = kind === "driver" ? Math.max(returnSlotIndex, followSlot) : followSlot;
       for (let si = appliedFromSlotIndex; si <= lastSlot; si++) {
         const lid = effectiveSlotMatchIds[si];
         if (!lid) continue;
@@ -672,12 +710,17 @@ function DutyRosterInner() {
             const rawLinkedDrivers = linkedMatchId
               ? drivers.filter((d) => d.matchId === linkedMatchId).map((d) => d.parentName)
               : [];
-            const slotDrivers = rawLinkedDrivers.length > 0 ? rawLinkedDrivers : groupMembers;
-            const equipGroup = futureGroups[i + 1] ?? "";
+            // この試合は当番が不要か
+            const noDriver = !slotNeedsDriver(i);
+            const noEquip = !slotNeedsEquip(i);
+            const slotDrivers = noDriver ? [] : (rawLinkedDrivers.length > 0 ? rawLinkedDrivers : groupMembers);
+            // 備品持帰りは「次に配車する班」。配車当番なしの試合は飛ばして探す
+            const nextDrvSlot = nextDriverSlot(i);
+            const equipGroup = noEquip || nextDrvSlot < 0 ? "" : (futureGroups[nextDrvSlot] ?? "");
             const rawLinkedEquip = linkedMatch?.equipmentBringOut
               ? linkedMatch.equipmentBringOut.split(",").map((s) => s.trim()).filter(Boolean)
               : [];
-            const slotEquipOut = rawLinkedEquip.length > 0 ? rawLinkedEquip : getGroupMembers(equipGroup, i, "equip");
+            const slotEquipOut = noEquip ? [] : (rawLinkedEquip.length > 0 ? rawLinkedEquip : getGroupMembers(equipGroup, i, "equip"));
             const isEditing = Boolean(linkedMatchId && editMatchId === linkedMatchId);
             const isPicking = pickingSlot === i;
             const slotLabel = i === 0 ? "次回" : `${i + 1}回後`;
@@ -688,6 +731,8 @@ function DutyRosterInner() {
                   <div className="flex items-center gap-2 flex-wrap min-w-0">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-bold shrink-0 ${i === 0 ? "bg-stone-700 text-white" : "bg-gray-200 text-gray-600"}`}>{slotLabel}</span>
                     {group && <span className={groupBadge(group)}>{groupDisplay(group)}</span>}
+                    {noDriver && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">配車なし</span>}
+                    {noEquip && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">備品なし</span>}
                     {!linkedMatch && (
                       <span className="text-xs text-gray-400">（試合未紐付け）</span>
                     )}
@@ -853,9 +898,13 @@ function DutyRosterInner() {
                       className="text-left rounded-lg p-2 bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-colors cursor-pointer"
                     >
                       <p className="text-xs text-gray-400 mb-1">🚗 配車当番</p>
-                      <div className="flex flex-wrap gap-1">
-                        {slotDrivers.map((n) => <span key={n} className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
-                      </div>
+                      {noDriver ? (
+                        <span className="text-xs text-gray-400">この試合は配車当番なし</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {slotDrivers.map((n) => <span key={n} className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
+                        </div>
+                      )}
                     </button>
                     <button
                       type="button"
@@ -867,7 +916,9 @@ function DutyRosterInner() {
                       className="text-left rounded-lg p-2 bg-stone-50 border border-stone-200 hover:bg-stone-100 transition-colors cursor-pointer"
                     >
                       <p className="text-xs text-gray-400 mb-1">🎒 備品持帰り</p>
-                      {slotEquipOut.length > 0 ? (
+                      {noEquip ? (
+                        <span className="text-xs text-gray-400">この試合は備品持帰りなし</span>
+                      ) : slotEquipOut.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {slotEquipOut.map((n) => <span key={n} className="text-xs bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-full">{n}</span>)}
                         </div>
@@ -899,6 +950,8 @@ function DutyRosterInner() {
                       <div className="flex items-center gap-2 flex-wrap min-w-0">
                         <span className="text-xs bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full shrink-0">過去</span>
                         {group && <span className={groupBadge(group)}>{groupDisplay(group)}</span>}
+                        {m.noDriverDuty && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">配車なし</span>}
+                        {m.noEquipDuty && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">備品なし</span>}
                         <span className="text-sm font-semibold text-gray-500">{fmtDate(m.date)}</span>
                         <span className="text-xs text-gray-400 truncate">{m.matchName || m.matchType}{m.venue ? ` @ ${m.venue}` : ""}</span>
                       </div>
@@ -923,7 +976,7 @@ function DutyRosterInner() {
                             <div className="flex flex-wrap gap-1">
                               {matchDrivers.map((n) => <span key={n} className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full">{n}</span>)}
                             </div>
-                          ) : <span className="text-xs text-gray-300">未設定</span>}
+                          ) : <span className="text-xs text-gray-300">{m.noDriverDuty ? "当番なし" : "未設定"}</span>}
                           {skipped.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {skipped.map((n) => <span key={n} className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full line-through">{n}</span>)}

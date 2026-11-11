@@ -11,6 +11,9 @@ export default function NewMatchPage() {
   const [calcLoading, setCalcLoading] = useState(false);
   const [matchType, setMatchType] = useState("公式戦");
   const [needsSettlement, setNeedsSettlement] = useState(true);
+  // 試合によっては当番そのものが不要（現地集合・備品を置いたまま等）
+  const [noDriverDuty, setNoDriverDuty] = useState(false);
+  const [noEquipDuty, setNoEquipDuty] = useState(false);
   const [form, setForm] = useState({
     date: "", matchName: "", opponent: "", venue: "", address: "", distanceKm: "", carCount: "", startTime: "", endTime: "",
   });
@@ -50,6 +53,8 @@ export default function NewMatchPage() {
         ...form,
         matchType,
         needsSettlement,
+        noDriverDuty,
+        noEquipDuty,
         matchName: form.matchName || `${matchType} ${form.opponent}`.trim(),
         distanceKm: Number(form.distanceKm),
         carCount: Number(form.carCount),
@@ -92,6 +97,32 @@ export default function NewMatchPage() {
           >
             {needsSettlement ? "💴 精算あり（交通費発生）" : "精算なし"}
           </button>
+        </Field>
+
+        <Field label="当番">
+          <div className="grid gap-2">
+            <button
+              type="button"
+              onClick={() => setNoDriverDuty((v) => !v)}
+              className={`w-full py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                noDriverDuty ? "bg-gray-50 text-gray-500 border-gray-200" : "bg-stone-700 text-white border-stone-700"
+              }`}
+            >
+              {noDriverDuty ? "配車当番なし" : "🚗 配車当番あり"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setNoEquipDuty((v) => !v)}
+              className={`w-full py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                noEquipDuty ? "bg-gray-50 text-gray-500 border-gray-200" : "bg-stone-700 text-white border-stone-700"
+              }`}
+            >
+              {noEquipDuty ? "備品持帰りなし" : "🎒 備品持帰りあり"}
+            </button>
+            <p className="text-xs text-gray-400">
+              「なし」にすると当番一覧に出ず、班の順番も消費しません（その班は次の試合で当番に回ります）。
+            </p>
+          </div>
         </Field>
 
         <Field label="試合日 *">

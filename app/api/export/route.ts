@@ -68,7 +68,8 @@ function buildStatusSheet(
   const box = { top: thin, bottom: thin, left: thin, right: thin };
 
   matchList.forEach((m, i) => {
-    const carCount = m.matchDrivers.length > 0 ? m.matchDrivers.length : m.carCount;
+    // 配車当番なしの試合は台数0（古い carCount が残っていても請求しない）
+    const carCount = m.noDriverDuty ? 0 : (m.matchDrivers.length > 0 ? m.matchDrivers.length : m.carCount);
     const { label } = formatDate(m.date);
     const blockStart = sheet.rowCount; // 0始まりのブロック先頭行（地図アンカー用）
 
@@ -149,7 +150,7 @@ function buildDriverDetailSheet(wb: ExcelJS.Workbook, matchList: MatchWithDriver
 
 async function loadData() {
   const [matchRows, driverRows, expenseRows, settingsRows] = await Promise.all([
-    getSheetData("matches!A:S"),
+    getSheetData("matches!A:U"),
     getSheetData("drivers!A:B"),
     getSheetData("coach_expenses!A:G"),
     getSheetData("settings!A:B"),
@@ -177,6 +178,7 @@ async function loadData() {
     settlementStatus: r[13] ?? "",
     skippedDrivers: r[14] ?? "",
     bandUrl1: r[15] ?? "", bandUrl2: r[16] ?? "", startTime: r[17] ?? "", endTime: r[18] ?? "",
+    noDriverDuty: r[19]?.toLowerCase() === "true" || r[19] === "1", noEquipDuty: r[20]?.toLowerCase() === "true" || r[20] === "1",
   })).sort((a, b) => a.date.localeCompare(b.date));
 
   const drivers: Driver[] = driverRows.slice(1).filter((r) => r[0]).map((r) => ({

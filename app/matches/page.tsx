@@ -121,6 +121,8 @@ export default function MatchesPage() {
         opponent: ev.opponent, venue: ev.venue, address: ev.address,
         distanceKm: ev.distanceKm, carCount: ev.carCount,
         needsSettlement: ev.needsSettlement,
+        noDriverDuty: false,
+        noEquipDuty: false,
         equipmentBringIn: data.equipmentBringIn ?? "",
         equipmentBringOut: "",
         settlementStatus: "",
@@ -419,6 +421,8 @@ export default function MatchesPage() {
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeColor}`}>{m.matchType}</span>
                         {m.needsSettlement && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">精算あり</span>}
+                        {m.noDriverDuty && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">配車なし</span>}
+                        {m.noEquipDuty && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">備品なし</span>}
                         {isHome && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">ホーム</span>}
                         {m.bandUid && <span className="text-xs text-emerald-700">BAND</span>}
                       </div>
@@ -574,6 +578,8 @@ export default function MatchesPage() {
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeColor}`}>{m.matchType}</span>
                               {m.needsSettlement && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">精算あり</span>}
+                              {m.noDriverDuty && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">配車なし</span>}
+                              {m.noEquipDuty && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">備品なし</span>}
                               {isPast && <span className="text-xs text-gray-400">終了</span>}
                             </div>
                             <div className={`font-bold text-sm ${isPast ? "text-gray-500" : "text-gray-800"}`}>
